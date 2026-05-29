@@ -15,7 +15,7 @@
 
 ### 1.1. 功能说明
 
-当前工具会在操作系统中安装上方命令，使用它进行 `SDD - Spec Driven Development` 开发。下文统一使用 `mxt` 表示该命令，AI 平台命令前缀也沿用 `mxt` 占位写法。
+MXT AI 是面向 R2MO / MXT 工作流的 `SDD - Spec Driven Development` 命令行工具，提供项目初始化、规范与 OpenAPI 辅助、任务提示词生成，以及 Claude Code / Codex / OpenCode 的 `mxt` AI 命令安装与刷新。
 
 ---
 
