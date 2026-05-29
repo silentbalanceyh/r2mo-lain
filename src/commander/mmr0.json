@@ -1,0 +1,6 @@
+{
+    "executor": "executeMmr0",
+    "description": "从 r2mo-spec 仓库下载并生成 Flyway SQL 文件",
+    "command": "mmr0",
+    "options": []
+}

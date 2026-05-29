@@ -1,0 +1,19 @@
+{
+    "executor": "executeApply",
+    "description": "从远程仓库安装技能到当前项目（默认）；-i 将当前项目 skills/ 反馈到 Z_LAIN_SKILL/skills",
+    "command": "apply",
+    "options": [
+        {
+            "name": "remote",
+            "alias": "r",
+            "description": "远程仓库名（可选，默认仍从远程安装）",
+            "type": "string"
+        },
+        {
+            "name": "import",
+            "alias": "i",
+            "description": "反馈模式：将当前项目 skills/ 拷贝到 Z_LAIN_SKILL/skills",
+            "type": "boolean"
+        }
+    ]
+}

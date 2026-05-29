@@ -1,0 +1,10 @@
+# 任务执行需求
+
+<!-- BEGIN -->
+在 source/<%= ROOT %> 目录下完成任务 <%= TASK %> 的开发工作（任务详情：specification/changes/<%= REQ %>/tasks/<%= TASK %>.md），任务完成后将并且将 specification/changes/<%= REQ %>/tasks/<%= TASK %>.md 文件更名为 <%= TASK %>.done，并且更新 并且将 specification/changes/<%= REQ %>/tasks.md 中的总任务清单。
+
+任务完成后，请记得删除以下两个锁文件：
+1. 任务锁文件: specification/changes/<%= REQ %>/tasks/<%= TASK %>.lock
+2. 任务空间锁文件: source/<%= ROOT %>.lock
+3. 任务完成之后你需要十分智能地检查 git 仓库状态并且提交一份代码到 git 远程仓库，注意提交之前保证自己手中代码是最新的，若有冲突要解决冲突后合并提交。
+<!-- END -->

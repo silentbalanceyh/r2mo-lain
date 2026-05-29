@@ -1,0 +1,1 @@
+{"executor":"executeMcp","description":"配置 MCP Skills Server，整合项目和全局技能","command":"mcp","options":[{"name":"check","alias":"c","description":"仅检查依赖，不配置","type":"boolean"},{"name":"dir","alias":"d","description":"项目目录（默认为当前目录），MCP 脚本与配置写入此目录","default":"."}]}

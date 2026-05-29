@@ -1,0 +1,13 @@
+{
+    "executor": "executeMenu",
+    "description": "扫描 src/pages 下 menu.yaml，打印完整树型菜单（name, text, icon）",
+    "command": "menu",
+    "options": [
+        {
+            "name": "dir",
+            "alias": "d",
+            "description": "项目根目录（默认为当前目录）",
+            "default": "."
+        }
+    ]
+}

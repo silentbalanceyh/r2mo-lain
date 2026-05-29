@@ -1,0 +1,13 @@
+{
+    "executor": "executeSpec",
+    "description": "初始化 R2MO 规范目录结构",
+    "command": "init",
+    "options": [
+        {
+            "name": "dir",
+            "alias": "d",
+            "description": "目标目录（默认为当前目录）",
+            "default": "."
+        }
+    ]
+}

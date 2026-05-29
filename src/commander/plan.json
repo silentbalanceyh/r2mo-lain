@@ -1,0 +1,6 @@
+{
+  "executor": "executePlan",
+  "description": "从项目根或 .r2mo 目录下的 task/ 中选择任务，生成 Plan 阶段提示词到剪贴板",
+  "command": "plan",
+  "options": []
+}

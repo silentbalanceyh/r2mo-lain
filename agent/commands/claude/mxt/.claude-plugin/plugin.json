@@ -1,0 +1,17 @@
+{
+  "name": "mxt",
+  "version": "1.0.0",
+  "description": "R2MO task workflow slash commands: /mxt:plan, /mxt:run, /mxt:end, /mxt:goon, /mxt:debug, /mxt:sync, /mxt:start.",
+  "author": {
+    "name": "R2MO"
+  },
+  "homepage": "https://gitee.com/silentbalanceyh/r2mo-lain",
+  "repository": "https://gitee.com/silentbalanceyh/r2mo-lain.git",
+  "license": "ISC",
+  "keywords": [
+    "mxt",
+    "r2mo",
+    "task",
+    "commands"
+  ]
+}

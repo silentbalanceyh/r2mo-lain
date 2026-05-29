@@ -1,0 +1,13 @@
+{
+    "executor": "executeAdmin",
+    "description": "根据项目需求文档生成前端页面结构",
+    "command": "admin",
+    "options": [
+        {
+            "name": "dir",
+            "alias": "d",
+            "description": "目标目录（默认为当前目录）",
+            "default": "."
+        }
+    ]
+}

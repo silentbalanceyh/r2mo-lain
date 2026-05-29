@@ -1,0 +1,45 @@
+# ============================================================================
+# @REQ / 需求文件位置
+# ============================================================================
+rule-requirement:
+  app: ".r2mo/requirements/project.md"
+  module: "requirement.module.md"
+
+# ============================================================================
+# @PAGE / 页面信息（可能多个）
+# ============================================================================
+pages:
+  - name: "{page-name}"
+    route: "/{module}/{page}"
+    file: "{page-dir}/page.yaml"
+
+# ============================================================================
+# @API / 接口信息（范围内）
+# 使用 extract-api.py 脚本从 metadata.yaml 提取模块相关的 API
+# 用法: python {SKILL_ROOT}/scripts/extract-api.py -m {pattern} -o api.yaml
+# ============================================================================
+api:
+  source: ".r2mo/api/metadata.yaml"      # OpenAPI 完整定义
+  extracted: "api.yaml"                  # 提取的模块 API（由脚本生成）
+  match: ["{pattern}"]                   # 匹配模式（模糊匹配路径）
+
+# ============================================================================
+# @DESIGN / 设计规范
+# ============================================================================
+design:
+  app: ".r2mo/design/spec.md"
+  module: "design.md"
+
+# ============================================================================
+# @MODEL / 模型信息
+# 使用 extract-schema.py 脚本从 schemas 和 domain 提取模块相关的数据模型
+# 用法: python {SKILL_ROOT}/scripts/extract-schema.py -m {pattern} -o schemas.yaml
+# ============================================================================
+schema:
+  store: [
+    ".r2mo/api/components/schemas/{module}-*.md",
+    ".r2mo/domain/{module}*.proto"
+  ]
+  extracted: "schemas.yaml"          # 提取的 schemas（由 extract-schema.py 生成）
+  match: ["{module}"]                # 匹配模式（模糊匹配文件名）
+  marker: ".r2mo/api/marker.md"

@@ -1,0 +1,13 @@
+{
+    "executor": "executeOpenapi",
+    "description": "从各子项目 src/main/resources/openapi 提取 Operation/Schema 的 md，拷贝到 -ui/.r2mo/api/ 并保持结构",
+    "command": "openapi",
+    "options": [
+        {
+            "name": "dir",
+            "alias": "d",
+            "description": "项目根目录（默认当前目录）",
+            "type": "string"
+        }
+    ]
+}

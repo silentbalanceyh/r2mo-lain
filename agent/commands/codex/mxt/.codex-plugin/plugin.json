@@ -1,0 +1,38 @@
+{
+  "name": "mxt",
+  "version": "1.0.0",
+  "description": "R2MO task workflow skills: mxt-plan, mxt-run, mxt-end, mxt-goon, mxt-debug, mxt-sync, mxt-start.",
+  "author": {
+    "name": "R2MO"
+  },
+  "homepage": "https://gitee.com/silentbalanceyh/r2mo-lain",
+  "repository": "https://gitee.com/silentbalanceyh/r2mo-lain.git",
+  "license": "ISC",
+  "skills": "./skills/",
+  "keywords": [
+    "mxt",
+    "r2mo",
+    "task",
+    "codex",
+    "slash-commands"
+  ],
+  "interface": {
+    "displayName": "MXT Task Commands",
+    "shortDescription": "Plan, run, verify, and continue R2MO task files.",
+    "longDescription": "Codex skills for planning R2MO task files, executing task work, writing current goon remediation queues, and closing the loop with task Changes write-back.",
+    "developerName": "R2MO",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://gitee.com/silentbalanceyh/r2mo-lain",
+    "defaultPrompt": [
+      "Use $mxt-plan 001 to plan an R2MO task",
+      "Use $mxt-run 001 to execute an R2MO task",
+      "Use $mxt-sync to sync git",
+      "Use $mxt-start to start dev environment"
+    ],
+    "screenshots": []
+  }
+}

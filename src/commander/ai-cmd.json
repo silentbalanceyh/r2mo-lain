@@ -1,0 +1,12 @@
+{
+  "executor": "executeAiCmd",
+  "description": "安装 mxt AI 命令到 Claude Code / Codex / OpenCode；Codex 安装为 plugin skills",
+  "command": "ai-cmd",
+  "options": [
+    {
+      "name": "uninstall",
+      "alias": "u",
+      "description": "全量卸载 Claude Code / Codex / OpenCode 中的 mxt 命令"
+    }
+  ]
+}

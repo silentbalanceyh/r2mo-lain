@@ -1,0 +1,25 @@
+{
+    "executor": "executeUi",
+    "description": "从 r2mo-ui 模板创建/更新 UI 子项目（Rust/WASM + Tauri）",
+    "command": "ui",
+    "options": [
+        {
+            "name": "name",
+            "alias": "n",
+            "description": "项目名称（DPA 结构下建议 xxx-ui）",
+            "default": ""
+        },
+        {
+            "name": "dir",
+            "alias": "d",
+            "description": "父目录（默认为当前目录）",
+            "default": "."
+        },
+        {
+            "name": "update",
+            "alias": "u",
+            "description": "更新模式：同步根 MD、components、utils，其他有变化文件多选更新",
+            "type": "boolean"
+        }
+    ]
+}

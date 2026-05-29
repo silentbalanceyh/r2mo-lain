@@ -1,0 +1,11 @@
+views:
+  - type: table
+    name: 表格
+    filters:
+      and:
+        - file.basename.startsWith("task-0")
+    order:
+      - file.name
+      - author
+      - status
+      - title

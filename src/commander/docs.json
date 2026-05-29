@@ -1,0 +1,19 @@
+{
+    "executor": "executeDocs",
+    "description": "使用 Obsidian 打开文档目录",
+    "command": "docs",
+    "options": [
+        {
+            "name": "dir",
+            "alias": "d",
+            "description": "目标目录（默认当前目录）",
+            "type": "string"
+        },
+        {
+            "name": "remove",
+            "alias": "r",
+            "description": "清理指定目录的 Obsidian 配置（与 -d 互斥）",
+            "type": "string"
+        }
+    ]
+}

@@ -1,0 +1,6 @@
+{
+    "executor": "executeMmr2",
+    "description": "从 r2mo-spec 仓库下载并生成 Entity 类",
+    "command": "mmr2",
+    "options": []
+}

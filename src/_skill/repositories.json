@@ -1,0 +1,58 @@
+{
+    "repositories": [
+        {
+            "name": "anthropic",
+            "description": "Anthropic 官方技能仓库",
+            "url": "https://github.com/anthropics/skills.git",
+            "skillsPath": "skills"
+        },
+        {
+            "name": "r2mo",
+            "description": "R2MO 项目技能仓库",
+            "url": "https://gitee.com/silentbalanceyh/r2mo-lain.git",
+            "skillsPath": "skills"
+        },
+        {
+            "name": "superpowers",
+            "description": "Superpowers AI 官方技能仓库",
+            "url": "https://github.com/obra/superpowers.git",
+            "skillsPath": "skills"
+        },
+        {
+            "name": "ecc",
+            "description": "Everything Claude Code 技能仓库",
+            "url": "https://github.com/affaan-m/everything-claude-code.git",
+            "skillsPath": "skills"
+        },
+        {
+            "name": "fullstack",
+            "description": "65个全栈开发专用技能集",
+            "url": "https://github.com/Jeffallan/claude-skills.git",
+            "skillsPath": "skills"
+        },
+        {
+            "name": "volt",
+            "description": "VoltAgent 精选技能集合",
+            "url": "https://github.com/VoltAgent/awesome-claude-skills.git",
+            "skillsPath": "skills"
+        },
+        {
+            "name": "travisvn",
+            "description": "Awesome Claude Skills 精选列表",
+            "url": "https://github.com/travisvn/awesome-claude-skills.git",
+            "skillsPath": "skills"
+        },
+        {
+            "name": "community",
+            "description": "社区精选技能集合",
+            "url": "https://github.com/abubakarsiddik31/claude-skills-collection.git",
+            "skillsPath": "skills"
+        },
+        {
+            "name": "mxt",
+            "description": "MXT实战技能库",
+            "url": "https://gitee.com/silentbalanceyh/r2mo-ai.git",
+            "skillsPath": "skills"
+        }
+    ]
+}

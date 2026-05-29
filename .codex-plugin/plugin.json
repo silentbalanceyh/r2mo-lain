@@ -1,0 +1,35 @@
+{
+  "name": "r2mo-lain",
+  "version": "0.1.0",
+  "description": "Project-local Codex slash command workspace for R2MO Lain workflows.",
+  "author": {
+    "name": "R2MO"
+  },
+  "homepage": "https://gitee.com/silentbalanceyh/r2mo-lain",
+  "repository": "https://gitee.com/silentbalanceyh/r2mo-lain.git",
+  "license": "ISC",
+  "keywords": [
+    "r2mo",
+    "lain",
+    "mxt",
+    "codex",
+    "slash-commands"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "R2MO Lain",
+    "shortDescription": "R2MO Lain Codex slash commands",
+    "longDescription": "Project-local Codex plugin package for developing reusable slash commands around R2MO Lain CLI workflows.",
+    "developerName": "R2MO",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://gitee.com/silentbalanceyh/r2mo-lain",
+    "defaultPrompt": [
+      "Help me develop a Codex slash command for an R2MO Lain workflow"
+    ],
+    "screenshots": []
+  }
+}

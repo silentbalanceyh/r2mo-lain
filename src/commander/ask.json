@@ -1,0 +1,6 @@
+{
+    "executor": "executeAsk",
+    "description": "从模板目录中选择提示词并复制到剪切板",
+    "command": "ask",
+    "options": []
+}

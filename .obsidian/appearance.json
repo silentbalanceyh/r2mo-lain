@@ -1,0 +1,7 @@
+{
+  "theme": "moonstone",
+  "cssTheme": "Cupertino",
+  "enabledCssSnippets": [
+    "web-page"
+  ]
+}

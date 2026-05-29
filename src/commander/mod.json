@@ -1,0 +1,8 @@
+{
+    "executor": "executeMod",
+    "description": "拉取 r2mo-spec 到 .r2mo/repo，并拷贝项目根与各子模块 openapi 到 .r2mo/api/",
+    "command": "mod",
+    "options": [
+        { "name": "dir", "alias": "d", "description": "项目根目录（默认为当前目录）", "default": "." }
+    ]
+}

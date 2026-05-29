@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "mxt-skills": {
+      "command": "node",
+      "args": [
+        "/Users/lang/zero-cloud/app-zero/r2mo-matrix/r2mo-lain/.r2mo/mcpserver/skills-server.mjs"
+      ],
+      "env": {
+        "NODE_ENV": "production",
+        "MXT_PROJECT_SKILLS_DIR": "/Users/lang/zero-cloud/app-zero/r2mo-matrix/r2mo-lain/.claude/skills",
+        "MXT_GLOBAL_SKILLS_DIR": "/Users/lang/.claude/skills"
+      },
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+    "executor": "executeApp",
+    "description": "创建 R2MO/Spring 或 ZERO/Vertx 应用",
+    "command": "app",
+    "options": [
+        {
+            "name": "name",
+            "alias": "n",
+            "description": "应用名称（必填）",
+            "type": "string"
+        }
+    ]
+}

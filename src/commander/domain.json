@@ -1,0 +1,19 @@
+{
+    "executor": "executeDomain",
+    "description": "在指定目录执行 r2mo_proto 脚本生成 Protobuf",
+    "command": "domain",
+    "options": [
+        {
+            "name": "dir",
+            "alias": "d",
+            "description": "目标目录（默认为当前目录）",
+            "type": "string"
+        },
+        {
+            "name": "entity",
+            "alias": "e",
+            "description": "从 Entity 生成（true）或从 SQL 生成（false），默认 true",
+            "type": "boolean"
+        }
+    ]
+}

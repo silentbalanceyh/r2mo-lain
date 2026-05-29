@@ -1,0 +1,1 @@
+{"executor":"executeTeam","description":"根据 DPA 架构位置写入 .r2mo/mxt.yaml 角色（Team Leader / Backend Actor / Frontend Actor）","command":"team","options":[{"name":"dir","alias":"d","description":"目标目录（默认为当前目录）","default":"."}]}
