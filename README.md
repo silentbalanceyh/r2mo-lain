@@ -1,7 +1,7 @@
 # SDD - Spec Driven Development 工具（命令名：`mxt`）
 
 ![npm version](https://img.shields.io/npm/v/r2mo-ai.svg) | [![Downloads](https://img.shields.io/npm/dm/r2mo-ai.svg)](https://www.npmjs.com/package/r2mo-ai)
-> For [Rachel MXT](https://www.weibo.com/maoxiaotong0216) / Serial Experiments Lain
+> For [Rachel Momo](https://www.weibo.com/maoxiaotong0216) / Serial Experiments Lain
 
 ![R2MO](docs/images/logo.jpeg)
 
@@ -15,7 +15,7 @@
 
 ### 1.1. 功能说明
 
-MXT AI 是面向 R2MO / MXT 工作流的 `SDD - Spec Driven Development` 命令行工具，提供项目初始化、规范与 OpenAPI 辅助、任务提示词生成，以及 Claude Code / Codex / OpenCode 的 `mxt` AI 命令安装与刷新。
+`r2mo-ai` 是 `SDD - Spec Driven Development` 命令行工具，提供项目初始化、规范与 OpenAPI 辅助、任务提示词生成，以及 Claude Code / Codex / OpenCode 的 `mxt` AI 命令安装与刷新。
 
 ---
 
