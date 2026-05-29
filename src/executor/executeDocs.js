@@ -407,20 +407,58 @@ const _collectRelativePaths = async (dir, base = dir) => {
     return result;
 };
 
+// 需要同步的顶层配置文件（workspace.json 除外，它是运行时状态）
+const _OBSIDIAN_CONFIG_FILES = [
+    'community-plugins.json',
+    'core-plugins.json',
+    'appearance.json',
+    'app.json',
+    'types.json'
+];
+
 /**
- * 同步插件配置（幂等）
- * 对比 _template/.obsidian/plugins 与目标 vault 的插件目录
- * - vault 中已存在的插件：全量覆盖（新增/更新/删除陈旧文件）
- * - vault 中不存在的插件：跳过（不强制安装）
+ * 同步 .obsidian 配置（幂等）
+ * 1. 同步顶层配置文件（community-plugins.json 等）
+ * 2. 同步插件目录（已安装的全量覆盖，未安装的跳过）
  * @param {string} targetDir 目标 vault 目录
- * @returns {Promise<{synced: number, skipped: number}>} 同步/跳过的插件数
+ * @returns {Promise<{synced: number, skipped: number, configs: number}>} 同步插件数/跳过数/配置文件更新数
  */
-const _syncPlugins = async (targetDir) => {
-    const srcPluginsDir = path.resolve(__dirname, '../_template/.obsidian/plugins');
-    const destPluginsDir = path.join(targetDir, '.obsidian', 'plugins');
+const _syncObsidianConfig = async (targetDir) => {
+    const srcObsidianDir = path.resolve(__dirname, '../_template/LAIN/.obsidian');
+    const destObsidianDir = path.join(targetDir, '.obsidian');
+    let configs = 0;
+
+    // 同步顶层配置文件
+    for (const configFile of _OBSIDIAN_CONFIG_FILES) {
+        const srcFile = path.join(srcObsidianDir, configFile);
+        const destFile = path.join(destObsidianDir, configFile);
+
+        if (!fs.existsSync(srcFile)) continue;
+
+        const srcContent = await fsAsync.readFile(srcFile);
+        if (fs.existsSync(destFile)) {
+            const destContent = await fsAsync.readFile(destFile);
+            if (srcContent.equals(destContent)) continue;
+        }
+
+        await fsAsync.mkdir(path.dirname(destFile), { recursive: true });
+        await fsAsync.writeFile(destFile, srcContent, 'utf8');
+        configs++;
+    }
+
+    // 同步 snippets 目录
+    const srcSnippetsDir = path.join(srcObsidianDir, 'snippets');
+    const destSnippetsDir = path.join(destObsidianDir, 'snippets');
+    if (fs.existsSync(srcSnippetsDir)) {
+        await copyDir(srcSnippetsDir, destSnippetsDir);
+    }
+
+    // 同步 plugins 目录
+    const srcPluginsDir = path.join(srcObsidianDir, 'plugins');
+    const destPluginsDir = path.join(destObsidianDir, 'plugins');
 
     if (!fs.existsSync(srcPluginsDir)) {
-        return { synced: 0, skipped: 0 };
+        return { synced: 0, skipped: 0, configs };
     }
 
     await fsAsync.mkdir(destPluginsDir, { recursive: true });
@@ -484,7 +522,7 @@ const _syncPlugins = async (targetDir) => {
         }
     }
 
-    return { synced, skipped };
+    return { synced, skipped, configs };
 };
 
 /**
@@ -568,9 +606,12 @@ module.exports = async (_options) => {
             Ec.info('✓ 检测到 .obsidian 配置');
         }
 
-        // 4.1 同步插件配置（每次打开前都检查，含首次初始化后）
-        Ec.waiting('正在同步插件配置...');
-        const { synced, skipped } = await _syncPlugins(targetDir);
+        // 4.1 同步 Obsidian 配置（每次打开前都检查，含首次初始化后）
+        Ec.waiting('正在同步 Obsidian 配置...');
+        const { synced, skipped, configs } = await _syncObsidianConfig(targetDir);
+        if (configs > 0) {
+            Ec.info(`✓ 已同步 ${configs} 个配置文件更新`);
+        }
         if (synced > 0) {
             Ec.info(`✓ 已同步 ${synced} 个插件更新`);
         }

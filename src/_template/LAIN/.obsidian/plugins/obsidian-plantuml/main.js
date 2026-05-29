@@ -27,26 +27,30 @@ var __spreadValues = (a, b) => {
   return a;
 };
 var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
-var __markAsModule = (target) => __defProp(target, "__esModule", { value: true });
 var __commonJS = (cb, mod) => function __require() {
-  return mod || (0, cb[Object.keys(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
 var __export = (target, all) => {
-  __markAsModule(target);
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __reExport = (target, module2, desc) => {
-  if (module2 && typeof module2 === "object" || typeof module2 === "function") {
-    for (let key of __getOwnPropNames(module2))
-      if (!__hasOwnProp.call(target, key) && key !== "default")
-        __defProp(target, key, { get: () => module2[key], enumerable: !(desc = __getOwnPropDesc(module2, key)) || desc.enumerable });
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
   }
-  return target;
+  return to;
 };
-var __toModule = (module2) => {
-  return __reExport(__markAsModule(__defProp(module2 != null ? __create(__getProtoOf(module2)) : {}, "default", module2 && module2.__esModule && "default" in module2 ? { get: () => module2.default, enumerable: true } : { value: module2, enumerable: true })), module2);
-};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
@@ -91,16 +95,14 @@ var require_plantuml_encoder = __commonJS({
       }
     })(function() {
       var define2, module3, exports2;
-      return function() {
+      return (/* @__PURE__ */ (function() {
         function r(e, n, t) {
           function o(i2, f) {
             if (!n[i2]) {
               if (!e[i2]) {
-                var c = typeof require == "function" && require;
-                if (!f && c)
-                  return c(i2, true);
-                if (u)
-                  return u(i2, true);
+                var c = "function" == typeof require && require;
+                if (!f && c) return c(i2, true);
+                if (u) return u(i2, true);
                 var a = new Error("Cannot find module '" + i2 + "'");
                 throw a.code = "MODULE_NOT_FOUND", a;
               }
@@ -112,12 +114,11 @@ var require_plantuml_encoder = __commonJS({
             }
             return n[i2].exports;
           }
-          for (var u = typeof require == "function" && require, i = 0; i < t.length; i++)
-            o(t[i]);
+          for (var u = "function" == typeof require && require, i = 0; i < t.length; i++) o(t[i]);
           return o;
         }
         return r;
-      }()({ 1: [function(require2, module4, exports3) {
+      })())({ 1: [function(require2, module4, exports3) {
         "use strict";
         var pako = require2("pako/lib/deflate.js");
         module4.exports = function(data) {
@@ -166,7 +167,11 @@ var require_plantuml_encoder = __commonJS({
             } else if (i + 1 === data.length) {
               r += append3bytes(data.charCodeAt(i), 0, 0);
             } else {
-              r += append3bytes(data.charCodeAt(i), data.charCodeAt(i + 1), data.charCodeAt(i + 2));
+              r += append3bytes(
+                data.charCodeAt(i),
+                data.charCodeAt(i + 1),
+                data.charCodeAt(i + 2)
+              );
             }
           }
           return r;
@@ -196,8 +201,7 @@ var require_plantuml_encoder = __commonJS({
         var Z_DEFAULT_STRATEGY = 0;
         var Z_DEFLATED = 8;
         function Deflate(options) {
-          if (!(this instanceof Deflate))
-            return new Deflate(options);
+          if (!(this instanceof Deflate)) return new Deflate(options);
           this.options = utils.assign({
             level: Z_DEFAULT_COMPRESSION,
             method: Z_DEFLATED,
@@ -219,7 +223,14 @@ var require_plantuml_encoder = __commonJS({
           this.chunks = [];
           this.strm = new ZStream();
           this.strm.avail_out = 0;
-          var status = zlib_deflate.deflateInit2(this.strm, opt.level, opt.method, opt.windowBits, opt.memLevel, opt.strategy);
+          var status = zlib_deflate.deflateInit2(
+            this.strm,
+            opt.level,
+            opt.method,
+            opt.windowBits,
+            opt.memLevel,
+            opt.strategy
+          );
           if (status !== Z_OK) {
             throw new Error(msg[status]);
           }
@@ -373,6 +384,7 @@ var require_plantuml_encoder = __commonJS({
               dest[dest_offs + i] = src[src_offs + i];
             }
           },
+          // Join array of chunks to single array.
           flattenChunks: function(chunks) {
             var i, l, len, pos, chunk, result;
             len = 0;
@@ -395,6 +407,7 @@ var require_plantuml_encoder = __commonJS({
               dest[dest_offs + i] = src[src_offs + i];
             }
           },
+          // Join array of chunks to single array.
           flattenChunks: function(chunks) {
             return [].concat.apply([], chunks);
           }
@@ -1108,16 +1121,27 @@ var require_plantuml_encoder = __commonJS({
         }
         var configuration_table;
         configuration_table = [
+          /*      good lazy nice chain */
           new Config(0, 0, 0, 0, deflate_stored),
+          /* 0 store only */
           new Config(4, 4, 8, 4, deflate_fast),
+          /* 1 max speed, no lazy matches */
           new Config(4, 5, 16, 8, deflate_fast),
+          /* 2 */
           new Config(4, 6, 32, 32, deflate_fast),
+          /* 3 */
           new Config(4, 4, 16, 16, deflate_slow),
+          /* 4 lazy matches */
           new Config(8, 16, 32, 32, deflate_slow),
+          /* 5 */
           new Config(8, 16, 128, 128, deflate_slow),
+          /* 6 */
           new Config(8, 32, 128, 256, deflate_slow),
+          /* 7 */
           new Config(32, 128, 258, 1024, deflate_slow),
+          /* 8 */
           new Config(32, 258, 258, 4096, deflate_slow)
+          /* 9 max compression */
         ];
         function lm_init(s) {
           s.window_size = 2 * s.w_size;
@@ -1313,7 +1337,10 @@ var require_plantuml_encoder = __commonJS({
                 put_byte(s, OS_CODE);
                 s.status = BUSY_STATE;
               } else {
-                put_byte(s, (s.gzhead.text ? 1 : 0) + (s.gzhead.hcrc ? 2 : 0) + (!s.gzhead.extra ? 0 : 4) + (!s.gzhead.name ? 0 : 8) + (!s.gzhead.comment ? 0 : 16));
+                put_byte(
+                  s,
+                  (s.gzhead.text ? 1 : 0) + (s.gzhead.hcrc ? 2 : 0) + (!s.gzhead.extra ? 0 : 4) + (!s.gzhead.name ? 0 : 8) + (!s.gzhead.comment ? 0 : 16)
+                );
                 put_byte(s, s.gzhead.time & 255);
                 put_byte(s, s.gzhead.time >> 8 & 255);
                 put_byte(s, s.gzhead.time >> 16 & 255);
@@ -1623,14 +1650,23 @@ var require_plantuml_encoder = __commonJS({
         "use strict";
         module4.exports = {
           2: "need dictionary",
+          /* Z_NEED_DICT       2  */
           1: "stream end",
+          /* Z_STREAM_END      1  */
           0: "",
+          /* Z_OK              0  */
           "-1": "file error",
+          /* Z_ERRNO         (-1) */
           "-2": "stream error",
+          /* Z_STREAM_ERROR  (-2) */
           "-3": "data error",
+          /* Z_DATA_ERROR    (-3) */
           "-4": "insufficient memory",
+          /* Z_MEM_ERROR     (-4) */
           "-5": "buffer error",
+          /* Z_BUF_ERROR     (-5) */
           "-6": "incompatible version"
+          /* Z_VERSION_ERROR (-6) */
         };
       }, {}], 11: [function(require2, module4, exports3) {
         "use strict";
@@ -1663,9 +1699,18 @@ var require_plantuml_encoder = __commonJS({
         var REP_3_6 = 16;
         var REPZ_3_10 = 17;
         var REPZ_11_138 = 18;
-        var extra_lbits = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];
-        var extra_dbits = [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13];
-        var extra_blbits = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 7];
+        var extra_lbits = (
+          /* extra bits for each length code */
+          [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0]
+        );
+        var extra_dbits = (
+          /* extra bits for each distance code */
+          [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13]
+        );
+        var extra_blbits = (
+          /* extra bits for each bit length code */
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 7]
+        );
         var bl_order = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
         var DIST_CODE_LEN = 512;
         var static_ltree = new Array((L_CODES + 2) * 2);
@@ -1715,7 +1760,12 @@ var require_plantuml_encoder = __commonJS({
           }
         }
         function send_code(s, c, tree) {
-          send_bits(s, tree[c * 2], tree[c * 2 + 1]);
+          send_bits(
+            s,
+            tree[c * 2],
+            tree[c * 2 + 1]
+            /*.Len*/
+          );
         }
         function bi_reverse(code, len) {
           var res = 0;
@@ -2004,19 +2054,44 @@ var require_plantuml_encoder = __commonJS({
           }
           node = elems;
           do {
-            n = s.heap[1];
-            s.heap[1] = s.heap[s.heap_len--];
-            pqdownheap(s, tree, 1);
-            m = s.heap[1];
+            n = s.heap[
+              1
+              /*SMALLEST*/
+            ];
+            s.heap[
+              1
+              /*SMALLEST*/
+            ] = s.heap[s.heap_len--];
+            pqdownheap(
+              s,
+              tree,
+              1
+              /*SMALLEST*/
+            );
+            m = s.heap[
+              1
+              /*SMALLEST*/
+            ];
             s.heap[--s.heap_max] = n;
             s.heap[--s.heap_max] = m;
             tree[node * 2] = tree[n * 2] + tree[m * 2];
             s.depth[node] = (s.depth[n] >= s.depth[m] ? s.depth[n] : s.depth[m]) + 1;
             tree[n * 2 + 1] = tree[m * 2 + 1] = node;
-            s.heap[1] = node++;
-            pqdownheap(s, tree, 1);
+            s.heap[
+              1
+              /*SMALLEST*/
+            ] = node++;
+            pqdownheap(
+              s,
+              tree,
+              1
+              /*SMALLEST*/
+            );
           } while (s.heap_len >= 2);
-          s.heap[--s.heap_max] = s.heap[1];
+          s.heap[--s.heap_max] = s.heap[
+            1
+            /*SMALLEST*/
+          ];
           gen_bitlen(s, desc);
           gen_codes(tree, max_code, s.bl_count);
         }
@@ -2275,16 +2350,14 @@ var require_plantuml_decoder = __commonJS({
       }
     })(function() {
       var define2, module3, exports2;
-      return function() {
+      return (/* @__PURE__ */ (function() {
         function r(e, n, t) {
           function o(i2, f) {
             if (!n[i2]) {
               if (!e[i2]) {
-                var c = typeof require == "function" && require;
-                if (!f && c)
-                  return c(i2, true);
-                if (u)
-                  return u(i2, true);
+                var c = "function" == typeof require && require;
+                if (!f && c) return c(i2, true);
+                if (u) return u(i2, true);
                 var a = new Error("Cannot find module '" + i2 + "'");
                 throw a.code = "MODULE_NOT_FOUND", a;
               }
@@ -2296,12 +2369,11 @@ var require_plantuml_decoder = __commonJS({
             }
             return n[i2].exports;
           }
-          for (var u = typeof require == "function" && require, i = 0; i < t.length; i++)
-            o(t[i]);
+          for (var u = "function" == typeof require && require, i = 0; i < t.length; i++) o(t[i]);
           return o;
         }
         return r;
-      }()({ 1: [function(require2, module4, exports3) {
+      })())({ 1: [function(require2, module4, exports3) {
         "use strict";
         var pako = require2("pako/lib/inflate.js");
         module4.exports = function(data) {
@@ -2311,16 +2383,11 @@ var require_plantuml_decoder = __commonJS({
         "use strict";
         function decode6bit(cc) {
           var c = cc.charCodeAt(0);
-          if (cc === "_")
-            return 63;
-          if (cc === "-")
-            return 62;
-          if (c >= 97)
-            return c - 61;
-          if (c >= 65)
-            return c - 55;
-          if (c >= 48)
-            return c - 48;
+          if (cc === "_") return 63;
+          if (cc === "-") return 62;
+          if (c >= 97) return c - 61;
+          if (c >= 65) return c - 55;
+          if (c >= 48) return c - 48;
           return "?";
         }
         function extract3bytes(data) {
@@ -2363,8 +2430,7 @@ var require_plantuml_decoder = __commonJS({
         var GZheader = require2("./zlib/gzheader");
         var toString = Object.prototype.toString;
         function Inflate(options) {
-          if (!(this instanceof Inflate))
-            return new Inflate(options);
+          if (!(this instanceof Inflate)) return new Inflate(options);
           this.options = utils.assign({
             chunkSize: 16384,
             windowBits: 0,
@@ -2391,7 +2457,10 @@ var require_plantuml_decoder = __commonJS({
           this.chunks = [];
           this.strm = new ZStream();
           this.strm.avail_out = 0;
-          var status = zlib_inflate.inflateInit2(this.strm, opt.windowBits);
+          var status = zlib_inflate.inflateInit2(
+            this.strm,
+            opt.windowBits
+          );
           if (status !== c.Z_OK) {
             throw new Error(msg[status]);
           }
@@ -2563,6 +2632,7 @@ var require_plantuml_decoder = __commonJS({
               dest[dest_offs + i] = src[src_offs + i];
             }
           },
+          // Join array of chunks to single array.
           flattenChunks: function(chunks) {
             var i, l, len, pos, chunk, result;
             len = 0;
@@ -2585,6 +2655,7 @@ var require_plantuml_decoder = __commonJS({
               dest[dest_offs + i] = src[src_offs + i];
             }
           },
+          // Join array of chunks to single array.
           flattenChunks: function(chunks) {
             return [].concat.apply([], chunks);
           }
@@ -2759,6 +2830,7 @@ var require_plantuml_decoder = __commonJS({
       }, {}], 8: [function(require2, module4, exports3) {
         "use strict";
         module4.exports = {
+          /* Allowed flush values; see deflate() and inflate() below for details */
           Z_NO_FLUSH: 0,
           Z_PARTIAL_FLUSH: 1,
           Z_SYNC_FLUSH: 2,
@@ -2766,13 +2838,19 @@ var require_plantuml_decoder = __commonJS({
           Z_FINISH: 4,
           Z_BLOCK: 5,
           Z_TREES: 6,
+          /* Return codes for the compression/decompression functions. Negative values
+          * are errors, positive values are used for special but normal events.
+          */
           Z_OK: 0,
           Z_STREAM_END: 1,
           Z_NEED_DICT: 2,
           Z_ERRNO: -1,
           Z_STREAM_ERROR: -2,
           Z_DATA_ERROR: -3,
+          //Z_MEM_ERROR:     -4,
           Z_BUF_ERROR: -5,
+          //Z_VERSION_ERROR: -6,
+          /* compression levels */
           Z_NO_COMPRESSION: 0,
           Z_BEST_SPEED: 1,
           Z_BEST_COMPRESSION: 9,
@@ -2782,10 +2860,14 @@ var require_plantuml_decoder = __commonJS({
           Z_RLE: 3,
           Z_FIXED: 4,
           Z_DEFAULT_STRATEGY: 0,
+          /* Possible values of the data_type field (though see inflate()) */
           Z_BINARY: 0,
           Z_TEXT: 1,
+          //Z_ASCII:                1, // = Z_TEXT (deprecated)
           Z_UNKNOWN: 2,
+          /* The deflate compression method */
           Z_DEFLATED: 8
+          //Z_NULL:                 null // Use -1 or null inline, depending on var type
         };
       }, {}], 9: [function(require2, module4, exports3) {
         "use strict";
@@ -3314,7 +3396,10 @@ var require_plantuml_decoder = __commonJS({
           var hbuf = new utils.Buf8(4);
           var opts;
           var n;
-          var order = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
+          var order = (
+            /* permutation of code lengths */
+            [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15]
+          );
           if (!strm || !strm.state || !strm.output || !strm.input && strm.avail_in !== 0) {
             return Z_STREAM_ERROR;
           }
@@ -3363,7 +3448,8 @@ var require_plantuml_decoder = __commonJS({
                   if (state.head) {
                     state.head.done = false;
                   }
-                  if (!(state.wrap & 1) || (((hold & 255) << 8) + (hold >> 8)) % 31) {
+                  if (!(state.wrap & 1) || /* check if zlib header allowed */
+                  (((hold & 255) << 8) + (hold >> 8)) % 31) {
                     strm.msg = "incorrect header check";
                     state.mode = BAD;
                     break;
@@ -3420,6 +3506,7 @@ var require_plantuml_decoder = __commonJS({
                   hold = 0;
                   bits = 0;
                   state.mode = TIME;
+                /* falls through */
                 case TIME:
                   while (bits < 32) {
                     if (have === 0) {
@@ -3442,6 +3529,7 @@ var require_plantuml_decoder = __commonJS({
                   hold = 0;
                   bits = 0;
                   state.mode = OS;
+                /* falls through */
                 case OS:
                   while (bits < 16) {
                     if (have === 0) {
@@ -3463,6 +3551,7 @@ var require_plantuml_decoder = __commonJS({
                   hold = 0;
                   bits = 0;
                   state.mode = EXLEN;
+                /* falls through */
                 case EXLEN:
                   if (state.flags & 1024) {
                     while (bits < 16) {
@@ -3488,6 +3577,7 @@ var require_plantuml_decoder = __commonJS({
                     state.head.extra = null;
                   }
                   state.mode = EXTRA;
+                /* falls through */
                 case EXTRA:
                   if (state.flags & 1024) {
                     copy = state.length;
@@ -3500,7 +3590,16 @@ var require_plantuml_decoder = __commonJS({
                         if (!state.head.extra) {
                           state.head.extra = new Array(state.head.extra_len);
                         }
-                        utils.arraySet(state.head.extra, input, next, copy, len);
+                        utils.arraySet(
+                          state.head.extra,
+                          input,
+                          next,
+                          // extra field is limited to 65536 bytes
+                          // - no need for additional size check
+                          copy,
+                          /*len + copy > state.head.extra_max - len ? state.head.extra_max : copy,*/
+                          len
+                        );
                       }
                       if (state.flags & 512) {
                         state.check = crc32(state.check, input, copy, next);
@@ -3515,6 +3614,7 @@ var require_plantuml_decoder = __commonJS({
                   }
                   state.length = 0;
                   state.mode = NAME;
+                /* falls through */
                 case NAME:
                   if (state.flags & 2048) {
                     if (have === 0) {
@@ -3540,6 +3640,7 @@ var require_plantuml_decoder = __commonJS({
                   }
                   state.length = 0;
                   state.mode = COMMENT;
+                /* falls through */
                 case COMMENT:
                   if (state.flags & 4096) {
                     if (have === 0) {
@@ -3564,6 +3665,7 @@ var require_plantuml_decoder = __commonJS({
                     state.head.comment = null;
                   }
                   state.mode = HCRC;
+                /* falls through */
                 case HCRC:
                   if (state.flags & 512) {
                     while (bits < 16) {
@@ -3602,6 +3704,7 @@ var require_plantuml_decoder = __commonJS({
                   hold = 0;
                   bits = 0;
                   state.mode = DICT;
+                /* falls through */
                 case DICT:
                   if (state.havedict === 0) {
                     strm.next_out = put;
@@ -3614,10 +3717,12 @@ var require_plantuml_decoder = __commonJS({
                   }
                   strm.adler = state.check = 1;
                   state.mode = TYPE;
+                /* falls through */
                 case TYPE:
                   if (flush === Z_BLOCK || flush === Z_TREES) {
                     break inf_leave;
                   }
+                /* falls through */
                 case TYPEDO:
                   if (state.last) {
                     hold >>>= bits & 7;
@@ -3682,8 +3787,10 @@ var require_plantuml_decoder = __commonJS({
                   if (flush === Z_TREES) {
                     break inf_leave;
                   }
+                /* falls through */
                 case COPY_:
                   state.mode = COPY;
+                /* falls through */
                 case COPY:
                   copy = state.length;
                   if (copy) {
@@ -3731,6 +3838,7 @@ var require_plantuml_decoder = __commonJS({
                   }
                   state.have = 0;
                   state.mode = LENLENS;
+                /* falls through */
                 case LENLENS:
                   while (state.have < state.ncode) {
                     while (bits < 3) {
@@ -3760,6 +3868,7 @@ var require_plantuml_decoder = __commonJS({
                   }
                   state.have = 0;
                   state.mode = CODELENS;
+                /* falls through */
                 case CODELENS:
                   while (state.have < state.nlen + state.ndist) {
                     for (; ; ) {
@@ -3877,8 +3986,10 @@ var require_plantuml_decoder = __commonJS({
                   if (flush === Z_TREES) {
                     break inf_leave;
                   }
+                /* falls through */
                 case LEN_:
                   state.mode = LEN;
+                /* falls through */
                 case LEN:
                   if (have >= 6 && left >= 258) {
                     strm.next_out = put;
@@ -3960,6 +4071,7 @@ var require_plantuml_decoder = __commonJS({
                   }
                   state.extra = here_op & 15;
                   state.mode = LENEXT;
+                /* falls through */
                 case LENEXT:
                   if (state.extra) {
                     n = state.extra;
@@ -3978,6 +4090,7 @@ var require_plantuml_decoder = __commonJS({
                   }
                   state.was = state.length;
                   state.mode = DIST;
+                /* falls through */
                 case DIST:
                   for (; ; ) {
                     here = state.distcode[hold & (1 << state.distbits) - 1];
@@ -4028,6 +4141,7 @@ var require_plantuml_decoder = __commonJS({
                   state.offset = here_val;
                   state.extra = here_op & 15;
                   state.mode = DISTEXT;
+                /* falls through */
                 case DISTEXT:
                   if (state.extra) {
                     n = state.extra;
@@ -4050,6 +4164,7 @@ var require_plantuml_decoder = __commonJS({
                     break;
                   }
                   state.mode = MATCH;
+                /* falls through */
                 case MATCH:
                   if (left === 0) {
                     break inf_leave;
@@ -4113,7 +4228,8 @@ var require_plantuml_decoder = __commonJS({
                     strm.total_out += _out;
                     state.total += _out;
                     if (_out) {
-                      strm.adler = state.check = state.flags ? crc32(state.check, output, _out, put - _out) : adler32(state.check, output, _out, put - _out);
+                      strm.adler = state.check = /*UPDATE(state.check, put - _out, _out);*/
+                      state.flags ? crc32(state.check, output, _out, put - _out) : adler32(state.check, output, _out, put - _out);
                     }
                     _out = left;
                     if ((state.flags ? hold : zswap32(hold)) !== state.check) {
@@ -4125,6 +4241,7 @@ var require_plantuml_decoder = __commonJS({
                     bits = 0;
                   }
                   state.mode = LENGTH;
+                /* falls through */
                 case LENGTH:
                   if (state.wrap && state.flags) {
                     while (bits < 32) {
@@ -4144,6 +4261,7 @@ var require_plantuml_decoder = __commonJS({
                     bits = 0;
                   }
                   state.mode = DONE;
+                /* falls through */
                 case DONE:
                   ret = Z_STREAM_END;
                   break inf_leave;
@@ -4153,6 +4271,7 @@ var require_plantuml_decoder = __commonJS({
                 case MEM:
                   return Z_MEM_ERROR;
                 case SYNC:
+                /* falls through */
                 default:
                   return Z_STREAM_ERROR;
               }
@@ -4175,7 +4294,8 @@ var require_plantuml_decoder = __commonJS({
           strm.total_out += _out;
           state.total += _out;
           if (state.wrap && _out) {
-            strm.adler = state.check = state.flags ? crc32(state.check, output, _out, strm.next_out - _out) : adler32(state.check, output, _out, strm.next_out - _out);
+            strm.adler = state.check = /*UPDATE(state.check, strm.next_out - _out, _out);*/
+            state.flags ? crc32(state.check, output, _out, strm.next_out - _out) : adler32(state.check, output, _out, strm.next_out - _out);
           }
           strm.data_type = state.bits + (state.last ? 64 : 0) + (state.mode === TYPE ? 128 : 0) + (state.mode === LEN_ || state.mode === COPY_ ? 256 : 0);
           if ((_in === 0 && _out === 0 || flush === Z_FINISH) && ret === Z_OK) {
@@ -4254,6 +4374,7 @@ var require_plantuml_decoder = __commonJS({
         var LENS = 1;
         var DISTS = 2;
         var lbase = [
+          /* Length codes 257..285 base */
           3,
           4,
           5,
@@ -4287,6 +4408,7 @@ var require_plantuml_decoder = __commonJS({
           0
         ];
         var lext = [
+          /* Length codes 257..285 extra */
           16,
           16,
           16,
@@ -4320,6 +4442,7 @@ var require_plantuml_decoder = __commonJS({
           78
         ];
         var dbase = [
+          /* Distance codes 0..29 base */
           1,
           2,
           3,
@@ -4354,6 +4477,7 @@ var require_plantuml_decoder = __commonJS({
           0
         ];
         var dext = [
+          /* Distance codes 0..29 extra */
           16,
           16,
           16,
@@ -4555,14 +4679,23 @@ var require_plantuml_decoder = __commonJS({
         "use strict";
         module4.exports = {
           2: "need dictionary",
+          /* Z_NEED_DICT       2  */
           1: "stream end",
+          /* Z_STREAM_END      1  */
           0: "",
+          /* Z_OK              0  */
           "-1": "file error",
+          /* Z_ERRNO         (-1) */
           "-2": "stream error",
+          /* Z_STREAM_ERROR  (-2) */
           "-3": "data error",
+          /* Z_DATA_ERROR    (-3) */
           "-4": "insufficient memory",
+          /* Z_MEM_ERROR     (-4) */
           "-5": "buffer error",
+          /* Z_BUF_ERROR     (-5) */
           "-6": "incompatible version"
+          /* Z_VERSION_ERROR (-6) */
         };
       }, {}], 15: [function(require2, module4, exports3) {
         "use strict";
@@ -4619,15 +4752,13 @@ var require_localforage = __commonJS({
       }
     })(function() {
       var define2, module3, exports2;
-      return function e(t, n, r) {
+      return (function e(t, n, r) {
         function s(o2, u) {
           if (!n[o2]) {
             if (!t[o2]) {
               var a = typeof require == "function" && require;
-              if (!u && a)
-                return a(o2, true);
-              if (i)
-                return i(o2, true);
+              if (!u && a) return a(o2, true);
+              if (i) return i(o2, true);
               var f = new Error("Cannot find module '" + o2 + "'");
               throw f.code = "MODULE_NOT_FOUND", f;
             }
@@ -4640,10 +4771,9 @@ var require_localforage = __commonJS({
           return n[o2].exports;
         }
         var i = typeof require == "function" && require;
-        for (var o = 0; o < r.length; o++)
-          s(r[o]);
+        for (var o = 0; o < r.length; o++) s(r[o]);
         return s;
-      }({ 1: [function(_dereq_, module4, exports3) {
+      })({ 1: [function(_dereq_, module4, exports3) {
         (function(global2) {
           "use strict";
           var Mutation = global2.MutationObserver || global2.WebKitMutationObserver;
@@ -4979,7 +5109,11 @@ var require_localforage = __commonJS({
             }
             var isSafari = typeof openDatabase !== "undefined" && /(Safari|iPhone|iPad|iPod)/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent) && !/BlackBerry/.test(navigator.platform);
             var hasFetch = typeof fetch === "function" && fetch.toString().indexOf("[native code") !== -1;
-            return (!isSafari || hasFetch) && typeof indexedDB !== "undefined" && typeof IDBKeyRange !== "undefined";
+            return (!isSafari || hasFetch) && typeof indexedDB !== "undefined" && // some outdated implementations of IDB that appear on Samsung
+            // and HTC Android devices <4.4 are missing IDBKeyRange
+            // See: https://github.com/mozilla/localForage/issues/128
+            // See: https://github.com/mozilla/localForage/issues/272
+            typeof IDBKeyRange !== "undefined";
           } catch (e) {
             return false;
           }
@@ -5274,9 +5408,13 @@ var require_localforage = __commonJS({
         }
         function createDbContext() {
           return {
+            // Running localForages sharing a database.
             forages: [],
+            // Shared database.
             db: null,
+            // Database readiness (promise).
             dbReady: null,
+            // Deferred operations on the database.
             deferredOperations: []
           };
         }
@@ -6231,7 +6369,8 @@ var require_localforage = __commonJS({
         };
         function isLocalStorageValid() {
           try {
-            return typeof localStorage !== "undefined" && "setItem" in localStorage && !!localStorage.setItem;
+            return typeof localStorage !== "undefined" && "setItem" in localStorage && // in IE8 typeof localStorage.setItem === 'object'
+            !!localStorage.setItem;
           } catch (e) {
             return false;
           }
@@ -6485,6 +6624,8 @@ var require_localforage = __commonJS({
           description: "",
           driver: DefaultDriverOrder.slice(),
           name: "localforage",
+          // Default DB size is _JUST UNDER_ 5MB, as it's the highest size
+          // we can use without a prompt.
           size: 4980736,
           storeName: "keyvaluepairs",
           version: 1
@@ -6514,7 +6655,7 @@ var require_localforage = __commonJS({
           }
           return arguments[0];
         }
-        var LocalForage = function() {
+        var LocalForage = (function() {
           function LocalForage2(options) {
             _classCallCheck(this, LocalForage2);
             for (var driverTypeKey in DefaultDrivers) {
@@ -6725,7 +6866,7 @@ var require_localforage = __commonJS({
             return new LocalForage2(options);
           };
           return LocalForage2;
-        }();
+        })();
         var localforage_js = new LocalForage();
         module4.exports = localforage_js;
       }, { "3": 3 }] }, {}, [4])(4);
@@ -6734,13 +6875,15 @@ var require_localforage = __commonJS({
 });
 
 // src/main.ts
-__export(exports, {
+var main_exports = {};
+__export(main_exports, {
   default: () => PlantumlPlugin
 });
-var import_obsidian6 = __toModule(require("obsidian"));
+module.exports = __toCommonJS(main_exports);
+var import_obsidian8 = require("obsidian");
 
 // src/settings.ts
-var import_obsidian = __toModule(require("obsidian"));
+var import_obsidian = require("obsidian");
 var DEFAULT_SETTINGS = {
   server_url: "https://www.plantuml.com/plantuml",
   header: "",
@@ -6760,29 +6903,58 @@ var PlantUMLSettingsTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian.Setting(containerEl).setName("Server URL").setDesc("PlantUML Server URL").addText((text) => text.setPlaceholder(DEFAULT_SETTINGS.server_url).setValue(this.plugin.settings.server_url).onChange((value) => __async(this, null, function* () {
-      this.plugin.settings.server_url = value;
-      yield this.plugin.saveSettings();
-    })));
+    new import_obsidian.Setting(containerEl).setName("Server URL").setDesc("PlantUML Server URL").addText(
+      (text) => text.setPlaceholder(DEFAULT_SETTINGS.server_url).setValue(this.plugin.settings.server_url).onChange(
+        (value) => __async(this, null, function* () {
+          this.plugin.settings.server_url = value;
+          yield this.plugin.saveSettings();
+        })
+      )
+    );
     if (import_obsidian.Platform.isDesktopApp) {
       const jarDesc = new DocumentFragment();
-      jarDesc.createDiv().innerHTML = "Path to local JAR<br>Supports:<ul><li>Absolute path</li><li>Path relative to vault</li><li>Path relative to users home directory <code>~/</code></li></ul>";
-      new import_obsidian.Setting(containerEl).setName("Local JAR").setDesc(jarDesc).addText((text) => text.setPlaceholder(DEFAULT_SETTINGS.localJar).setValue(this.plugin.settings.localJar).onChange((value) => __async(this, null, function* () {
-        this.plugin.settings.localJar = value;
-        yield this.plugin.saveSettings();
-      })));
-      new import_obsidian.Setting(containerEl).setName("Java path").setDesc("Path to Java executable").addText((text) => text.setPlaceholder(DEFAULT_SETTINGS.javaPath).setValue(this.plugin.settings.javaPath).onChange((value) => __async(this, null, function* () {
-        this.plugin.settings.javaPath = value;
-        yield this.plugin.saveSettings();
-      })));
-      new import_obsidian.Setting(containerEl).setName("Dot path").setDesc("Path to dot executable").addText((text) => text.setPlaceholder(DEFAULT_SETTINGS.dotPath).setValue(this.plugin.settings.dotPath).onChange((value) => __async(this, null, function* () {
-        this.plugin.settings.dotPath = value;
-        yield this.plugin.saveSettings();
-      })));
-      new import_obsidian.Setting(containerEl).setName("Diagram export path").setDesc("Path where exported diagrams will be saved relative to the vault root. Leave blank to save along side the note.").addText((text) => text.setPlaceholder(DEFAULT_SETTINGS.exportPath).setValue(this.plugin.settings.exportPath).onChange((value) => __async(this, null, function* () {
-        this.plugin.settings.exportPath = value;
-        yield this.plugin.saveSettings();
-      })));
+      const jarDescDiv = jarDesc.createDiv();
+      jarDescDiv.appendText("Path to local JAR");
+      jarDescDiv.createEl("br");
+      jarDescDiv.appendText("Supports:");
+      const jarDescList = jarDescDiv.createEl("ul");
+      jarDescList.createEl("li", { text: "Absolute path" });
+      jarDescList.createEl("li", { text: "Path relative to vault" });
+      const homeDirItem = jarDescList.createEl("li");
+      homeDirItem.appendText("Path relative to users home directory ");
+      homeDirItem.createEl("code", { text: "~/" });
+      new import_obsidian.Setting(containerEl).setName("Local JAR").setDesc(jarDesc).addText(
+        (text) => text.setPlaceholder(DEFAULT_SETTINGS.localJar).setValue(this.plugin.settings.localJar).onChange(
+          (value) => __async(this, null, function* () {
+            this.plugin.settings.localJar = value;
+            yield this.plugin.saveSettings();
+          })
+        )
+      );
+      new import_obsidian.Setting(containerEl).setName("Java path").setDesc("Path to Java executable").addText(
+        (text) => text.setPlaceholder(DEFAULT_SETTINGS.javaPath).setValue(this.plugin.settings.javaPath).onChange(
+          (value) => __async(this, null, function* () {
+            this.plugin.settings.javaPath = value;
+            yield this.plugin.saveSettings();
+          })
+        )
+      );
+      new import_obsidian.Setting(containerEl).setName("Dot path").setDesc("Path to dot executable").addText(
+        (text) => text.setPlaceholder(DEFAULT_SETTINGS.dotPath).setValue(this.plugin.settings.dotPath).onChange(
+          (value) => __async(this, null, function* () {
+            this.plugin.settings.dotPath = value;
+            yield this.plugin.saveSettings();
+          })
+        )
+      );
+      new import_obsidian.Setting(containerEl).setName("Diagram export path").setDesc("Path where exported diagrams will be saved relative to the vault root. Leave blank to save along side the note.").addText(
+        (text) => text.setPlaceholder(DEFAULT_SETTINGS.exportPath).setValue(this.plugin.settings.exportPath).onChange(
+          (value) => __async(this, null, function* () {
+            this.plugin.settings.exportPath = value;
+            yield this.plugin.saveSettings();
+          })
+        )
+      );
     }
     new import_obsidian.Setting(containerEl).setName("Default processor for includes").setDesc("Any .pu/.puml files linked will use this processor").addDropdown((dropdown) => {
       dropdown.addOption("png", "PNG").addOption("svg", "SVG").setValue(this.plugin.settings.defaultProcessor).onChange((value) => __async(this, null, function* () {
@@ -6790,14 +6962,18 @@ var PlantUMLSettingsTab = class extends import_obsidian.PluginSettingTab {
         yield this.plugin.saveSettings();
       }));
     });
-    new import_obsidian.Setting(containerEl).setName("Header").setDesc("Included at the head in every diagram. Useful for specifying a common theme (.puml file)").addTextArea((text) => {
-      text.setPlaceholder("!include https://raw.githubusercontent.com/....puml\n").setValue(this.plugin.settings.header).onChange((value) => __async(this, null, function* () {
-        this.plugin.settings.header = value;
-        yield this.plugin.saveSettings();
-      }));
-      text.inputEl.setAttr("rows", 4);
-      text.inputEl.addClass("puml-settings-area");
-    });
+    new import_obsidian.Setting(containerEl).setName("Header").setDesc("Included at the head in every diagram. Useful for specifying a common theme (.puml file)").addTextArea(
+      (text) => {
+        text.setPlaceholder("!include https://raw.githubusercontent.com/....puml\n").setValue(this.plugin.settings.header).onChange(
+          (value) => __async(this, null, function* () {
+            this.plugin.settings.header = value;
+            yield this.plugin.saveSettings();
+          })
+        );
+        text.inputEl.setAttr("rows", 4);
+        text.inputEl.addClass("puml-settings-area");
+      }
+    );
     new import_obsidian.Setting(containerEl).setName("Cache").setDesc("in days. Only applicable when generating diagrams locally").addSlider((slider) => {
       slider.setLimits(10, 360, 10).setValue(this.plugin.settings.cache).setDynamicTooltip().onChange((value) => __async(this, null, function* () {
         this.plugin.settings.cache = value;
@@ -6816,28 +6992,26 @@ var PlantUMLSettingsTab = class extends import_obsidian.PluginSettingTab {
 };
 
 // src/processors/localProcessors.ts
-var plantuml = __toModule(require_browser_index());
+var import_obsidian3 = require("obsidian");
+var plantuml = __toESM(require_browser_index());
 
 // src/functions.ts
+var import_obsidian2 = require("obsidian");
 var Replacer = class {
   constructor(plugin) {
     this.plugin = plugin;
   }
-  replaceNonBreakingSpaces(text) {
-    const lines = text.split(/\r?\n/);
-    const resultLines = [];
-    if (text.startsWith("@startmindmap")) {
-      for (const line of lines) {
-        resultLines.push(line.replace(/\s+/g, " "));
-      }
-    } else {
-      resultLines.push(...lines);
-    }
-    const result = resultLines.join("\r\n");
-    return result.replace(/&nbsp;/gi, " ");
+  decodeWhiteSpaces(text) {
+    return text.replace(/&nbsp;/gi, " ");
   }
+  /**
+   * replace all links in the plugin syntax with valid plantuml links to note inside the vault
+   * @param text the text, in which to replace all links
+   * @param path path of the current file
+   * @param filetype
+   */
   replaceLinks(text, path, filetype) {
-    return text.replace(/\[\[\[([\s\S]*?)\]\]\]/g, (_, args) => {
+    return text.replace(/\[\[\[([\s\S]*?)\]\]\]/g, ((_, args) => {
       const split = args.split("|");
       const file = this.plugin.app.metadataCache.getFirstLinkpathDest(split[0], path);
       if (!file) {
@@ -6852,9 +7026,17 @@ var Replacer = class {
         return "[[" + url + " " + alias + "]]";
       }
       return "[[" + file.basename + "]]";
-    });
+    }));
   }
+  /**
+   * get the absolute path on the users computer
+   * @param path vault local path
+   */
   getFullPath(path) {
+    var _a;
+    if (!(this.plugin.app.vault.adapter instanceof import_obsidian2.FileSystemAdapter)) {
+      return;
+    }
     if (path.length === 0) {
       return this.plugin.app.vault.adapter.getFullPath("");
     }
@@ -6862,8 +7044,9 @@ var Replacer = class {
     if (!file) {
       return this.plugin.app.vault.adapter.getFullPath("");
     }
-    const folder = this.plugin.app.vault.getDirectParent(file);
-    return this.plugin.app.vault.adapter.getFullPath(folder.path);
+    const vault = this.plugin.app.vault;
+    const folder = vault.getDirectParent(file);
+    return this.plugin.app.vault.adapter.getFullPath((_a = folder == null ? void 0 : folder.path) != null ? _a : "");
   }
   getPath(ctx) {
     return this.getFullPath(ctx ? ctx.sourcePath : "");
@@ -6871,7 +7054,7 @@ var Replacer = class {
 };
 function insertImageWithMap(el, image, map, encodedDiagram) {
   el.empty();
-  const img = document.createElement("img");
+  const img = el.createEl("img");
   if (image.startsWith("http")) {
     img.src = image;
   } else {
@@ -6879,18 +7062,21 @@ function insertImageWithMap(el, image, map, encodedDiagram) {
   }
   img.useMap = "#" + encodedDiagram;
   if (map.contains("map")) {
-    el.innerHTML = map;
-    el.children[0].setAttr("name", encodedDiagram);
+    const parser = new DOMParser();
+    const mapDoc = parser.parseFromString(map, "text/html");
+    const mapEl = mapDoc.body.firstChild;
+    if (mapEl) {
+      const cloned = mapEl.cloneNode(true);
+      cloned.setAttr("name", encodedDiagram);
+      el.appendChild(cloned);
+    }
   }
-  el.appendChild(img);
 }
 function insertAsciiImage(el, image) {
   el.empty();
-  const pre = document.createElement("pre");
-  const code = document.createElement("code");
-  pre.appendChild(code);
+  const pre = el.createEl("pre");
+  const code = pre.createEl("code");
   code.setText(image);
-  el.appendChild(pre);
 }
 function insertSvgImage(el, image) {
   el.empty();
@@ -6901,23 +7087,36 @@ function insertSvgImage(el, image) {
     const link = links[i];
     link.addClass("internal-link");
   }
-  el.insertAdjacentHTML("beforeend", svg.documentElement.outerHTML);
+  el.appendChild(activeDocument.importNode(svg.documentElement, true));
 }
 
 // src/const.ts
 var LOGO_SVG = '<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="100" height="100" preserveAspectRatio="xMidYMid meet" viewBox="0 0 32 32"><defs><linearGradient id="svgIDc" x1="-33.423" x2="-33.353" y1="-250.911" y2="-250.858" gradientTransform="matrix(37.134 26.001 13.575 -19.387 4673.473 -3982.019)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#767676"/><stop offset="1"/></linearGradient><linearGradient id="svgIDa" x1="-32.107" x2="-32.028" y1="-242.563" y2="-242.586" gradientTransform="matrix(81.081 56.774 17.306 -24.715 6804.021 -4149.644)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0079b9"/><stop offset="1"/></linearGradient><linearGradient id="svgIDd" x1="-33.282" x2="-33.224" y1="-243.423" y2="-243.455" gradientTransform="matrix(60.003 42.015 34.184 -48.82 10343.005 -10469.084)" href="#svgIDa"/><linearGradient id="svgIDb" x1="12.356" x2="14.011" y1="26.268" y2="26.268" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#595959"/><stop offset=".087" stop-color="#6e6e6e"/><stop offset=".242" stop-color="#8c8c8c"/><stop offset=".405" stop-color="#a4a4a4"/><stop offset=".577" stop-color="#b5b5b5"/><stop offset=".765" stop-color="#bfbfbf"/><stop offset="1" stop-color="#c2c2c2"/></linearGradient><linearGradient id="svgIDe" x1="18.291" x2="19.946" y1="26.171" y2="26.171" href="#svgIDb"/><linearGradient id="svgIDf" x1="24.44" x2="26.096" y1="26.171" y2="26.171" href="#svgIDb"/></defs><path fill="#1c0a42" d="m20.305 17.872l6.855 4.546l-5.44 3.075l-6.859-4.494l5.444-3.127z"/><path d="m21.716 25.619l-.055-.036l-7.005-4.59l5.653-3.247l7.056 4.68Zm-6.65-4.613l6.658 4.362l5.231-2.957L20.3 18Z"/><path fill="url(#svgIDc)" d="m26.401 11.909l3.017 1.683l-2.348 1.496l-2.857-1.841l2.188-1.338z"/><path d="m27.069 15.215l-3.058-1.97l2.387-1.46l3.228 1.8Zm-2.654-1.966l2.655 1.711l2.138-1.36l-2.8-1.565Z"/><path fill="#ffbd3f" d="m14.498 17.807l6.856 4.547l-5.44 3.075l-6.859-4.494l5.443-3.128z"/><path d="m15.91 25.554l-.055-.036l-7.005-4.589l5.65-3.248l7.056 4.68Zm-6.65-4.613l6.658 4.359l5.231-2.957l-6.654-4.413Z"/><path fill="#a11f40" d="m7.99 17.966l6.964 4.4l-5.377 3.138l-7.359-4.655l5.772-2.883z"/><path d="M9.575 25.629L2 20.838l6-3l7.164 4.527ZM2.436 20.86l7.144 4.518l5.168-3.016l-6.764-4.273Z"/><path fill="url(#svgIDa)" d="m2.111 21.021l7.332 4.494v3.548l-7.332-4.731v-3.311z"/><path d="M9.55 29.26L2 24.391v-3.562l7.55 4.626Zm-7.332-4.986l7.118 4.592v-3.291l-7.118-4.362Z"/><path fill="url(#svgIDd)" d="m24.071 13.343l2.938 1.879v6.909l-2.938-1.884v-6.904z"/><path d="m27.063 22.229l-3.045-1.953v-7.031l3.045 1.947Zm-2.938-2.012l2.831 1.815v-6.781l-2.831-1.81Z"/><path fill="#fff" d="M27.149 22.526v-7.332l2.365-1.419v15.374H9.646v-3.548l5.44-3.075l.699 3.075h.011l5.676-3.075l.419 3.075h.054l5.204-3.075z"/><path d="M29.621 29.256H9.539v-3.718l5.62-3.177l.7 3.083l5.7-3.087l.422 3.1l5.061-2.991v-7.333l2.58-1.548Zm-19.868-.215h19.654V13.964l-2.151 1.29v7.332l-.053.031l-5.229 3.09H21.8l-.411-3.014l-5.564 3.014H15.7l-.686-3.018l-5.26 2.973Z"/><rect width="1.656" height="1.656" x="12.356" y="25.44" fill="url(#svgIDb)" rx=".215" ry=".215"/><path d="M13.8 27.2h-1.23a.322.322 0 0 1-.322-.322v-1.223a.322.322 0 0 1 .322-.322h1.23a.322.322 0 0 1 .322.322v1.226a.322.322 0 0 1-.322.319Zm-1.23-1.653a.108.108 0 0 0-.107.107v1.226a.108.108 0 0 0 .107.107h1.23a.108.108 0 0 0 .107-.107v-1.225a.108.108 0 0 0-.107-.107Z"/><rect width="1.656" height="1.656" x="18.291" y="25.343" fill="url(#svgIDe)" rx=".215" ry=".215"/><path d="M19.732 27.106h-1.227a.322.322 0 0 1-.322-.322v-1.226a.322.322 0 0 1 .322-.322h1.226a.322.322 0 0 1 .322.322v1.226a.322.322 0 0 1-.321.322Zm-1.226-1.656a.108.108 0 0 0-.107.107v1.226a.108.108 0 0 0 .107.107h1.226a.108.108 0 0 0 .107-.107v-1.225a.108.108 0 0 0-.107-.107Z"/><rect width="1.656" height="1.656" x="24.44" y="25.343" fill="url(#svgIDf)" rx=".215" ry=".215"/><path d="M25.881 27.106h-1.226a.322.322 0 0 1-.322-.322v-1.226a.322.322 0 0 1 .322-.322h1.226a.322.322 0 0 1 .322.322v1.226a.322.322 0 0 1-.322.322Zm-1.226-1.656a.108.108 0 0 0-.107.107v1.226a.108.108 0 0 0 .107.107h1.226a.108.108 0 0 0 .107-.107v-1.225a.108.108 0 0 0-.107-.107Z"/><path fill="#ea2d2e" d="M27.215 11.23c-.052.069-.417-.262-.653-.526a4.408 4.408 0 0 1-.516-.73A2.6 2.6 0 0 1 25.7 9.2a2.358 2.358 0 0 1-.052-.682a2.959 2.959 0 0 1 .129-.749a3.142 3.142 0 0 1 .787-1.207a15.532 15.532 0 0 0 1.283-1.4a3.062 3.062 0 0 0 .479-.927a3.979 3.979 0 0 0 .151-.855c.019-.364-.025-.593.023-.613s.215.274.287.564a3.167 3.167 0 0 1-.458 2.1a6.9 6.9 0 0 1-1.094 1.448a2.8 2.8 0 0 0-.849 1.234a2.466 2.466 0 0 0-.086.687a3.465 3.465 0 0 0 .476 1.542c.288.572.48.833.439.888Z"/><path d="M27.193 11.266c-.124 0-.492-.365-.651-.544a4.478 4.478 0 0 1-.52-.734a2.628 2.628 0 0 1-.346-.781a2.375 2.375 0 0 1-.053-.69a2.978 2.978 0 0 1 .13-.756a3.208 3.208 0 0 1 .793-1.216c.294-.331.5-.528.659-.686a4.393 4.393 0 0 0 .622-.711a3.052 3.052 0 0 0 .476-.919a3.951 3.951 0 0 0 .15-.849c.008-.159 0-.294 0-.393c0-.159-.006-.225.038-.243a.05.05 0 0 1 .043 0a1.226 1.226 0 0 1 .28.579a3.167 3.167 0 0 1-.46 2.121a6.928 6.928 0 0 1-1.1 1.453c-.055.06-.109.116-.162.171a2.3 2.3 0 0 0-.681 1.052a2.47 2.47 0 0 0-.082.673a3.458 3.458 0 0 0 .473 1.53c.114.231.215.415.289.549c.129.235.178.323.142.369a.051.051 0 0 1-.04.02ZM28.512 2.8a.863.863 0 0 0 0 .19c0 .1.007.236 0 .4a4.021 4.021 0 0 1-.152.861a3.106 3.106 0 0 1-.483.934a4.437 4.437 0 0 1-.629.719c-.162.158-.364.354-.657.683a3.168 3.168 0 0 0-.782 1.2a2.933 2.933 0 0 0-.128.743a2.325 2.325 0 0 0 .052.675a2.59 2.59 0 0 0 .341.767a4.422 4.422 0 0 0 .513.725a2.035 2.035 0 0 0 .611.526a1.183 1.183 0 0 0-.147-.31a12.935 12.935 0 0 1-.29-.551a3.5 3.5 0 0 1-.483-1.562a2.53 2.53 0 0 1 .084-.688a2.375 2.375 0 0 1 .694-1.075c.052-.055.106-.111.161-.171a6.879 6.879 0 0 0 1.09-1.442a3.119 3.119 0 0 0 .456-2.083a1.281 1.281 0 0 0-.251-.541Z"/><path fill="#ea2d2e" d="M29.972 6.087c-.019-.088-.432-.04-.766.073a2.6 2.6 0 0 0-1.059.722a2.8 2.8 0 0 0-.916 1.855a2.972 2.972 0 0 0 .258 1.06c.221.572.455.773.444 1.225c-.007.3-.114.484-.048.549s.314-.1.462-.313a1.8 1.8 0 0 0 .259-1.022c-.046-.815-.6-1.015-.608-1.8a1.858 1.858 0 0 1 .129-.676c.443-1.251 1.881-1.508 1.845-1.673Z"/><path d="M27.934 11.617a.094.094 0 0 1-.069-.026c-.046-.046-.03-.122-.005-.237a1.718 1.718 0 0 0 .045-.331a1.374 1.374 0 0 0-.214-.72a5 5 0 0 1-.228-.495a2.98 2.98 0 0 1-.259-1.07a2.81 2.81 0 0 1 .923-1.874a2.64 2.64 0 0 1 1.07-.729a1.482 1.482 0 0 1 .766-.1a.065.065 0 0 1 .037.046c.015.07-.092.121-.306.224a2.73 2.73 0 0 0-1.542 1.463a1.827 1.827 0 0 0-.127.667a1.645 1.645 0 0 0 .291.885a1.889 1.889 0 0 1 .317.914a1.814 1.814 0 0 1-.264 1.039a.809.809 0 0 1-.421.342Zm1.889-5.549a2.117 2.117 0 0 0-.608.117a2.588 2.588 0 0 0-1.048.715a2.764 2.764 0 0 0-.909 1.837a2.935 2.935 0 0 0 .256 1.05a4.955 4.955 0 0 0 .225.49a1.433 1.433 0 0 1 .22.745a1.765 1.765 0 0 1-.047.341c-.019.091-.035.163-.009.188a.046.046 0 0 0 .038.01a.769.769 0 0 0 .382-.32a1.793 1.793 0 0 0 .254-1.005a1.844 1.844 0 0 0-.31-.89a1.711 1.711 0 0 1-.3-.911a1.877 1.877 0 0 1 .13-.686a2.776 2.776 0 0 1 1.573-1.492c.126-.061.283-.136.277-.164l-.008-.007a.264.264 0 0 0-.116-.018Z"/></svg>';
-var OutputType = /* @__PURE__ */ ((OutputType2) => {
-  OutputType2["PNG"] = "png";
-  OutputType2["SVG"] = "svg";
-  OutputType2["ASCII"] = "txt";
-  return OutputType2;
-})(OutputType || {});
 
 // src/processors/localProcessors.ts
-var localforage = __toModule(require_localforage());
+var localforage = __toESM(require_localforage());
+var exec;
+var Buffer2;
+var pathModule;
+var osModule;
+function loadNodeModules() {
+  return __async(this, null, function* () {
+    if (import_obsidian3.Platform.isDesktop && !exec) {
+      const nodeRequire = window.require;
+      exec = nodeRequire("child_process").exec;
+      Buffer2 = nodeRequire("buffer").Buffer;
+      pathModule = nodeRequire("path");
+      osModule = nodeRequire("os");
+    }
+  });
+}
 var LocalProcessors = class {
   constructor(plugin) {
     this.ascii = (source, el, ctx) => __async(this, null, function* () {
+      if (!import_obsidian3.Platform.isDesktop) {
+        throw new Error("Local processing is only available on desktop");
+      }
+      yield loadNodeModules();
       const encodedDiagram = plantuml.encode(source);
       const item = yield localforage.getItem("ascii-" + encodedDiagram);
       if (item) {
@@ -6925,12 +7124,16 @@ var LocalProcessors = class {
         yield localforage.setItem("ts-" + encodedDiagram, Date.now());
         return;
       }
-      const image = yield this.generateLocalImage(source, OutputType.ASCII, this.plugin.replacer.getPath(ctx));
+      const image = yield this.generateLocalImage(source, "txt" /* ASCII */, this.plugin.replacer.getPath(ctx));
       insertAsciiImage(el, image);
       yield localforage.setItem("ascii-" + encodedDiagram, image);
       yield localforage.setItem("ts-" + encodedDiagram, Date.now());
     });
     this.png = (source, el, ctx) => __async(this, null, function* () {
+      if (!import_obsidian3.Platform.isDesktop) {
+        throw new Error("Local processing is only available on desktop");
+      }
+      yield loadNodeModules();
       const encodedDiagram = plantuml.encode(source);
       const item = yield localforage.getItem("png-" + encodedDiagram);
       if (item) {
@@ -6940,7 +7143,7 @@ var LocalProcessors = class {
         return;
       }
       const path = this.plugin.replacer.getPath(ctx);
-      const image = yield this.generateLocalImage(source, OutputType.PNG, path);
+      const image = yield this.generateLocalImage(source, "png" /* PNG */, path);
       const map = yield this.generateLocalMap(source, path);
       yield localforage.setItem("png-" + encodedDiagram, image);
       yield localforage.setItem("map-" + encodedDiagram, map);
@@ -6948,6 +7151,10 @@ var LocalProcessors = class {
       insertImageWithMap(el, image, map, encodedDiagram);
     });
     this.svg = (source, el, ctx) => __async(this, null, function* () {
+      if (!import_obsidian3.Platform.isDesktop) {
+        throw new Error("Local processing is only available on desktop");
+      }
+      yield loadNodeModules();
       const encodedDiagram = plantuml.encode(source);
       const item = yield localforage.getItem("svg-" + encodedDiagram);
       if (item) {
@@ -6955,7 +7162,7 @@ var LocalProcessors = class {
         yield localforage.setItem("ts-" + encodedDiagram, Date.now());
         return;
       }
-      const image = yield this.generateLocalImage(source, OutputType.SVG, this.plugin.replacer.getPath(ctx));
+      const image = yield this.generateLocalImage(source, "svg" /* SVG */, this.plugin.replacer.getPath(ctx));
       yield localforage.setItem("svg-" + encodedDiagram, image);
       yield localforage.setItem("ts-" + encodedDiagram, Date.now());
       insertSvgImage(el, image);
@@ -6964,9 +7171,11 @@ var LocalProcessors = class {
   }
   generateLocalMap(source, path) {
     return __async(this, null, function* () {
-      const { exec } = require("child_process");
-      const args = this.resolveLocalJarCmd().concat(["-pipemap"]);
-      const child = exec(args.join(" "), { encoding: "binary", cwd: path });
+      if (!import_obsidian3.Platform.isDesktop) {
+        throw new Error("Local processing is only available on desktop");
+      }
+      const args = yield this.resolveLocalJarCmd();
+      const child = exec(args.concat(["-pipemap"]).join(" "), { encoding: "binary", cwd: path });
       let stdout = "";
       if (child.stdout) {
         child.stdout.on("data", (data) => {
@@ -6974,179 +7183,170 @@ var LocalProcessors = class {
         });
       }
       return new Promise((resolve, reject) => {
+        var _a, _b;
         child.on("error", reject);
         child.on("close", (code) => {
           if (code === 0) {
             resolve(stdout);
             return;
           } else if (code === 1) {
-            console.log(stdout);
+            console.error(stdout);
             reject(new Error(`an error occurred`));
           } else {
-            reject(new Error(`child exited with code ${code}`));
+            reject(new Error(`child exited with code ${String(code)}`));
           }
         });
-        child.stdin.write(source);
-        child.stdin.end();
+        (_a = child.stdin) == null ? void 0 : _a.write(source);
+        (_b = child.stdin) == null ? void 0 : _b.end();
       });
     });
   }
   generateLocalImage(source, type, path) {
     return __async(this, null, function* () {
-      const { ChildProcess, exec } = require("child_process");
-      const args = this.resolveLocalJarCmd().concat(["-t" + type, "-pipe"]);
-      let child;
-      if (type === OutputType.PNG) {
-        child = exec(args.join(" "), { encoding: "binary", cwd: path });
-      } else {
-        child = exec(args.join(" "), { encoding: "utf-8", cwd: path });
+      if (!import_obsidian3.Platform.isDesktop) {
+        throw new Error("Local processing is only available on desktop");
       }
-      let stdout;
-      let stderr;
+      const args = yield this.resolveLocalJarCmd();
+      const cmdArgs = args.concat(["-t" + type, "-pipe"]);
+      const child = exec(cmdArgs.join(" "), {
+        encoding: type === "png" /* PNG */ ? "binary" : "utf-8",
+        cwd: path
+      });
+      let stdout = null;
+      let stderr = null;
       if (child.stdout) {
         child.stdout.on("data", (data) => {
-          if (stdout === void 0) {
-            stdout = data;
-          } else
-            stdout += data;
+          stdout = stdout === null ? data : stdout + data;
         });
       }
       if (child.stderr) {
         child.stderr.on("data", (data) => {
-          if (stderr === void 0) {
-            stderr = data;
-          } else
-            stderr += data;
+          stderr = stderr === null ? data : stderr + data;
         });
       }
       return new Promise((resolve, reject) => {
+        var _a, _b;
         child.on("error", reject);
         child.on("close", (code) => {
-          if (stdout === void 0) {
+          if (stdout === null) {
             return;
           }
           if (code === 0) {
-            if (type === OutputType.PNG) {
-              const buf = new Buffer(stdout, "binary");
-              resolve(buf.toString("base64"));
+            if (type === "png" /* PNG */) {
+              resolve(Buffer2.from(stdout, "binary").toString("base64"));
               return;
             }
             resolve(stdout);
             return;
           } else if (code === 1) {
             console.error(stdout);
-            reject(new Error(stderr));
+            reject(new Error(stderr != null ? stderr : ""));
           } else {
-            if (type === OutputType.PNG) {
-              const buf = new Buffer(stdout, "binary");
-              resolve(buf.toString("base64"));
+            if (type === "png" /* PNG */) {
+              resolve(Buffer2.from(stdout, "binary").toString("base64"));
               return;
             }
             resolve(stdout);
-            return;
           }
         });
-        child.stdin.write(source, "utf-8");
-        child.stdin.end();
+        (_a = child.stdin) == null ? void 0 : _a.write(source, "utf-8");
+        (_b = child.stdin) == null ? void 0 : _b.end();
       });
     });
   }
+  /**
+   * To support local jar settings with unix-like style, and search local jar file
+   * from current vault path.
+   */
   resolveLocalJarCmd() {
-    const jarFromSettings = this.plugin.settings.localJar;
-    const { isAbsolute, resolve } = require("path");
-    const { userInfo } = require("os");
-    let jarFullPath;
-    const path = this.plugin.replacer.getFullPath("");
-    if (jarFromSettings[0] === "~") {
-      jarFullPath = userInfo().homedir + jarFromSettings.slice(1);
-    } else {
-      if (isAbsolute(jarFromSettings)) {
-        jarFullPath = jarFromSettings;
-      } else {
-        jarFullPath = resolve(path, jarFromSettings);
+    return __async(this, null, function* () {
+      if (!import_obsidian3.Platform.isDesktop) {
+        throw new Error("Local processing is only available on desktop");
       }
-    }
-    if (jarFullPath.length == 0) {
-      throw Error("Invalid local jar file");
-    }
-    if (jarFullPath.endsWith(".jar")) {
+      const jarFromSettings = this.plugin.settings.localJar;
+      let jarFullPath;
+      const path = this.plugin.replacer.getFullPath("");
+      if (jarFromSettings[0] === "~") {
+        jarFullPath = osModule.userInfo().homedir + jarFromSettings.slice(1);
+      } else {
+        if (pathModule.isAbsolute(jarFromSettings)) {
+          jarFullPath = jarFromSettings;
+        } else {
+          jarFullPath = pathModule.resolve(path, jarFromSettings);
+        }
+      }
+      if (jarFullPath.length == 0) {
+        throw Error("Invalid local jar file");
+      }
+      if (jarFullPath.endsWith(".jar")) {
+        return [
+          this.plugin.settings.javaPath,
+          "-jar",
+          "-Djava.awt.headless=true",
+          '"' + jarFullPath + '"',
+          "-charset",
+          "utf-8",
+          "-graphvizdot",
+          '"' + this.plugin.settings.dotPath + '"'
+        ];
+      }
       return [
-        this.plugin.settings.javaPath,
-        "-jar",
-        '"' + jarFullPath + '"',
+        jarFullPath,
         "-Djava.awt.headless=true",
         "-charset",
         "utf-8",
         "-graphvizdot",
         '"' + this.plugin.settings.dotPath + '"'
       ];
-    }
-    return [
-      jarFullPath,
-      "-Djava.awt.headless=true",
-      "-charset",
-      "utf-8",
-      "-graphvizdot",
-      '"' + this.plugin.settings.dotPath + '"'
-    ];
+    });
   }
 };
 
 // src/processors/debouncedProcessors.ts
-var import_obsidian2 = __toModule(require("obsidian"));
+var import_obsidian4 = require("obsidian");
 
-// node_modules/uuid/dist/esm-browser/rng.js
-var getRandomValues;
+// node_modules/uuid/dist/stringify.js
+var byteToHex = [];
+for (let i = 0; i < 256; ++i) {
+  byteToHex.push((i + 256).toString(16).slice(1));
+}
+function unsafeStringify(arr, offset = 0) {
+  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
+}
+
+// node_modules/uuid/dist/rng.js
 var rnds8 = new Uint8Array(16);
 function rng() {
-  if (!getRandomValues) {
-    getRandomValues = typeof crypto !== "undefined" && crypto.getRandomValues && crypto.getRandomValues.bind(crypto) || typeof msCrypto !== "undefined" && typeof msCrypto.getRandomValues === "function" && msCrypto.getRandomValues.bind(msCrypto);
-    if (!getRandomValues) {
-      throw new Error("crypto.getRandomValues() not supported. See https://github.com/uuidjs/uuid#getrandomvalues-not-supported");
-    }
-  }
-  return getRandomValues(rnds8);
+  return crypto.getRandomValues(rnds8);
 }
 
-// node_modules/uuid/dist/esm-browser/regex.js
-var regex_default = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i;
-
-// node_modules/uuid/dist/esm-browser/validate.js
-function validate(uuid) {
-  return typeof uuid === "string" && regex_default.test(uuid);
-}
-var validate_default = validate;
-
-// node_modules/uuid/dist/esm-browser/stringify.js
-var byteToHex = [];
-for (i = 0; i < 256; ++i) {
-  byteToHex.push((i + 256).toString(16).substr(1));
-}
-var i;
-function stringify(arr) {
-  var offset = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : 0;
-  var uuid = (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
-  if (!validate_default(uuid)) {
-    throw TypeError("Stringified UUID is invalid");
-  }
-  return uuid;
-}
-var stringify_default = stringify;
-
-// node_modules/uuid/dist/esm-browser/v4.js
+// node_modules/uuid/dist/v4.js
 function v4(options, buf, offset) {
+  if (!buf && !options && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return _v4(options, buf, offset);
+}
+function _v4(options, buf, offset) {
+  var _a, _b, _c;
   options = options || {};
-  var rnds = options.random || (options.rng || rng)();
+  const rnds = (_c = (_b = options.random) != null ? _b : (_a = options.rng) == null ? void 0 : _a.call(options)) != null ? _c : rng();
+  if (rnds.length < 16) {
+    throw new Error("Random bytes length must be >= 16");
+  }
   rnds[6] = rnds[6] & 15 | 64;
   rnds[8] = rnds[8] & 63 | 128;
   if (buf) {
     offset = offset || 0;
-    for (var i = 0; i < 16; ++i) {
+    if (offset < 0 || offset + 16 > buf.length) {
+      throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
+    }
+    for (let i = 0; i < 16; ++i) {
       buf[offset + i] = rnds[i];
     }
     return buf;
   }
-  return stringify_default(rnds);
+  return unsafeStringify(rnds);
 }
 var v4_default = v4;
 
@@ -7177,42 +7377,45 @@ var DebouncedProcessors = class {
           this.debounceMap.get(debounceId)(source, el, ctx);
         }
       } else {
-        const func = (0, import_obsidian2.debounce)(processor, this.debounceTime, true);
+        const func = (0, import_obsidian4.debounce)(processor, this.debounceTime, true);
         const uuid = v4_default();
         el.dataset.plantumlDebouce = uuid;
         this.debounceMap.set(uuid, func);
-        source = this.plugin.replacer.replaceNonBreakingSpaces(source);
+        source = this.plugin.replacer.decodeWhiteSpaces(source);
         source = this.plugin.replacer.replaceLinks(source, this.plugin.replacer.getPath(ctx), filetype);
         source = this.plugin.settings.header + "\r\n" + source;
         yield processor(source, el, ctx);
         el.addEventListener("contextmenu", (event) => {
-          const menu = new import_obsidian2.Menu().addItem((item) => {
+          const menu = new import_obsidian4.Menu().addItem((item) => {
             item.setTitle("Copy diagram source").setIcon("clipboard-copy").onClick(() => __async(this, null, function* () {
               yield navigator.clipboard.writeText(originalSource);
             }));
           }).addItem((item) => {
             item.setTitle("Copy diagram").setIcon("image").onClick(() => __async(this, null, function* () {
-              console.log(el);
               const img = el.querySelector("img");
               if (img) {
-                this.renderToBlob(img, "An error occurred while copying image to clipboard", (blob) => __async(this, null, function* () {
-                  yield navigator.clipboard.write([
-                    new ClipboardItem({
-                      "image/png": blob
-                    })
-                  ]);
-                  new import_obsidian2.Notice("Diagram copied to clipboard");
-                }));
+                this.renderToBlob(
+                  img,
+                  "An error occurred while copying image to clipboard",
+                  (blob) => __async(this, null, function* () {
+                    yield navigator.clipboard.write([
+                      new ClipboardItem({
+                        "image/png": blob
+                      })
+                    ]);
+                    new import_obsidian4.Notice("Diagram copied to clipboard");
+                  })
+                );
               }
               const svg = el.querySelector("svg");
               if (svg) {
-                yield navigator.clipboard.writeText(svg.outerHTML);
-                new import_obsidian2.Notice("Diagram copied to clipboard");
+                yield navigator.clipboard.writeText(svg.outerHTML.replace(/&nbsp;/g, ""));
+                new import_obsidian4.Notice("Diagram copied to clipboard");
               }
               const code = el.querySelector("code");
               if (code) {
                 yield navigator.clipboard.writeText(code.innerText);
-                new import_obsidian2.Notice("Diagram copied to clipboard");
+                new import_obsidian4.Notice("Diagram copied to clipboard");
               }
             }));
           }).addItem((item) => {
@@ -7228,7 +7431,7 @@ var DebouncedProcessors = class {
                   } else {
                     yield this.plugin.app.vault.createBinary(filename, buffer);
                   }
-                  new import_obsidian2.Notice(`Diagram exported to '${filename}'`);
+                  new import_obsidian4.Notice(`Diagram exported to '${filename}'`);
                 }));
               }
               const svg = el.querySelector("svg");
@@ -7250,7 +7453,7 @@ var DebouncedProcessors = class {
       image.crossOrigin = "anonymous";
       image.src = img.src;
       image.addEventListener("load", () => {
-        const canvas = document.createElement("canvas");
+        const canvas = activeDocument.createEl("canvas");
         canvas.width = image.width;
         canvas.height = image.height;
         const ctx = canvas.getContext("2d");
@@ -7258,16 +7461,14 @@ var DebouncedProcessors = class {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(image, 0, 0);
         try {
-          canvas.toBlob((blob) => __async(this, null, function* () {
-            try {
-              yield handleBlob(blob);
-            } catch (error) {
-              new import_obsidian2.Notice(errorMessage);
-              console.error(error);
-            }
-          }));
+          canvas.toBlob((blob) => {
+            if (!blob) return;
+            handleBlob(blob).catch(() => {
+              new import_obsidian4.Notice(errorMessage);
+            });
+          });
         } catch (error) {
-          new import_obsidian2.Notice(errorMessage);
+          new import_obsidian4.Notice(errorMessage);
           console.error(error);
         }
       });
@@ -7277,7 +7478,7 @@ var DebouncedProcessors = class {
       if ((startuml == null ? void 0 : startuml.length) >= 2) {
         return `${startuml[1].trim()}`;
       }
-      const now = new Date().toISOString().replace(/[:T]+/g, "-");
+      const now = (/* @__PURE__ */ new Date()).toISOString().replace(/[:T]+/g, "-");
       const filename = this.plugin.app.vault.getAbstractFileByPath(ctx.sourcePath).name;
       return `${filename.substring(0, filename.lastIndexOf("."))}-${now.substring(0, now.lastIndexOf("."))}`;
     };
@@ -7289,7 +7490,7 @@ var DebouncedProcessors = class {
       }
       const exists = yield this.plugin.app.vault.adapter.exists(exportPath);
       if (!exists) {
-        this.plugin.app.vault.createFolder(exportPath);
+        yield this.plugin.app.vault.createFolder(exportPath);
       }
       return exportPath;
     });
@@ -7304,7 +7505,7 @@ var DebouncedProcessors = class {
         fName = fName.substring(1);
       }
       const folderOrFile = this.plugin.app.vault.getAbstractFileByPath(fName);
-      if (folderOrFile instanceof import_obsidian2.TFile) {
+      if (folderOrFile instanceof import_obsidian4.TFile) {
         return folderOrFile;
       }
       return void 0;
@@ -7318,9 +7519,9 @@ var DebouncedProcessors = class {
         } else {
           yield this.plugin.app.vault.create(filename, data);
         }
-        new import_obsidian2.Notice(`Diagram exported to '${filename}'`);
+        new import_obsidian4.Notice(`Diagram exported to '${filename}'`);
       } catch (error) {
-        new import_obsidian2.Notice("An error occurred while while exporting the diagram");
+        new import_obsidian4.Notice("An error occurred while while exporting the diagram");
         console.error(error);
       }
     });
@@ -7331,8 +7532,8 @@ var DebouncedProcessors = class {
 };
 
 // src/processors/serverProcessor.ts
-var import_obsidian3 = __toModule(require("obsidian"));
-var plantuml2 = __toModule(require_browser_index());
+var import_obsidian5 = require("obsidian");
+var plantuml2 = __toESM(require_browser_index());
 var ServerProcessor = class {
   constructor(plugin) {
     this.svg = (source, el, _) => __async(this, null, function* () {
@@ -7342,7 +7543,7 @@ var ServerProcessor = class {
       }
       const imageUrlBase = url + "/svg/";
       const encodedDiagram = plantuml2.encode(source);
-      (0, import_obsidian3.request)({ url: imageUrlBase + encodedDiagram, method: "GET" }).then((value) => {
+      (0, import_obsidian5.request)({ url: imageUrlBase + encodedDiagram, method: "GET" }).then((value) => {
         insertSvgImage(el, value);
       }).catch((error) => {
         if (error)
@@ -7358,7 +7559,7 @@ var ServerProcessor = class {
       const encodedDiagram = plantuml2.encode(source);
       const image = imageUrlBase + encodedDiagram;
       const mapUrlBase = url + "/map/";
-      const map = yield (0, import_obsidian3.request)({ url: mapUrlBase + encodedDiagram, method: "GET" });
+      const map = yield (0, import_obsidian5.request)({ url: mapUrlBase + encodedDiagram, method: "GET" });
       insertImageWithMap(el, image, map, encodedDiagram);
     });
     this.ascii = (source, el, _) => __async(this, null, function* () {
@@ -7368,10 +7569,10 @@ var ServerProcessor = class {
       }
       const asciiUrlBase = url + "/txt/";
       const encodedDiagram = plantuml2.encode(source);
-      const result = yield (0, import_obsidian3.request)({ url: asciiUrlBase + encodedDiagram });
+      const result = yield (0, import_obsidian5.request)({ url: asciiUrlBase + encodedDiagram });
       if (result.startsWith("\uFFFDPNG")) {
-        const text = document.createElement("p");
-        text.style.color = "red";
+        const text = activeDocument.createEl("p");
+        text.addClass("mod-error");
         text.innerText = "Your configured PlantUML Server does not support ASCII Art";
         el.appendChild(text);
         return;
@@ -7383,11 +7584,11 @@ var ServerProcessor = class {
 };
 
 // src/PumlView.ts
-var import_obsidian4 = __toModule(require("obsidian"));
-var import_view = __toModule(require("@codemirror/view"));
-var import_state = __toModule(require("@codemirror/state"));
-var import_search = __toModule(require("@codemirror/search"));
-var import_commands = __toModule(require("@codemirror/commands"));
+var import_obsidian6 = require("obsidian");
+var import_view = require("@codemirror/view");
+var import_state = require("@codemirror/state");
+var import_search = require("@codemirror/search");
+var import_commands = require("@codemirror/commands");
 var VIEW_TYPE = "plantuml";
 var views = [];
 var syncAnnotation = import_state.Annotation.define();
@@ -7406,7 +7607,7 @@ function syncDispatch(from) {
     }
   };
 }
-var PumlView = class extends import_obsidian4.TextFileView {
+var PumlView = class extends import_obsidian6.TextFileView {
   constructor(leaf, plugin) {
     super(leaf);
     this.dispatchId = -1;
@@ -7418,15 +7619,15 @@ var PumlView = class extends import_obsidian4.TextFileView {
       import_view.keymap.of([...import_commands.defaultKeymap, import_commands.indentWithTab]),
       (0, import_commands.history)(),
       (0, import_search.search)(),
-      import_view.EditorView.updateListener.of((v) => __async(this, null, function* () {
+      import_view.EditorView.updateListener.of((v) => {
         if (v.docChanged) {
           this.requestSave();
-          yield this.renderPreview();
+          void this.renderPreview();
         }
-      }))
+      })
     ];
     this.plugin = plugin;
-    this.debounced = (0, import_obsidian4.debounce)(this.plugin.getProcessor().png, this.plugin.settings.debounce * 1e3, true);
+    this.debounced = (0, import_obsidian6.debounce)(this.plugin.getProcessor().png, this.plugin.settings.debounce * 1e3, true);
     this.sourceEl = this.contentEl.createDiv({ cls: "plantuml-source-view", attr: { "style": "display: block" } });
     this.previewEl = this.contentEl.createDiv({ cls: "plantuml-preview-view", attr: { "style": "display: none" } });
     const vault = this.app.vault;
@@ -7455,24 +7656,28 @@ var PumlView = class extends import_obsidian4.TextFileView {
   setState(state, result) {
     if (state.mode === "preview") {
       this.currentView = "preview";
-      (0, import_obsidian4.setIcon)(this.changeModeButton, "pencil");
+      (0, import_obsidian6.setIcon)(this.changeModeButton, "pencil");
       this.changeModeButton.setAttribute("aria-label", "Edit (Ctrl+Click to edit in new pane)");
-      this.previewEl.style.setProperty("display", "block");
-      this.sourceEl.style.setProperty("display", "none");
-      this.renderPreview();
+      this.previewEl.show();
+      this.sourceEl.hide();
+      void this.renderPreview();
     } else {
       this.currentView = "source";
-      (0, import_obsidian4.setIcon)(this.changeModeButton, "lines-of-text");
+      (0, import_obsidian6.setIcon)(this.changeModeButton, "lines-of-text");
       this.changeModeButton.setAttribute("aria-label", "Preview (Ctrl+Click to open in new pane)");
-      this.previewEl.style.setProperty("display", "none");
-      this.sourceEl.style.setProperty("display", "block");
+      this.previewEl.hide();
+      this.sourceEl.show();
     }
     return super.setState(state, result);
   }
   onload() {
+    void this._onload();
+  }
+  _onload() {
     return __async(this, null, function* () {
       this.changeModeButton = this.addAction("lines-of-text", "Preview (Ctrl+Click to open in new pane)", (evt) => this.switchMode(evt), 17);
-      const defaultViewMode = this.app.vault.getConfig("defaultViewMode");
+      const vault = this.app.vault;
+      const defaultViewMode = vault.getConfig("defaultViewMode");
       this.currentView = defaultViewMode;
       yield this.setState(__spreadProps(__spreadValues({}, this.getState()), { mode: defaultViewMode }), {});
     });
@@ -7481,60 +7686,61 @@ var PumlView = class extends import_obsidian4.TextFileView {
     views.remove(views[this.dispatchId]);
     this.editor.destroy();
   }
+  // function to switch between source and preview mode
   switchMode(arg) {
     return __async(this, null, function* () {
       let mode = arg;
-      if (!mode || mode instanceof MouseEvent)
-        mode = this.currentView === "source" ? "preview" : "source";
+      if (!mode || mode instanceof MouseEvent) mode = this.currentView === "source" ? "preview" : "source";
       if (arg instanceof MouseEvent) {
-        if (import_obsidian4.Keymap.isModEvent(arg)) {
-          this.app.workspace.duplicateLeaf(this.leaf).then(() => __async(this, null, function* () {
-            var _a, _b;
-            const viewState = (_a = this.app.workspace.activeLeaf) == null ? void 0 : _a.getViewState();
-            if (viewState) {
-              viewState.state = __spreadProps(__spreadValues({}, viewState.state), { mode });
-              yield (_b = this.app.workspace.activeLeaf) == null ? void 0 : _b.setViewState(viewState);
-            }
-          }));
+        if (import_obsidian6.Keymap.isModEvent(arg)) {
+          const newLeaf = this.app.workspace.getLeaf("tab");
+          const currentState = this.getState();
+          void newLeaf.setViewState({
+            type: VIEW_TYPE,
+            state: __spreadProps(__spreadValues({}, typeof currentState === "object" && currentState !== null ? currentState : {}), {
+              mode
+            })
+          });
         } else {
-          yield this.setState(__spreadProps(__spreadValues({}, this.getState()), { mode }), {});
+          const currentState = this.getState();
+          yield this.setState(__spreadProps(__spreadValues({}, typeof currentState === "object" && currentState !== null ? currentState : {}), {
+            mode
+          }), {});
         }
       }
     });
   }
+  // get the data for save
   getViewData() {
     return this.editor.state.sliceDoc();
   }
+  // load the data into the view
   setViewData(data, clear) {
-    return __async(this, null, function* () {
-      this.data = data;
-      if (clear) {
-        this.editor.setState(import_state.EditorState.create({
-          doc: data,
-          extensions: this.extensions
-        }));
-      } else {
-        this.editor.dispatch({
-          changes: {
-            from: 0,
-            to: this.editor.state.doc.length,
-            insert: data
-          }
-        });
-      }
-      if (this.currentView === "preview")
-        this.renderPreview();
-    });
+    this.data = data;
+    if (clear) {
+      this.editor.setState(import_state.EditorState.create({
+        doc: data,
+        extensions: this.extensions
+      }));
+    } else {
+      this.editor.dispatch({
+        changes: {
+          from: 0,
+          to: this.editor.state.doc.length,
+          insert: data
+        }
+      });
+    }
+    if (this.currentView === "preview") void this.renderPreview();
   }
+  // clear the editor, etc
   clear() {
     this.previewEl.empty();
     this.data = null;
   }
   getDisplayText() {
-    if (this.file)
-      return this.file.basename;
-    else
-      return "PlantUML (no file)";
+    if (this.file) return this.file.basename;
+    else return "PlantUML (no file)";
   }
   canAcceptExtension(extension) {
     return extension == "puml";
@@ -7544,8 +7750,7 @@ var PumlView = class extends import_obsidian4.TextFileView {
   }
   renderPreview() {
     return __async(this, null, function* () {
-      if (this.currentView !== "preview")
-        return;
+      if (this.currentView !== "preview") return;
       this.previewEl.empty();
       const loadingHeader = this.previewEl.createEl("h1", { text: "Loading" });
       const previewDiv = this.previewEl.createDiv();
@@ -7556,11 +7761,11 @@ var PumlView = class extends import_obsidian4.TextFileView {
 };
 
 // src/main.ts
-var import_localforage = __toModule(require_localforage());
+var import_localforage = __toESM(require_localforage());
 
 // src/embed.ts
-var import_obsidian5 = __toModule(require("obsidian"));
-var PumlEmbed = class extends import_obsidian5.Component {
+var import_obsidian7 = require("obsidian");
+var PumlEmbed = class extends import_obsidian7.Component {
   constructor(plugin, file, ctx) {
     super();
     this.plugin = plugin;
@@ -7576,7 +7781,7 @@ var PumlEmbed = class extends import_obsidian5.Component {
 };
 
 // src/main.ts
-var PlantumlPlugin = class extends import_obsidian6.Plugin {
+var PlantumlPlugin = class extends import_obsidian8.Plugin {
   constructor() {
     super(...arguments);
     this.hover = {
@@ -7585,7 +7790,7 @@ var PlantumlPlugin = class extends import_obsidian6.Plugin {
     };
   }
   getProcessor() {
-    if (import_obsidian6.Platform.isMobileApp) {
+    if (import_obsidian8.Platform.isMobileApp) {
       return this.serverProcessor;
     }
     if (this.settings.localJar.length > 0) {
@@ -7594,17 +7799,15 @@ var PlantumlPlugin = class extends import_obsidian6.Plugin {
     return this.serverProcessor;
   }
   onload() {
-    return __async(this, null, function* () {
-      console.log("loading plugin plantuml");
-      yield this.loadSettings();
+    void this.loadSettings().then(() => __async(this, null, function* () {
       this.addSettingTab(new PlantUMLSettingsTab(this));
       this.replacer = new Replacer(this);
       this.serverProcessor = new ServerProcessor(this);
-      if (import_obsidian6.Platform.isDesktopApp) {
+      if (import_obsidian8.Platform.isDesktopApp) {
         this.localProcessor = new LocalProcessors(this);
       }
       const processor = new DebouncedProcessors(this);
-      (0, import_obsidian6.addIcon)("document-" + VIEW_TYPE, LOGO_SVG);
+      (0, import_obsidian8.addIcon)("document-" + VIEW_TYPE, LOGO_SVG);
       this.registerView(VIEW_TYPE, (leaf) => {
         return new PumlView(leaf, this);
       });
@@ -7618,62 +7821,61 @@ var PlantumlPlugin = class extends import_obsidian6.Plugin {
       this.registerMarkdownCodeBlockProcessor("puml-svg", processor.svg);
       this.registerMarkdownCodeBlockProcessor("puml-ascii", processor.ascii);
       this.registerMarkdownCodeBlockProcessor("plantuml-map", processor.png);
-      this.app.embedRegistry.registerExtensions(["puml", "pu"], (ctx, file, subpath) => new PumlEmbed(this, file, ctx));
+      this.app.embedRegistry.registerExtensions(["puml", "pu"], (ctx, file, _subpath) => new PumlEmbed(this, file, ctx));
       this.cleanupLocalStorage();
       import_localforage.default.config({
         name: "puml",
         description: "PlantUML plugin"
       });
       yield this.cleanupCache();
-      this.observer = new MutationObserver((mutation) => __async(this, null, function* () {
-        if (mutation.length !== 1)
-          return;
-        if (mutation[0].addedNodes.length !== 1)
-          return;
-        if (this.hover.linkText === null)
-          return;
-        if (mutation[0].addedNodes[0].className !== "popover hover-popover file-embed is-loaded")
-          return;
-        const file = this.app.metadataCache.getFirstLinkpathDest(this.hover.linkText, this.hover.sourcePath);
-        if (!file)
-          return;
-        if (file.extension !== "puml" && file.extension !== "pu")
-          return;
-        const fileContent = yield this.app.vault.read(file);
-        const imgDiv = createDiv();
-        if (this.settings.defaultProcessor === "png") {
-          yield this.getProcessor().png(fileContent, imgDiv, null);
-        } else {
-          yield this.getProcessor().svg(fileContent, imgDiv, null);
-        }
-        const node = mutation[0].addedNodes[0];
-        node.empty();
-        const div = createDiv("", (element) => __async(this, null, function* () {
-          element.appendChild(imgDiv);
-          element.setAttribute("src", file.path);
-          element.onClickEvent((event) => {
-            event.stopImmediatePropagation();
-            const leaf = this.app.workspace.getLeaf(event.ctrlKey);
-            leaf.setViewState({
-              type: VIEW_TYPE,
-              state: { file: file.path }
-            });
-          });
-        }));
-        node.appendChild(div);
-      }));
-      this.registerEvent(this.app.workspace.on("hover-link", (event) => __async(this, null, function* () {
-        const linkText = event.linktext;
-        if (!linkText)
-          return;
-        const sourcePath = event.sourcePath;
+      this.observer = new MutationObserver((mutations) => {
+        void this._handleHoverMutation(mutations);
+      });
+      this.registerEvent(this.app.workspace.on("hover-link", (event) => {
+        const hoverEvent = event;
+        const linkText = hoverEvent.linktext;
+        if (!linkText) return;
+        const sourcePath = hoverEvent.sourcePath;
         if (!linkText.endsWith(".puml") && !linkText.endsWith(".pu")) {
           return;
         }
         this.hover.linkText = linkText;
         this.hover.sourcePath = sourcePath;
-      })));
-      this.observer.observe(document, { childList: true, subtree: true });
+      }));
+      this.observer.observe(activeDocument, { childList: true, subtree: true });
+    }));
+  }
+  _handleHoverMutation(mutations) {
+    return __async(this, null, function* () {
+      if (mutations.length !== 1) return;
+      if (mutations[0].addedNodes.length !== 1) return;
+      if (this.hover.linkText === null) return;
+      if (mutations[0].addedNodes[0].className !== "popover hover-popover file-embed is-loaded") return;
+      const file = this.app.metadataCache.getFirstLinkpathDest(this.hover.linkText, this.hover.sourcePath);
+      if (!file) return;
+      if (file.extension !== "puml" && file.extension !== "pu") return;
+      const fileContent = yield this.app.vault.read(file);
+      const imgDiv = createDiv();
+      if (this.settings.defaultProcessor === "png") {
+        yield this.getProcessor().png(fileContent, imgDiv, null);
+      } else {
+        yield this.getProcessor().svg(fileContent, imgDiv, null);
+      }
+      const node = mutations[0].addedNodes[0];
+      node.empty();
+      const div = createDiv("", (element) => {
+        element.appendChild(imgDiv);
+        element.setAttribute("src", file.path);
+        element.onClickEvent(((event) => {
+          event.stopImmediatePropagation();
+          const leaf = this.app.workspace.getLeaf(event.ctrlKey);
+          void leaf.setViewState({
+            type: VIEW_TYPE,
+            state: { file: file.path }
+          });
+        }));
+      });
+      node.appendChild(div);
     });
   }
   cleanupCache() {
@@ -7681,29 +7883,30 @@ var PlantumlPlugin = class extends import_obsidian6.Plugin {
       yield import_localforage.default.iterate((value, key) => {
         if (key.startsWith("ts-")) {
           const encoded = key.split("-")[1];
-          if (value < new Date().getTime() - this.settings.cache * 24 * 60 * 60 * 1e3) {
-            import_localforage.default.removeItem("png-" + encoded);
-            import_localforage.default.removeItem("svg-" + encoded);
-            import_localforage.default.removeItem("map-" + encoded);
-            import_localforage.default.removeItem("ascii-" + encoded);
+          if (value < (/* @__PURE__ */ new Date()).getTime() - this.settings.cache * 24 * 60 * 60 * 1e3) {
+            void import_localforage.default.removeItem("png-" + encoded);
+            void import_localforage.default.removeItem("svg-" + encoded);
+            void import_localforage.default.removeItem("map-" + encoded);
+            void import_localforage.default.removeItem("ascii-" + encoded);
           }
         }
       });
     });
   }
+  /*
+   * older versions used to store generated images in local storage when using local generation.
+   * To fix issues with the local storage quota we have to clean this up when upgrading from a version that supported this.
+   */
   cleanupLocalStorage() {
-    for (const key of Object.keys(localStorage)) {
+    for (const key of Object.keys(window.localStorage)) {
       if (key.endsWith("-map") || key.endsWith("-png") || key.endsWith("-svg") || key.endsWith("ascii")) {
-        localStorage.removeItem(key);
+        window.localStorage.removeItem(key);
       }
     }
   }
   onunload() {
-    return __async(this, null, function* () {
-      console.log("unloading plugin plantuml");
-      this.observer.disconnect();
-      this.app.embedRegistry.unregisterExtensions(["puml", "pu"]);
-    });
+    this.observer.disconnect();
+    this.app.embedRegistry.unregisterExtensions(["puml", "pu"]);
   }
   loadSettings() {
     return __async(this, null, function* () {
@@ -7721,12 +7924,13 @@ var PlantumlPlugin = class extends import_obsidian6.Plugin {
     });
   }
 };
-/*!
-    localForage -- Offline Storage, Improved
-    Version 1.10.0
-    https://localforage.github.io/localForage
-    (c) 2013-2017 Mozilla, Apache License 2.0
+/*! Bundled license information:
+
+localforage/dist/localforage.js:
+  (*!
+      localForage -- Offline Storage, Improved
+      Version 1.10.0
+      https://localforage.github.io/localForage
+      (c) 2013-2017 Mozilla, Apache License 2.0
+  *)
 */
-
-
-/* nosourcemap */
