@@ -257,6 +257,67 @@ const removeClaudePluginState = async (homeDir, pluginName, marketplaceName, cac
     return removed;
 };
 
+const removeClaudeHostPluginState = async (homeDir, pluginName, marketplaceName) => {
+    let removed = 0;
+    const knownFile = path.join(homeDir, '.claude', 'plugins', 'known_marketplaces.json');
+    const installedFile = path.join(homeDir, '.claude', 'plugins', 'installed_plugins.json');
+    const known = await readJsonFile(knownFile);
+    const installed = await readJsonFile(installedFile);
+    const pluginKey = `${pluginName}@${marketplaceName}`;
+
+    if (Object.prototype.hasOwnProperty.call(known, marketplaceName)) {
+        delete known[marketplaceName];
+        removed++;
+    }
+    if (installed.plugins && Object.prototype.hasOwnProperty.call(installed.plugins, pluginKey)) {
+        delete installed.plugins[pluginKey];
+        removed++;
+    }
+
+    if (Object.keys(known).length > 0 || removed > 0) {
+        await writeJsonFile(knownFile, known);
+    }
+    if (installed.version || installed.plugins || removed > 0) {
+        installed.version = installed.version || 2;
+        installed.plugins = installed.plugins && typeof installed.plugins === 'object' ? installed.plugins : {};
+        await writeJsonFile(installedFile, installed);
+    }
+    return removed;
+};
+
+const updateClaudeHostPluginState = async (homeDir, pluginName, marketplaceName, cacheDir, marketplaceDir) => {
+    const now = new Date().toISOString();
+    const knownFile = path.join(homeDir, '.claude', 'plugins', 'known_marketplaces.json');
+    const installedFile = path.join(homeDir, '.claude', 'plugins', 'installed_plugins.json');
+    const known = await readJsonFile(knownFile);
+    const installed = await readJsonFile(installedFile);
+    const pluginKey = `${pluginName}@${marketplaceName}`;
+
+    known[marketplaceName] = {
+        source: {
+            source: 'directory',
+            path: marketplaceDir
+        },
+        installLocation: marketplaceDir,
+        lastUpdated: now
+    };
+
+    installed.version = installed.version || 2;
+    installed.plugins = installed.plugins && typeof installed.plugins === 'object' ? installed.plugins : {};
+    installed.plugins[pluginKey] = [
+        {
+            scope: 'user',
+            installPath: cacheDir,
+            version: '1.0.0',
+            installedAt: now,
+            lastUpdated: now
+        }
+    ];
+
+    await writeJsonFile(knownFile, known);
+    await writeJsonFile(installedFile, installed);
+};
+
 const clearClaudeSimpleMode = (settings) => {
     if (!settings.env || typeof settings.env !== 'object') {
         return [];
@@ -452,6 +513,7 @@ const installClaudePlugin = async (platform, homeDir) => {
         }
     };
     await writeJsonFile(settingsFile, settings);
+    await updateClaudeHostPluginState(homeDir, COMMAND_NAME, MARKETPLACE_NAME, targetDir, marketplaceDir);
 
     if (homeDir === os.homedir()) {
         runOptionalCommand('claude', ['plugin', 'uninstall', `${LEGACY_COMMAND_NAME}@${LEGACY_MARKETPLACE_NAME}`], { ignoreFailure: true });
@@ -487,6 +549,8 @@ const uninstallClaudePlugin = async (platform, homeDir) => {
 
     removed += await removeClaudePluginState(homeDir, COMMAND_NAME, MARKETPLACE_NAME, targetDir, marketplaceDir);
     removed += await removeClaudePluginState(homeDir, LEGACY_COMMAND_NAME, LEGACY_MARKETPLACE_NAME, legacyTargetDir, legacyMarketplaceDir);
+    removed += await removeClaudeHostPluginState(homeDir, COMMAND_NAME, MARKETPLACE_NAME);
+    removed += await removeClaudeHostPluginState(homeDir, LEGACY_COMMAND_NAME, LEGACY_MARKETPLACE_NAME);
 
     return {
         id: platform.id,

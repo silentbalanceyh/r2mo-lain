@@ -690,6 +690,42 @@ const testAiCmdReinstallRefreshesPlatforms = async () => {
     });
 };
 
+const testAiCmdClaudeInstallWritesHostPluginState = async () => {
+    const aiCmd = require('./utils/mxt-ai-cmd');
+
+    await _withTempDir(async (homeDir) => {
+        await aiCmd.installPlatforms(['claude'], { homeDir });
+
+        const known = await _readJson(homeDir, path.join('.claude', 'plugins', 'known_marketplaces.json'));
+        const installed = await _readJson(homeDir, path.join('.claude', 'plugins', 'installed_plugins.json'));
+
+        assert.strictEqual(known['mxt-skills'].source.source, 'directory');
+        assert.strictEqual(known['mxt-skills'].source.path, path.join(homeDir, '.claude', 'plugins', 'marketplaces', 'mxt-skills'));
+        assert.strictEqual(known['mxt-skills'].installLocation, path.join(homeDir, '.claude', 'plugins', 'marketplaces', 'mxt-skills'));
+        assert.strictEqual(installed.version, 2);
+        assert.strictEqual(installed.plugins['mxt@mxt-skills'][0].scope, 'user');
+        assert.strictEqual(installed.plugins['mxt@mxt-skills'][0].installPath, path.join(homeDir, '.claude', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0'));
+        assert.strictEqual(installed.plugins['mxt@mxt-skills'][0].version, '1.0.0');
+    });
+};
+
+const testDebugCommandsRequireGoonDebugReport = async () => {
+    const files = [
+        path.join('agent', 'commands', 'claude', 'mxt', 'commands', 'debug.md'),
+        path.join('agent', 'commands', 'opencode', 'mxt', 'commands', 'debug.md'),
+        path.join('agent', 'commands', 'codex', 'mxt', 'commands', 'debug.md'),
+        path.join('agent', 'commands', 'codex', 'mxt', 'skills', 'mxt-debug', 'SKILL.md')
+    ];
+
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /DEBUG Report/);
+        assert.match(content, /GOON_PATH/);
+        assert.match(content, /goon-\$编号\.md|goon-<编号>\.md/);
+        assert.match(content, /整改项/);
+    }
+};
+
 const main = async () => {
     await testDefaultThreadFallsBackTo20();
     await testThreadOverridesDefault();
@@ -702,6 +738,8 @@ const main = async () => {
     await testAiCmdInstallsSelectedPlatformsFromAgentCommands();
     await testAiCmdUninstallsSelectedPlatforms();
     await testAiCmdReinstallRefreshesPlatforms();
+    await testAiCmdClaudeInstallWritesHostPluginState();
+    await testDebugCommandsRequireGoonDebugReport();
     console.log('task tests passed');
 };
 

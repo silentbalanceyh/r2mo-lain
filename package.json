@@ -8,7 +8,7 @@
         "lain": "src/lain.js"
     },
     "scripts": {
-        "test": "src/index.test.js",
+        "test": "node src/index.test.js",
         "validate:commands": "node scripts/validate-commands.js"
     },
     "repository": {
