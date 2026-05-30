@@ -257,6 +257,21 @@ const removeClaudePluginState = async (homeDir, pluginName, marketplaceName, cac
     return removed;
 };
 
+const clearClaudeSimpleMode = (settings) => {
+    if (!settings.env || typeof settings.env !== 'object') {
+        return [];
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(settings.env, 'CLAUDE_CODE_SIMPLE')) {
+        return [];
+    }
+
+    delete settings.env.CLAUDE_CODE_SIMPLE;
+    return [
+        '已移除 ~/.claude/settings.json env.CLAUDE_CODE_SIMPLE；该模式会跳过 Claude Code 插件同步，导致 /mxt: 命令不显示。'
+    ];
+};
+
 const removeCodexPromptFiles = async (promptsDir, commandName) => {
     let removed = 0;
     removed += await removeExistingPath(path.join(promptsDir, commandName));
@@ -398,6 +413,7 @@ const installClaudePlugin = async (platform, homeDir) => {
     const marketplaceFile = path.join(marketplaceMetaDir, 'marketplace.json');
     const cacheMarketplaceFile = path.join(targetDir, '.claude-plugin', 'marketplace.json');
     const marketplace = {
+        '$schema': 'https://anthropic.com/claude-code/marketplace.schema.json',
         name: 'mxt-skills',
         description: 'Local R2MO MXT slash commands.',
         owner: {
@@ -425,6 +441,7 @@ const installClaudePlugin = async (platform, homeDir) => {
 
     const settingsFile = path.join(homeDir, '.claude', 'settings.json');
     const settings = await readJsonFile(settingsFile);
+    const warnings = clearClaudeSimpleMode(settings);
     settings.enabledPlugins = settings.enabledPlugins && typeof settings.enabledPlugins === 'object' ? settings.enabledPlugins : {};
     settings.enabledPlugins['mxt@mxt-skills'] = true;
     settings.extraKnownMarketplaces = settings.extraKnownMarketplaces && typeof settings.extraKnownMarketplaces === 'object' ? settings.extraKnownMarketplaces : {};
@@ -449,7 +466,8 @@ const installClaudePlugin = async (platform, homeDir) => {
         name: platform.name,
         sourceDir: platform.sourceDir,
         targetDir,
-        copied: cacheCopied + marketplaceCopied
+        copied: cacheCopied + marketplaceCopied,
+        warnings
     };
 };
 

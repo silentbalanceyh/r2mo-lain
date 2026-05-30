@@ -492,6 +492,10 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
         }), 'utf8');
         await fs.mkdir(path.join(homeDir, '.claude'), { recursive: true });
         await fs.writeFile(path.join(homeDir, '.claude', 'settings.json'), JSON.stringify({
+            env: {
+                CLAUDE_CODE_SIMPLE: '1',
+                KEEP_ME: 'ok'
+            },
             enabledPlugins: {
                 [`${legacy}@${legacyMarketplace}`]: true
             },
@@ -530,9 +534,13 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
         const claudePlugin = await _readJson(homeDir, path.join('.claude', 'plugins', 'marketplaces', 'mxt-skills', '.claude-plugin', 'plugin.json'));
         assert.strictEqual(Object.prototype.hasOwnProperty.call(claudePlugin, 'commands'), false);
         const claudeSettings = await _readJson(homeDir, path.join('.claude', 'settings.json'));
+        assert.strictEqual(Object.prototype.hasOwnProperty.call(claudeSettings.env || {}, 'CLAUDE_CODE_SIMPLE'), false);
+        assert.strictEqual(claudeSettings.env.KEEP_ME, 'ok');
         assert.strictEqual(claudeSettings.enabledPlugins['mxt@mxt-skills'], true);
         assert.strictEqual(claudeSettings.extraKnownMarketplaces['mxt-skills'].source.source, 'directory');
         assert.strictEqual(claudeSettings.extraKnownMarketplaces['mxt-skills'].source.path, path.join(homeDir, '.claude', 'plugins', 'marketplaces', 'mxt-skills'));
+        assert.ok(Array.isArray(installed[0].warnings));
+        assert.match(installed[0].warnings[0], /CLAUDE_CODE_SIMPLE/);
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', '.orphaned_at')), false);
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'cache', legacyMarketplace, legacy, '1.0.0')), false);
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'marketplaces', legacyMarketplace)), false);

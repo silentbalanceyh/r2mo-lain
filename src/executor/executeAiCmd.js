@@ -69,11 +69,12 @@ module.exports = async (options) => {
                 Ec.info(`已卸载 ${result.name}: 清理 ${result.removed} 项 -> ${result.targetDir}`);
             } else {
                 Ec.info(`已安装 ${result.name}: ${result.copied} 个文件 -> ${result.targetDir}`);
+                (result.warnings || []).forEach((warning) => Ec.warn(warning));
             }
         });
         Ec.info(isUninstall
             ? 'AI 命令卸载完成。'
-            : 'AI 命令安装完成，Claude Code / OpenCode 使用 /mxt:plan、/mxt:run、/mxt:end、/mxt:goon、/mxt:sync、/mxt:start，Codex 使用 $mxt-plan、$mxt-run、$mxt-end、$mxt-goon、$mxt-sync、$mxt-start。');
+            : 'AI 命令安装完成，Claude Code / OpenCode 使用 /mxt:plan、/mxt:run、/mxt:end、/mxt:goon、/mxt:sync、/mxt:start，Codex 使用 $mxt-plan、$mxt-run、$mxt-end、$mxt-goon、$mxt-sync、$mxt-start。Claude Code 已打开的会话需退出后重新进入。');
         process.exit(0);
     } catch (e) {
         Ec.error(e.message);
