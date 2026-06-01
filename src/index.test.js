@@ -531,8 +531,23 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'marketplaces', 'mxt-skills', '.claude-plugin', 'plugin.json')), true);
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'marketplaces', 'mxt-skills', 'commands', 'plan.md')), true);
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'marketplaces', 'mxt-skills', 'commands', 'run.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:plan.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:run.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:end.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:goon.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:debug.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:sync.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:start.md')), true);
         const claudePlugin = await _readJson(homeDir, path.join('.claude', 'plugins', 'marketplaces', 'mxt-skills', '.claude-plugin', 'plugin.json'));
-        assert.strictEqual(Object.prototype.hasOwnProperty.call(claudePlugin, 'commands'), false);
+        assert.deepStrictEqual(claudePlugin.commands, [
+            './commands/plan.md',
+            './commands/run.md',
+            './commands/end.md',
+            './commands/goon.md',
+            './commands/debug.md',
+            './commands/sync.md',
+            './commands/start.md'
+        ]);
         const claudeSettings = await _readJson(homeDir, path.join('.claude', 'settings.json'));
         assert.strictEqual(Object.prototype.hasOwnProperty.call(claudeSettings.env || {}, 'CLAUDE_CODE_SIMPLE'), false);
         assert.strictEqual(claudeSettings.env.KEEP_ME, 'ok');
@@ -641,6 +656,8 @@ const testAiCmdUninstallsSelectedPlatforms = async () => {
         assert.deepStrictEqual(uninstalled.map(item => item.id), ['claude', 'codex', 'opencode']);
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0')), false);
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'marketplaces', 'mxt-skills')), false);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:plan.md')), false);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:run.md')), false);
         const claudeSettings = await _readJson(homeDir, path.join('.claude', 'settings.json'));
         assert.strictEqual(Object.prototype.hasOwnProperty.call(claudeSettings.enabledPlugins || {}, 'mxt@mxt-skills'), false);
         assert.strictEqual(Object.prototype.hasOwnProperty.call(claudeSettings.extraKnownMarketplaces || {}, 'mxt-skills'), false);
@@ -677,6 +694,7 @@ const testAiCmdReinstallRefreshesPlatforms = async () => {
 
         assert.deepStrictEqual(reinstalled.map(item => item.id), ['claude', 'codex', 'opencode']);
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', 'commands', 'run.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:run.md')), true);
         assert.strictEqual(await _exists(homeDir, path.join('.codex', 'prompts', 'mxt-plan.md')), true);
         assert.strictEqual(await _exists(homeDir, path.join('.codex', 'prompts', 'mxt-run.md')), true);
         assert.strictEqual(await _exists(homeDir, path.join('.codex', 'marketplaces', 'mxt-skills', 'plugins', 'mxt', 'skills', 'mxt-plan', 'SKILL.md')), true);

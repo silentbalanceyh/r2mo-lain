@@ -9,10 +9,11 @@ const COMMAND_NAME = 'mxt';
 const MARKETPLACE_NAME = `${COMMAND_NAME}-skills`;
 const LEGACY_COMMAND_NAME = 'mo' + 'mo';
 const LEGACY_MARKETPLACE_NAME = `${LEGACY_COMMAND_NAME}-skills`;
-const MXT_COMMANDS = ['mxt:plan', 'mxt:run', 'mxt:end', 'mxt:goon', 'mxt:debug', 'mxt:sync', 'mxt:start'];
+const COMMAND_BASENAMES = ['plan', 'run', 'end', 'goon', 'debug', 'sync', 'start'];
+const MXT_COMMANDS = COMMAND_BASENAMES.map((name) => `${COMMAND_NAME}:${name}`);
 const LEGACY_COMMANDS = ['plan', 'run', 'end', 'goon', 'debug', 'sync', 'start']
     .map((name) => `${LEGACY_COMMAND_NAME}:${name}`);
-const CODEX_COMMANDS = ['plan', 'run', 'end', 'goon', 'debug', 'sync', 'start'];
+const CODEX_COMMANDS = COMMAND_BASENAMES;
 
 // OpenCode 配置路径：Windows 使用 %APPDATA%，其他平台使用 ~/.config/
 // 接受 homeDir 参数以支持测试/临时 home 场景
@@ -31,7 +32,7 @@ const PLATFORMS = [
     {
         id: 'claude',
         name: 'Claude Code',
-        description: '~/.claude/plugins/marketplaces/mxt-skills and cache/mxt-skills/mxt/1.0.0',
+        description: '~/.claude/commands/mxt:*.md plus ~/.claude/plugins/marketplaces/mxt-skills and cache/mxt-skills/mxt/1.0.0',
         sourceDir: path.join(SOURCE_ROOT, 'claude', 'mxt'),
         targetDir: (homeDir) => path.join(homeDir, '.claude', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0'),
         installer: 'claudeCache'
@@ -285,6 +286,42 @@ const removeClaudeHostPluginState = async (homeDir, pluginName, marketplaceName)
     return removed;
 };
 
+const installClaudeUserCommands = async (sourceCommandDir, homeDir) => {
+    const targetDir = path.join(homeDir, '.claude', 'commands');
+    const files = await fs.readdir(sourceCommandDir, { withFileTypes: true });
+    await fs.mkdir(targetDir, { recursive: true });
+    let copied = 0;
+
+    for (const file of files) {
+        if (!file.isFile() || !file.name.endsWith('.md')) continue;
+        const commandBase = file.name.replace(/\.md$/, '');
+        await fs.copyFile(
+            path.join(sourceCommandDir, file.name),
+            path.join(targetDir, `${COMMAND_NAME}:${commandBase}.md`)
+        );
+        copied++;
+    }
+
+    return {
+        targetDir,
+        copied
+    };
+};
+
+const uninstallClaudeUserCommands = async (homeDir) => {
+    let removed = 0;
+    for (const commandName of MXT_COMMANDS) {
+        removed += await removeExistingPath(path.join(homeDir, '.claude', 'commands', `${commandName}.md`));
+    }
+    for (const commandName of LEGACY_COMMANDS) {
+        removed += await removeExistingPath(path.join(homeDir, '.claude', 'commands', `${commandName}.md`));
+    }
+    removed += await removeExistingPath(path.join(homeDir, '.claude', 'commands', LEGACY_COMMAND_NAME));
+    return removed;
+};
+
+const commandManifestEntries = () => COMMAND_BASENAMES.map((name) => `./commands/${name}.md`);
+
 const updateClaudeHostPluginState = async (homeDir, pluginName, marketplaceName, cacheDir, marketplaceDir) => {
     const now = new Date().toISOString();
     const knownFile = path.join(homeDir, '.claude', 'plugins', 'known_marketplaces.json');
@@ -486,6 +523,7 @@ const installClaudePlugin = async (platform, homeDir) => {
                 description: 'R2MO task workflow slash commands: /mxt:plan, /mxt:run, /mxt:end, /mxt:goon, /mxt:debug, /mxt:sync, /mxt:start.',
                 version: '1.0.0',
                 source: './',
+                commands: commandManifestEntries(),
                 author: {
                     name: 'R2MO'
                 }
@@ -495,6 +533,7 @@ const installClaudePlugin = async (platform, homeDir) => {
 
     const cacheCopied = await copyDir(platform.sourceDir, targetDir);
     const marketplaceCopied = await copyDir(platform.sourceDir, marketplaceDir);
+    const userCommands = await installClaudeUserCommands(path.join(platform.sourceDir, 'commands'), homeDir);
     await fs.mkdir(marketplaceMetaDir, { recursive: true });
     await fs.writeFile(marketplaceFile, JSON.stringify(marketplace, null, 2) + '\n', 'utf8');
     await fs.writeFile(cacheMarketplaceFile, JSON.stringify(marketplace, null, 2) + '\n', 'utf8');
@@ -527,8 +566,8 @@ const installClaudePlugin = async (platform, homeDir) => {
         id: platform.id,
         name: platform.name,
         sourceDir: platform.sourceDir,
-        targetDir,
-        copied: cacheCopied + marketplaceCopied,
+        targetDir: `${userCommands.targetDir}; ${targetDir}`,
+        copied: cacheCopied + marketplaceCopied + userCommands.copied,
         warnings
     };
 };
@@ -551,6 +590,7 @@ const uninstallClaudePlugin = async (platform, homeDir) => {
     removed += await removeClaudePluginState(homeDir, LEGACY_COMMAND_NAME, LEGACY_MARKETPLACE_NAME, legacyTargetDir, legacyMarketplaceDir);
     removed += await removeClaudeHostPluginState(homeDir, COMMAND_NAME, MARKETPLACE_NAME);
     removed += await removeClaudeHostPluginState(homeDir, LEGACY_COMMAND_NAME, LEGACY_MARKETPLACE_NAME);
+    removed += await uninstallClaudeUserCommands(homeDir);
 
     return {
         id: platform.id,

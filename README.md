@@ -227,11 +227,12 @@ mxt ai-cmd --uninstall
 
 **Claude Code**
 
+- 写入 `~/.claude/commands/mxt:*.md`，按 Claude Code 官方 user commands 目录暴露 `/mxt:*`
 - 写入 `~/.claude/plugins/marketplaces/mxt-skills`
 - 写入 `~/.claude/plugins/cache/mxt-skills/mxt/1.0.0`
 - 更新 `~/.claude/settings.json`（启用插件、注册 marketplace）
 - 若 `claude` CLI 可用：自动执行 `plugin marketplace add/update` 和 `plugin install`
-- 验证：`claude plugin list` 或 `claude plugin details mxt@mxt-skills`
+- 验证：`claude -p "/mxt:plan 001"` 不应返回 `Unknown command: /mxt:plan`；也可检查 `~/.claude/commands/mxt:plan.md`
 
 **Codex**
 

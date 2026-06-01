@@ -8,6 +8,15 @@
   "homepage": "https://gitee.com/silentbalanceyh/r2mo-lain",
   "repository": "https://gitee.com/silentbalanceyh/r2mo-lain.git",
   "license": "ISC",
+  "commands": [
+    "./commands/plan.md",
+    "./commands/run.md",
+    "./commands/end.md",
+    "./commands/goon.md",
+    "./commands/debug.md",
+    "./commands/sync.md",
+    "./commands/start.md"
+  ],
   "keywords": [
     "mxt",
     "r2mo",
