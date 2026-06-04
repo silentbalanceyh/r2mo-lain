@@ -518,5 +518,3 @@ mustache/mustache.mjs:
    * http://github.com/janl/mustache.js
    *)
 */
-
-/* nosourcemap */
