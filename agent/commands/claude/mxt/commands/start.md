@@ -19,7 +19,16 @@ The user invoked this command with: $ARGUMENTS
 ## Preflight
 
 1. 先读取并遵守当前仓库的 `AGENTS.md`、`CLAUDE.md`、`CODEX.md`（若存在），以及它们引用的所有规则文件；扫描项目中所有可检索的 `.mdc` 规则文件（`.claude/rules/`、`.codex/rules/`、`.cursor/rules/`、`.opencode/` 及其他任意路径下的 `.mdc`），以及 `~/.codex/rules/r2mo-task-workflow.md`（若存在）。
-2. 从 mdc 规则中提取启动相关命令（build/start/stop 脚本路径、端口配置、健康检查端点等）。
+2. **提取项目 mdc 启停规则（核心强化）**：在所有 mdc 文件中搜索启停相关规则，必须提取以下信息并严格执行：
+   - 启动命令：`dev-start`、`npm run dev`、`mvn spring-boot:run` 等脚本路径与参数
+   - 停止命令：`dev-stop`、`kill` 等脚本路径与参数
+   - 编译命令：`dev-build`、`mvn compile`、`npm run build` 等脚本路径与参数
+   - 端口配置：后端端口、前端端口、健康检查端口
+   - 健康检查端点：`/health`、`/actuator/health`、`/api/ping` 等 URL
+   - 依赖顺序：是否需要先启某个服务再启另一个（如先启后端再启前端）
+   - 环境变量：启动前是否需要设置特定环境变量
+   - **若项目 mdc 中定义了启停规则，必须以 mdc 规则为准，不使用默认推断值**
+   - **若项目 mdc 中未定义启停规则，才使用下文 Plan 中的默认推断逻辑**
 
 ## Plan
 

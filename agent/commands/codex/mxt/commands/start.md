@@ -14,11 +14,17 @@ The user invoked this command with: $ARGUMENTS
 
 本命令无参数。直接执行环境拉起流程。
 
-**硬规则**：必须参考 mdc 规则 | 后端优先→前端 | 已启动→先停止再编译再启动 | 启动后必做网络验证 | 确保 starter 稳定性
+**硬规则**：必须参考项目 mdc 启停规则 | mdc 中的启停命令优先于默认推断 | 后端优先→前端 | 已启动→先停止再编译再启动 | 启动后必做网络验证 | 确保 starter 稳定性
 
-## Preflight
+## Preflight — 项目 mdc 启停规则扫描
 
 1. 先读取并遵守当前仓库的 `AGENTS.md`、`CLAUDE.md`、`CODEX.md`（若存在），以及它们引用的所有规则文件；扫描项目中所有可检索的 `.mdc` 规则文件（`.claude/rules/`、`.codex/rules/`、`.cursor/rules/`、`.opencode/` 及其他任意路径下的 `.mdc`），以及 `~/.codex/rules/r2mo-task-workflow.md`（若存在）。
+2. **从 mdc 中提取启停规则**（此步骤为强制，不可跳过）：
+   - 搜索 mdc 文件中包含 `dev-start`、`dev-build`、`dev-stop`、`npm run`、`mvn`、`spring-boot`、`vertx`、`start`、`stop`、`build`、`health`、`port` 等关键词的段落。
+   - 提取并记录：启动命令、停止命令、构建命令、端口配置、健康检查端点、启动顺序约束、环境变量要求。
+   - 若 mdc 中定义了启停命令 → **必须按 mdc 执行**，不使用默认推断。
+   - 若 mdc 中无启停相关规则 → 使用默认推断逻辑（`./dev-build.sh` / `./dev-start.sh` / `./dev-stop.sh`）。
+3. 输出提取到的启停规则摘要，供后续步骤使用。
 
 ## Plan — 后端优先启动
 

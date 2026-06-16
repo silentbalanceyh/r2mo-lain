@@ -11,11 +11,12 @@ Start the current project dev environment: detect backend and frontend, start ba
 
 This command takes no arguments. Execute the environment startup flow directly.
 
-**Hard rules**: Must reference mdc rules | Backend first, then frontend | Health check required after startup | If already running → stop first, then rebuild, then start
+**Hard rules**: Must reference project mdc startup/shutdown rules before executing | Backend first, then frontend | Health check required after startup | If already running → stop first, then rebuild, then start
 
 ## Preflight
 
 1. Load and follow repository instructions: `AGENTS.md`, `CLAUDE.md`, `CODEX.md` when present, and `~/.codex/rules/r2mo-task-workflow.md` when present.
+2. **Scan project mdc rules for startup/shutdown commands**: Search all `.mdc` files (`.claude/rules/`, `.codex/rules/`, `.cursor/rules/`, `.opencode/`) for sections containing `dev-start`, `dev-stop`, `dev-build`, `npm run`, `mvn`, `spring-boot:run`, or any startup/shutdown related directives. These mdc-defined rules **override** default heuristics — if mdc specifies exact commands, use them.
 
 ## Plan
 

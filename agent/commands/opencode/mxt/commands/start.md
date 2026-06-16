@@ -13,12 +13,16 @@ The user invoked this command with: $ARGUMENTS
 
 本命令无参数。直接执行环境拉起流程。
 
-**硬规则**：必须参考 mdc 规则 | 后端先于前端 | 启动后必须网络验证 | 已启动→先停止再编译再启动
+**硬规则**：必须扫描项目 mdc 启停规则并优先执行 | 后端先于前端 | 启动后必须网络验证 | 已启动→先停止再编译再启动
 
 ## Workflow
 
 1. 先读取并遵守当前仓库的 `AGENTS.md`、`CLAUDE.md`、`CODEX.md`（若存在），以及它们引用的所有规则文件；扫描项目中所有可检索的 `.mdc` 规则文件（`.claude/rules/`、`.codex/rules/`、`.cursor/rules/`、`.opencode/` 及其他任意路径下的 `.mdc`），以及 `~/.codex/rules/r2mo-task-workflow.md`（若存在）。
-2. **后端检测与启动**：
+2. **扫描项目 mdc 启停规则（核心步骤）**：
+   - 在项目所有 `.mdc` 文件中检索与启停环境直接相关的规则（关键字：`dev-start`、`dev-stop`、`dev-build`、`start`、`stop`、`launch`、`serve`、`run dev`、`npm run`、`mvn`、`spring-boot:run`、`vertx`、`hap`、`hvigor` 等）。
+   - 若找到启停相关 mdc → **必须优先按 mdc 中定义的命令和顺序执行**，不使用通用推断。
+   - 若未找到启停相关 mdc → 使用下方通用流程推断启动命令。
+3. **后端检测与启动**：
    - 从 mdc 规则中检索后端启动命令（如 `./dev-build.sh`、`./dev-start.sh`、`mvn spring-boot:run` 等）。
    - 基于启动命令特征检测后端进程是否已启动：
      - 若已启动，先执行停止操作（`./dev-stop.sh` 或对应停止命令）。
