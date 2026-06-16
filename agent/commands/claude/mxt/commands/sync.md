@@ -72,6 +72,14 @@ The user invoked this command with: $ARGUMENTS
 9. `git fetch --all && git pull origin <current-branch>` — 拉取合并
 10. `git checkout <target> && git merge <current-branch> && git push origin <target>` — 合并推送
 
+## Self-Check（闭合防漂）
+
+完成后自检，确保执行结果与预期一致：
+1. `git branch --show-current` — 确认已切回原始工作分支
+2. `git status --porcelain` — 确认工作区干净（无残留未提交文件）
+3. `git log --oneline -3` — 确认最新提交包含本次 sync 提交
+4. 若自检发现异常（未切回原分支 / 工作区脏 / 提交缺失）→ 明确报告异常项，不静默忽略
+
 ## Verification
 
 完成后报告：

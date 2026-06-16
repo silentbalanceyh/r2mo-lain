@@ -1,82 +1,92 @@
 ---
 name: mxt-start
-description: Use when the user asks Codex to start the dev environment with "$mxt-start"; detects backend/frontend, starts both, verifies via health check.
+description: Use when the user asks Codex to start the dev environment with "$mxt-start"; scans project mdc rules for startup commands, starts backend then frontend, verifies via network health check.
 ---
 
 # MXT Start
 
-Start the current project dev environment: detect backend and frontend, start backend first then frontend, verify via network health check.
+Start the current project dev environment: scan project mdc for startup rules, start backend first then frontend, verify via network health check.
 
 ## Arguments
 
 This command takes no arguments. Execute the environment startup flow directly.
 
-**Hard rules**: Must reference project mdc startup/shutdown rules before executing | Backend first, then frontend | Health check required after startup | If already running → stop first, then rebuild, then start
+**Hard rules**: Scan project mdc for startup rules first — mdc rules override defaults | Backend first, then frontend | Stop→Build→Start is idempotent | Health check required after startup | Self-check: verify executed commands match mdc rules
 
-## Preflight
+## MDC Scan Protocol
 
-1. Load and follow repository instructions: `AGENTS.md`, `CLAUDE.md`, `CODEX.md` when present, and `~/.codex/rules/r2mo-task-workflow.md` when present.
-2. **Scan project mdc rules for startup/shutdown commands**: Search all `.mdc` files (`.claude/rules/`, `.codex/rules/`, `.cursor/rules/`, `.opencode/`) for sections containing `dev-start`, `dev-stop`, `dev-build`, `npm run`, `mvn`, `spring-boot:run`, or any startup/shutdown related directives. These mdc-defined rules **override** default heuristics — if mdc specifies exact commands, use them.
+**Mandatory first step** — scan all project `.mdc` files for startup/shutdown rules before any action:
 
-## Plan
+1. **Scan paths** (in order): `.claude/rules/*.mdc` → `.codex/rules/*.mdc` → `.cursor/rules/*.mdc` → `.opencode/*.mdc` → project root `*.mdc` → `AGENTS.md`/`CLAUDE.md`/`CODEX.md` embedded rules
+2. **Search keywords**: `dev-start`, `dev-stop`, `dev-build`, `start`, `stop`, `launch`, `serve`, `run dev`, `npm run`, `mvn`, `spring-boot:run`, `vertx`, `hap`, `hvigor`, `health`, `port`, `environment`
+3. **Extract**: startup command, stop command, build command, port config, health endpoint, dependency order, environment variables
+4. **Rule**: If mdc defines startup commands → **must use mdc commands, not defaults**. If mdc has no startup rules → use default heuristics below.
+5. **Output**: Print extracted startup rule summary before executing (so user can verify correctness).
 
-### Step 1 — Detect Project Structure
+## Idempotent Startup Guard
 
-Scan the project root for backend and frontend directories:
+Every startup follows the same idempotent sequence — no half-states:
 
-- **Backend indicators**: `pom.xml`, `build.gradle`, `package.json` with `dev-build.sh`/`dev-start.sh`, Spring Boot main class, Vert.x main class
-- **Frontend indicators**: `package.json` in a sub-directory (e.g. `app-center/`, `web/`, `frontend/`) with `dev`/`start`/`serve` scripts
-- **Multi-app workspace**: if multiple `app-*/` directories each have their own `package.json` and scripts (HarmonyOS pattern), detect the entry app from mdc rules
+```
+stop (if running) → build → start → health check
+```
 
-### Step 2 — Detect Running State
+- If any step fails mid-sequence → report which step failed and the current state. Do NOT silently continue.
+- If `stop` fails (process not found) → proceed to `build` (not an error).
+- If `build` fails → **do not start**, report build error.
+- If `start` fails → **do not health-check**, report start error.
+- If health check fails → report error, suggest manual investigation.
 
-For each component (backend → frontend order):
+## Workflow
 
-1. Check if the process is already running based on mdc rule command signatures (e.g. `pgrep -f "dev-start.sh"`)
-2. If running → execute stop command (`./dev-stop.sh` or equivalent)
-3. If not running → proceed
+### Phase 1 — Backend
 
-### Step 3 — Build
+1. Check if backend is running (based on mdc command signatures or port detection).
+2. If running → stop first (`./dev-stop.sh` or mdc-defined stop command).
+3. Build backend (`./dev-build.sh` or mdc-defined build command).
+4. Start backend (`./dev-start.sh` or mdc-defined start command).
+5. Health check: poll mdc-defined or default health endpoint (`curl -sf http://localhost:<port>/health`). Retry up to 60s (3s intervals).
+   - If backend health check fails → **report error, do NOT start frontend**.
 
-1. Build backend first: `./dev-build.sh` or equivalent from mdc rules
-2. Build frontend if detected: `npm run build` or equivalent
-3. For multi-app workspaces: build the entry app (e.g. `app-center`) which covers dependencies
+### Phase 2 — Frontend
 
-### Step 4 — Start
+1. Detect frontend directory: `app-center/`, `frontend/`, `web/`, `client/`, or mdc-defined path.
+2. If running → stop first.
+3. Install dependencies (only if `node_modules` missing or lockfile changed).
+4. Start frontend (`npm run dev` or mdc-defined command).
+5. Health check: `curl -sf http://localhost:<port>`. Retry up to 30s.
 
-Start in dependency order — backend first, then frontend:
+### Phase 3 — Self-Check (Drift Prevention)
 
-1. Start backend: `./dev-start.sh` or equivalent
-2. Wait for backend to become ready (poll health endpoint or check process)
-3. Start frontend: `npm run dev` or equivalent (if detected)
-4. For multi-app workspaces: start the entry app only (others are loaded through it)
+Verify the commands actually executed match the mdc rules:
 
-### Step 5 — Health Check
-
-Verify each started component is actually reachable:
-
-1. **Backend**: `curl -sf http://localhost:<port>/health` or the health endpoint from mdc rules. Retry up to 30s (3s intervals).
-2. **Frontend**: `curl -sf http://localhost:<port>` or the dev server URL from mdc rules. Retry up to 20s (2s intervals).
-3. Report per-component status: ✅ reachable or ❌ unreachable with last error.
+1. Compare executed commands against mdc-defined commands.
+2. If any command was substituted (mdc not found, used default) → **warn the user**.
+3. If mdc rules exist but were not followed → **report as error**.
 
 ## Commands
 
-1. Read `.mdc` rules for `dev-start` / `dev-build` / `dev-stop` and port/URL configuration
-2. Detect backend/frontend structure: `ls -d */package.json pom.xml build.gradle` and scan mdc rules
+1. `find . -name "*.mdc" -exec grep -l "dev-start\|dev-stop\|dev-build\|start\|stop" {} +` — locate mdc startup rules
+2. `pgrep -f "<startup-keyword>"` — detect running processes
 3. `./dev-stop.sh` — stop (if running)
-4. `./dev-build.sh` — build backend
-5. `./dev-start.sh` — start backend
-6. `curl -sf http://localhost:<port>/health` — verify backend
-7. `npm run dev` (frontend dir) — start frontend (if detected)
-8. `curl -sf http://localhost:<port>` — verify frontend
+4. `./dev-build.sh` — build
+5. `./dev-start.sh` — start
+6. `curl -sf http://localhost:<port>/health` — backend health check
+7. `ls -d app-center frontend web client 2>/dev/null` — detect frontend
+8. `npm run dev` — start frontend
+9. `curl -sf http://localhost:<port>` — frontend health check
 
 ## Verification
 
-Report per component: startup command, build result, running status, and health check result (HTTP status or error).
+Report per component:
+- mdc rule source file and extracted commands
+- Executed commands vs mdc-defined commands (match/substituted)
+- Build result, running status, health check result
+- Any drift warnings (command substituted, mdc rule not followed)
 
 ## Summary
 
-Report the detected project structure (backend-only / full-stack / multi-app), per-component startup status, and health check outcomes.
+Report: mdc rule scan results, per-component startup status, health check outcomes, drift check result.
 
 ## Next Steps
 

@@ -6,7 +6,7 @@ allowed-tools: [Read, Glob, Grep, Bash, Edit, Write]
 
 # /mxt-start
 
-拉起当前项目开发环境：先启后端再启前端，启动后通过网络访问验证健康状态。
+拉起当前项目开发环境：后端优先启动，前端并行启动，启动后网络健康验证。
 
 ## Arguments
 
@@ -14,86 +14,97 @@ The user invoked this command with: $ARGUMENTS
 
 本命令无参数。直接执行环境拉起流程。
 
-**硬规则**：必须参考项目 mdc 启停规则 | mdc 中的启停命令优先于默认推断 | 后端优先→前端 | 已启动→先停止再编译再启动 | 启动后必做网络验证 | 确保 starter 稳定性
+**硬规则**：项目 mdc 启停规则优先于默认推断 | 后端优先→前端 | 已启动→先停止再编译再启动 | 启动后必做网络验证 | 幂等执行（中途失败不残留半启动状态）
 
-## Preflight — 项目 mdc 启停规则扫描
+## Preflight — MDC 启停规则扫描协议
 
-1. 先读取并遵守当前仓库的 `AGENTS.md`、`CLAUDE.md`、`CODEX.md`（若存在），以及它们引用的所有规则文件；扫描项目中所有可检索的 `.mdc` 规则文件（`.claude/rules/`、`.codex/rules/`、`.cursor/rules/`、`.opencode/` 及其他任意路径下的 `.mdc`），以及 `~/.codex/rules/r2mo-task-workflow.md`（若存在）。
-2. **从 mdc 中提取启停规则**（此步骤为强制，不可跳过）：
-   - 搜索 mdc 文件中包含 `dev-start`、`dev-build`、`dev-stop`、`npm run`、`mvn`、`spring-boot`、`vertx`、`start`、`stop`、`build`、`health`、`port` 等关键词的段落。
-   - 提取并记录：启动命令、停止命令、构建命令、端口配置、健康检查端点、启动顺序约束、环境变量要求。
-   - 若 mdc 中定义了启停命令 → **必须按 mdc 执行**，不使用默认推断。
-   - 若 mdc 中无启停相关规则 → 使用默认推断逻辑（`./dev-build.sh` / `./dev-start.sh` / `./dev-stop.sh`）。
-3. 输出提取到的启停规则摘要，供后续步骤使用。
+1. 读取并遵守 `AGENTS.md`、`CLAUDE.md`、`CODEX.md`（若存在）及引用的规则文件；读取 `~/.codex/rules/r2mo-task-workflow.md`（若存在）。
+2. **扫描项目 mdc 启停规则**（强制步骤，不可跳过）：
+   - 扫描路径：`.claude/rules/*.mdc`、`.codex/rules/*.mdc`、`.cursor/rules/*.mdc`、`.opencode/*.mdc` 及项目内任意 `.mdc` 文件。
+   - 搜索关键词：`dev-start`、`dev-stop`、`dev-build`、`start`、`stop`、`launch`、`serve`、`run dev`、`npm run`、`mvn`、`spring-boot`、`vertx`、`hap`、`hvigor`、`health`、`port`、`env`、`环境变量`。
+   - 提取信息：启动命令、停止命令、构建命令、端口配置、健康检查端点、依赖顺序、环境变量。
+   - **mdc 中定义了启停命令 → 必须按 mdc 执行，不使用默认推断。**
+   - **mdc 中无启停规则 → 使用下方默认推断逻辑。**
+3. 输出提取到的启停规则摘要。
 
-## Plan — 后端优先启动
+## Plan
 
-**第一步：检测项目结构**
+### Phase 1 — 后端：停止→编译→启动（幂等）
 
-从 mdc 规则和目录结构判断项目类型：
+1. **停止**：检测后端进程是否已运行（`pgrep -f "dev-start.sh"` 或 mdc 中提取的命令特征）：
+   - 若已运行 → 执行停止命令（`./dev-stop.sh` 或 mdc 中定义的停止命令）。
+   - 若停止失败 → **记录错误但不终止**，尝试继续编译（进程可能已僵死）。
+   - 若未运行 → 继续。
+2. **编译**：执行构建命令（`./dev-build.sh`、`mvn compile` 或 mdc 中定义的构建命令）。
+   - 若编译失败 → **终止流程，不启动后端**，报告编译错误。
+3. **启动**：执行启动命令（`./dev-start.sh`、`mvn spring-boot:run` 或 mdc 中定义的启动命令）。
+   - 后台启动，不阻塞终端。
+4. **后端就绪等待**：轮询健康检查端点（从 mdc 提取，默认 `http://localhost:<port>/health` 或 `http://localhost:<port>/actuator/health`），最多等待 60 秒（3 秒间隔）。
+   - 若后端未就绪 → **报告错误并终止，不继续前端启动**。
 
-| 目录特征 | 项目类型 | 启动策略 |
-|---------|---------|---------|
-| `app-center/` + `app-*/` | HarmonyOS 多应用 | 先启动中心应用后端，再启动前端 |
-| `pom.xml` + `src/main/` | Spring/Java 后端 | 仅后端 |
-| `package.json` + 无后端 | 纯前端 | 仅前端 |
-| 顶层 `pom.xml` + 子目录 `package.json` | 前后端分离 | 先启后端再启前端 |
-| `dev-build.sh` / `dev-start.sh` | 脚本驱动 | 按脚本逻辑 |
+### Phase 2 — 前端：停止→启动（幂等）
 
-**第二步：后端启动**
+1. 检测前端项目目录：
+   - HarmonyOS 多应用结构（`app-center/` + `app-*/`）→ 默认启动 `app-center`。
+   - 标准前后端分离（`frontend/`、`web/`、`client/`）→ 启动对应目录。
+   - 无独立前端目录 → 跳过前端启动。
+2. **停止**：检测前端进程是否已运行（`pgrep -f "npm.*dev"` 或 mdc 中提取的命令特征）：
+   - 若已运行 → 先停止。
+   - 若未运行 → 继续。
+3. 安装依赖（仅当 `node_modules` 缺失时：`npm install` 或 `pnpm install`）。
+4. **启动**：执行前端启动命令（`npm run dev` 或 mdc 中定义的前端启动命令）。
 
-1. 检测后端进程是否已运行（基于 mdc 中的启动命令特征）：
-   - 若已运行 → 先停止（`./dev-stop.sh` 或对应命令）
-   - 若未运行 → 继续
-2. 编译后端（`./dev-build.sh`、`mvn compile` 或对应命令）
-3. 启动后端（`./dev-start.sh`、`mvn spring-boot:run` 或对应命令）
-4. **后端网络验证**：向后端健康检查端点发 HTTP 请求确认服务可用
-   - 常见端点：`http://localhost:8080/actuator/health`、`http://localhost:8080/api/health`、`http://localhost:<port>/`
-   - 验证方式：`curl -sf <health-url>` 或 `wget -qO- <health-url>`
-   - 若验证失败 → 报告错误，不继续前端启动
+### Phase 3 — 网络健康验证
 
-**第三步：前端启动**
+1. **后端验证**：`curl -sf http://localhost:<port>/health` 或 mdc 提取的健康端点。
+   - 返回 2xx → 后端 OK。
+   - 无响应或非 2xx → 后端 FAIL，报告错误详情。
+2. **前端验证**：`curl -sf http://localhost:<port>/` 或 mdc 提取的前端访问地址。
+   - 返回 2xx → 前端 OK。
+   - 无响应 → 前端 WARN（可能需要更多启动时间）。
+3. 输出验证汇总表：
 
-1. 检测前端进程是否已运行（`node`、`npm`、`vite` 等进程特征）：
-   - 若已运行 → 先停止
-   - 若未运行 → 继续
-2. 安装前端依赖（`npm install` 或 `pnpm install`，仅当 `node_modules` 不存在或 `package-lock` 变更时）
-3. 启动前端（`npm run dev`、`pnpm dev` 或对应命令）
-4. **前端网络验证**：向前端开发服务器发 HTTP 请求确认服务可用
-   - 常见地址：`http://localhost:5173`、`http://localhost:3000`、`http://localhost:8081`
-   - 验证方式：`curl -sf <frontend-url>` 或 `wget -qO- <frontend-url>`
-   - 若验证失败 → 报告错误
+| 服务 | 地址 | 状态 |
+|------|------|------|
+| 后端 | http://localhost:xxxx | OK/FAIL |
+| 前端 | http://localhost:xxxx | OK/FAIL/WARN |
 
-**第四步：汇总报告**
+### Phase 4 — 自检闭环（防漂移）
 
-汇总后端和前端的状态：
-- ✅ 后端: `<health-url>` 响应正常
-- ✅ 前端: `<frontend-url>` 响应正常
-- 或对应错误信息
+1. 对比实际执行的启动命令与 mdc 中定义的启停规则：
+   - 若实际执行的命令与 mdc 定义不一致 → **输出警告**，标注差异项。
+   - 若实际执行的命令与 mdc 定义一致 → 确认对齐。
+2. 检查是否有遗漏的启停相关 mdc 规则未被执行：
+   - 重新扫描 mdc 中是否包含未被提取到的启停关键字。
+   - 若发现遗漏 → **输出警告**，标注遗漏规则。
 
 ## Commands
 
-1. 读取 `.mdc` 规则文件中的启动命令配置
-2. 检测后端进程 — `pgrep -f "dev-start.sh"` 或从 mdc 中提取的关键字
-3. `./dev-stop.sh` — 停止（如已运行）
+1. 读取 `.mdc` 规则文件中启停相关命令配置
+2. `pgrep -f "dev-start.sh"` — 检测后端进程
+3. `./dev-stop.sh` — 停止后端（如已运行）
 4. `./dev-build.sh` — 编译后端
 5. `./dev-start.sh` — 启动后端
-6. `curl -sf http://localhost:8080/actuator/health` — 验证后端
-7. 检测前端进程 — `pgrep -f "vite"` 或 `pgrep -f "npm.*dev"`
-8. 停止前端（如已运行）
-9. `npm run dev` 或 `pnpm dev` — 启动前端
-10. `curl -sf http://localhost:5173` — 验证前端
+6. `curl -sf http://localhost:<port>/health` — 后端健康检查
+7. 检测前端目录：`ls -d app-center frontend web client 2>/dev/null`
+8. `pgrep -f "npm run dev"` — 检测前端进程
+9. `cd <frontend-dir> && npm run dev` — 启动前端
+10. `curl -sf http://localhost:<port>/` — 前端访问验证
+11. 对比实际执行命令与 mdc 规则 — 自检闭环
 
 ## Verification
 
-完成后说明：
-- 后端启动命令、编译结果、健康检查结果
-- 前端启动命令、健康检查结果
-- 若任一层验证失败，明确标注失败原因
+完成后输出启动汇总：
+- mdc 启停规则提取结果（找到/未找到，提取到的命令清单）
+- 后端：启动命令、编译结果、健康检查状态
+- 前端：启动命令、运行状态、访问地址
+- 网络：各端点可达性验证结果
+- 自检：实际执行命令与 mdc 规则的对齐状态
+- 若任何验证失败，明确标注 FAIL 并给出排查建议
 
 ## Summary
 
-报告后端和前端的启动命令、编译结果、网络验证结果。
+报告 mdc 启停规则提取结果、项目启动命令、编译结果、前后端运行状态、网络验证结果和自检对齐状态。
 
 ## Next Steps
 
