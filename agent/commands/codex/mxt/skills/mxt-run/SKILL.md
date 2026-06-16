@@ -1,6 +1,6 @@
 ---
 name: mxt-run
-description: Use when the user asks Codex to run an R2MO task by number, such as "$mxt-run 001" or "mxt-run 001"; reads .r2mo/task/task-xxx.md and writes back Changes.
+description: Use when the user asks Codex to run an R2MO task by number, such as "$mxt-run 001" or "mxt-run 001"; reads .r2mo/task/task-xxx.md and writes back Changes. Quality gate (compile 0 warnings, lint 0 warnings, all gates pass) is mandatory before writing Done+Changes.
 ---
 
 # MXT Run
@@ -31,12 +31,17 @@ Final prompt:
 任务：执行 `<TASK_PATH>` 中定义的开发任务。
 
 - 输入范围：读取 `<TASK_PATH>` frontmatter 之后的正文。
-- 前置校验：若正文为空或仅包含空白字符，返回“任务正文为空，未执行任务”，且不修改任何文件。
+- 前置校验：若正文为空或仅包含空白字符，返回"任务正文为空，未执行任务"，且不修改任何文件。
 - 执行依据：若存在 `## Plan`，优先按 Plan 执行；若不存在 Plan，可自行补足执行步骤，但不得写入 Plan。
 - 调度策略：根据任务复杂度判断是否启用 Team 模式；根据变更风险判断是否需要 worktree，用户已指定时必须创建。
-- 写回要求：任务完成后将 status 更新为 Done，并向 `<TASK_PATH>` 追加 `## Changes` 记录。
-- Changes 内容：包含变更摘要、涉及文件、验证命令与验证结果。
+- **质量门禁（写回前置，不可跳过）**：在将 status 更新为 Done 或追加 Changes 之前，必须按顺序通过以下门禁，任一门禁失败则不得写回 Done，必须修复后重试（最多 3 轮自动修复；3 轮后仍未通过→停止，报告失败项，不写 Done）：
+  1. **编译零警告**：执行项目编译命令（如 `npm run build`、`mvn compile`、`tsc --noEmit` 等，按项目类型选择），编译必须零错误零警告。若有警告，必须修复后再通过。
+  2. **Lint 零警告**：执行项目 lint 命令（如 `npm run lint`、`eslint .`、`npx tsc --noEmit` 等），lint 必须零错误零警告。若有警告，必须修复后再通过。
+  3. **测试全通过**：若项目存在测试配置（`jest`、`mocha`、`vitest`、`pytest` 等），必须执行测试套件，全部通过方可继续。若项目无测试配置则跳过此门禁。
+  4. **门禁结果记录**：将每个门禁的执行命令、输出结果（通过/失败）写入 Changes 记录。若某门禁不适用（如项目无 lint 配置），记录为"跳过（不适用）"。
+- 写回要求：**质量门禁全部通过后**，将 status 更新为 Done，并向 `<TASK_PATH>` 追加 `## Changes` 记录。
+- Changes 内容：包含变更摘要、涉及文件、**质量门禁验证命令与结果**。
 
 ## Verification
 
-Report the verification commands run, their results, and the task file path written back.
+Report the verification commands run, their results, and the task file path written back. Include the quality gate results for each gate (compile, lint, test).

@@ -18,7 +18,7 @@ The user invoked this command with: $ARGUMENTS
 
 解析后在聊天窗口中声明结果，例如 `📌 编号: 005 | 指令: Team模式`。若未附加指令则仅声明编号。指令直接作用于执行环境：`Team模式` → 忽略复杂度自动判断，直接启用 Team 模式；`Worktree` → 忽略变更风险判断，直接创建 Worktree 隔离。**Worktree 规范**：若创建 Worktree，名称前缀必须为 `task-<编号>`（如 `task-005`），存储位置为当前项目下的 `.r2mo/worktrees/` 目录（非全局），确保 Codex、Claude、OpenCode 三平台可共享同一 worktree 目录。创建命令示例：`git worktree add .r2mo/worktrees/task-005 -b task-005`。
 
-**硬规则**：解析失败→终止 | 指令覆盖自动判断 | Worktree→`.r2mo/worktrees/task-<编号>` | Changes写task非goon | 路径冲突→终止 | 隔离外文件→禁止读写 | Superpowers检测必执行（无则降级）
+**硬规则**：解析失败→终止 | 指令覆盖自动判断 | Worktree→`.r2mo/worktrees/task-<编号>` | Changes写task非goon | 质量门禁必通过→才可清空goon+写Changes | 路径冲突→终止 | 隔离外文件→禁止读写 | Superpowers检测必执行（无则降级）
 
 ## Preflight
 
@@ -45,9 +45,14 @@ The user invoked this command with: $ARGUMENTS
 - goon 标题：`<GOON_PATH>` frontmatter 的 title 必须保持为 `整改-` + `<TASK_PATH>` frontmatter 中的 title。
 - 整改执行：逐项处理 `<GOON_PATH>` 中当前列出的整改项，避免偏离 `<TASK_PATH>` 的原始目标。
 - **执行指令覆盖**：若参数解析中检测到 `Team模式`，直接启用 Team 模式；若检测到 `Worktree`，直接创建 Worktree。
-- goon 写回：整改完成后必须先清空 `<GOON_PATH>` 原始内容，再写入仍未完成的整改项。
+- **质量门禁（写回前置，不可跳过）**：在清空 goon 或写 Changes 之前，必须按顺序通过以下门禁，任一门禁失败则不得写回，必须修复后重试（最多 3 轮自动修复；3 轮后仍未通过→停止，报告失败项，不写 Changes）：
+  1. **编译零警告**：执行项目编译命令（如 `npm run build`、`mvn compile`、`tsc --noEmit` 等，按项目类型选择），编译必须零错误零警告。若有警告，必须修复后再通过。
+  2. **Lint 零警告**：执行项目 lint 命令（如 `npm run lint`、`eslint .`、`npx tsc --noEmit` 等），lint 必须零错误零警告。若有警告，必须修复后再通过。
+  3. **测试全通过**：若项目存在测试配置（`jest`、`mocha`、`vitest`、`pytest` 等），必须执行测试套件，全部通过方可继续。若项目无测试配置则跳过此门禁。
+  4. **门禁结果记录**：将每个门禁的执行命令、输出结果（通过/失败）写入 Changes 记录。若某门禁不适用（如项目无 lint 配置），记录为"跳过（不适用）"。
+- goon 写回：**质量门禁全部通过后**，先清空 `<GOON_PATH>` 原始内容，再写入仍未完成的整改项。
 - 无剩余项：若整改项已全部完成，将 `<GOON_PATH>` 重写为空整改单或无待整改项状态。
-- Changes 写回：不得在 `<GOON_PATH>` 写 Changes；必须向 `<TASK_PATH>` 的 `## Changes` 追加整改完成情况、涉及文件、验证结果和闭环说明。
+- Changes 写回：不得在 `<GOON_PATH>` 写 Changes；必须向 `<TASK_PATH>` 的 `## Changes` 追加整改完成情况、涉及文件、**质量门禁验证命令与结果**和闭环说明。
 - **写回校验**：执行写回前必须验证目标文件路径与隔离锁定路径一致；若不一致，立即停止并报告路径冲突，不得写入。
 - 隔离约束：全程不得读取、编辑或创建除 `<GOON_PATH>` 和 `<TASK_PATH>` 以外的任何 `task-*.md` 或 `goon-*.md` 文件（团队调度中 worker 的文件除外）。
 

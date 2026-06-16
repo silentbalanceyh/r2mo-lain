@@ -24,7 +24,7 @@ The user invoked this command with: $ARGUMENTS
    - 存储位置为当前项目下的 `.r2mo/worktrees/` 目录（非全局），确保 Codex、Claude、OpenCode 三平台可共享同一 worktree 目录
    - 创建命令示例：`git worktree add .r2mo/worktrees/task-005 -b task-005`
 
-**硬规则**：解析失败→终止 | 指令覆盖自动判断 | Worktree→`.r2mo/worktrees/task-<编号>` | 完成必写Done+Changes | 路径冲突→终止 | 隔离外文件→禁止读写 | Superpowers检测必执行（无则降级）
+**硬规则**：解析失败→终止 | 指令覆盖自动判断 | Worktree→`.r2mo/worktrees/task-<编号>` | 质量门禁必通过→才可写Done+Changes | 路径冲突→终止 | 隔离外文件→禁止读写 | Superpowers检测必执行（无则降级）
 
 ## Workflow
 
@@ -42,9 +42,14 @@ The user invoked this command with: $ARGUMENTS
 - 前置校验：若正文为空或仅包含空白字符，返回"任务正文为空，未执行任务"，且不修改任何文件。
 - 执行依据：若存在 `## Plan`，优先按 Plan 执行；若不存在 Plan，可自行补足执行步骤，但不得写入 Plan。
 - 调度策略：根据任务复杂度判断是否启用 Team 模式；根据变更风险判断是否需要 worktree，用户已指定时必须创建。**执行指令覆盖**：若参数解析中检测到 `Team模式`，直接启用 Team 模式；若检测到 `Worktree`，直接创建 Worktree。
-- 写回要求：任务完成后将 status 更新为 Done，并向 `<TASK_PATH>` 追加 `## Changes` 记录。
+- **质量门禁（写回前置，不可跳过）**：在将 status 更新为 Done 或追加 Changes 之前，必须按顺序通过以下门禁，任一门禁失败则不得写回 Done，必须修复后重试（最多 3 轮自动修复；3 轮后仍未通过→停止，报告失败项，不写 Done）：
+  1. **编译零警告**：执行项目编译命令（如 `npm run build`、`mvn compile`、`tsc --noEmit` 等，按项目类型选择），编译必须零错误零警告。若有警告，必须修复后再通过。
+  2. **Lint 零警告**：执行项目 lint 命令（如 `npm run lint`、`eslint .`、`npx tsc --noEmit` 等），lint 必须零错误零警告。若有警告，必须修复后再通过。
+  3. **测试全通过**：若项目存在测试配置（`jest`、`mocha`、`vitest`、`pytest` 等），必须执行测试套件，全部通过方可继续。若项目无测试配置则跳过此门禁。
+  4. **门禁结果记录**：将每个门禁的执行命令、输出结果（通过/失败）写入 Changes 记录。若某门禁不适用（如项目无 lint 配置），记录为"跳过（不适用）"。
+- 写回要求：**质量门禁全部通过后**，将 status 更新为 Done，并向 `<TASK_PATH>` 追加 `## Changes` 记录。
 - **写回校验**：执行写回前必须验证目标文件路径与隔离锁定路径一致；若不一致，立即停止并报告路径冲突，不得写入。
-- Changes 内容：包含变更摘要、涉及文件、验证命令与验证结果。
+- Changes 内容：包含变更摘要、涉及文件、**质量门禁验证命令与结果**。
 - 隔离约束：全程不得读取、编辑或创建除 `<TASK_PATH>` 以外的任何 `task-*.md` 或 `goon-*.md` 文件（团队调度中 worker 的文件除外）。
 
 ## 闭环指引
