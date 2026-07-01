@@ -1,7 +1,7 @@
 {
   "name": "mxt",
   "version": "1.0.0",
-  "description": "R2MO task workflow slash commands: /mxt:plan, /mxt:run, /mxt:end, /mxt:goon.",
+  "description": "R2MO task workflow slash commands: /mxt:plan, /mxt:run, /mxt:end, /mxt:goon, /mxt:loop, /mxt:start, /mxt:sync, /mxt:debug.",
   "main": "index.js",
   "author": {
     "name": "R2MO"
