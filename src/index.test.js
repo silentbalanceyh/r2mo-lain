@@ -115,10 +115,12 @@ const testShrinkThreadPrunesOverflow = async () => {
         await fs.writeFile(path.join(taskRoot, _slotFilename(3)), _taskContent('任务'), 'utf8');
         await fs.writeFile(path.join(taskRoot, _slotFilename(4)), _taskContent('业务任务'), 'utf8');
         await fs.writeFile(path.join(taskRoot, _slotFilename(5)), _taskContent('任务', ''), 'utf8');
+        await fs.writeFile(path.join(taskRoot, 'goon-004.md'), '历史整改痕迹\n', 'utf8');
 
         const result = _runTask(root, { ...process.env, PATH: '' });
         assert.strictEqual(await _exists(root, path.join(TASK_DIR, _slotFilename(4))), false);
         assert.strictEqual(await _exists(root, path.join(TASK_DIR, _slotFilename(5))), false);
+        assert.strictEqual(await _read(root, path.join(TASK_DIR, 'goon-004.md')), '');
 
         const historyFiles = await _listHistoryFiles(root);
         assert.strictEqual(historyFiles.length, 1);
@@ -640,6 +642,26 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
         assert.match(opencodeConfig.command['mxt:goon'].template, /整改完成后必须先清空 `<GOON_PATH>` 原始内容/);
         assert.match(opencodeConfig.command['mxt:goon'].template, /任务：根据 `<GOON_PATH>` 完成整改，并回写 `<TASK_PATH>` 闭环记录/);
         assert.match(opencodeConfig.command['mxt:goon'].template, /Changes 写回/);
+        const installedHarnessFiles = [
+            path.join('.claude', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', 'commands', 'run.md'),
+            path.join('.claude', 'commands', 'mxt:run.md'),
+            path.join('.codex', 'plugins', 'mxt', 'commands', 'run.md'),
+            path.join('.codex', 'plugins', 'mxt', 'skills', 'mxt-run', 'SKILL.md'),
+            path.join('.codex', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', 'skills', 'mxt-run', 'SKILL.md'),
+            path.join('.codex', 'marketplaces', 'mxt-skills', 'plugins', 'mxt', 'skills', 'mxt-run', 'SKILL.md'),
+            path.join('.codex', 'prompts', 'mxt-run.md')
+        ];
+        for (const file of installedHarnessFiles) {
+            const content = await _read(homeDir, file);
+            assert.match(content, /## Harness/);
+            assert.match(content, /English-first/);
+            assert.match(content, /Task isolation lock/);
+            assert.match(content, /Fresh evidence before completion claims/);
+        }
+        assert.match(opencodeConfig.command['mxt:run'].template, /## Harness/);
+        assert.match(opencodeConfig.command['mxt:run'].template, /English-first/);
+        assert.match(opencodeConfig.command['mxt:run'].template, /Task isolation lock/);
+        assert.match(opencodeConfig.command['mxt:run'].template, /Fresh evidence before completion claims/);
     });
 };
 
@@ -708,6 +730,28 @@ const testAiCmdReinstallRefreshesPlatforms = async () => {
     });
 };
 
+const testAiCmdOpenCodePreservesJsonStringCommentMarkers = async () => {
+    const aiCmd = require('./utils/mxt-ai-cmd');
+
+    await _withTempDir(async (homeDir) => {
+        await fs.mkdir(path.join(homeDir, '.config', 'opencode'), { recursive: true });
+        await fs.writeFile(path.join(homeDir, '.config', 'opencode', 'opencode.json'), JSON.stringify({
+            command: {
+                custom: {
+                    description: 'Custom command',
+                    template: 'https://example.test/path\nconst value = 1; // this is template text'
+                }
+            }
+        }, null, 2), 'utf8');
+
+        await aiCmd.installPlatforms(['opencode'], { homeDir });
+
+        const opencodeConfig = JSON.parse(await _read(homeDir, path.join('.config', 'opencode', 'opencode.json')));
+        assert.strictEqual(opencodeConfig.command.custom.template.includes('// this is template text'), true);
+        assert.ok(opencodeConfig.command['mxt:goon']);
+    });
+};
+
 const testAiCmdClaudeInstallWritesHostPluginState = async () => {
     const aiCmd = require('./utils/mxt-ai-cmd');
 
@@ -744,6 +788,77 @@ const testDebugCommandsRequireGoonDebugReport = async () => {
     }
 };
 
+const testLoopCommandsUseScopedVerificationAndReuse = async () => {
+    const files = [
+        'agent/commands/claude/mxt/commands/loop.md',
+        'agent/commands/opencode/mxt/commands/loop.md',
+        'agent/commands/codex/mxt/commands/loop.md',
+        'agent/commands/codex/mxt/skills/mxt-loop/SKILL.md'
+    ];
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /代码指纹.*未变化.*复用|代码指纹与 RUN 相同，复用/s);
+        assert.match(content, /真实运行环境、进程归属、监听端口和业务健康路径/);
+        assert.match(content, /无问题.*立即结束/s);
+        assert.match(content, /RUN 只发现一次适用规则/);
+        assert.match(content, /默认禁止全 workspace、K8S、BUGS、Chat、热启动稳定性/);
+        assert.match(content, /只重跑受影响的运行验证/);
+    }
+};
+
+const testGoonCommandsForceFreshDiskLoad = async () => {
+    const files = [
+        'agent/commands/claude/mxt/commands/goon.md',
+        'agent/commands/opencode/mxt/commands/goon.md',
+        'agent/commands/codex/mxt/commands/goon.md',
+        'agent/commands/codex/mxt/skills/mxt-goon/SKILL.md'
+    ];
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /强制重新加载/);
+        assert.match(content, /禁止使用上下文缓存/);
+        assert.match(content, /goon-xxx\.md/);
+        assert.match(content, /唯一整改输入/);
+    }
+};
+
+const testEndCommandsConstrainAcceptanceDepth = async () => {
+    const files = [
+        'agent/commands/claude/mxt/commands/end.md',
+        'agent/commands/opencode/mxt/commands/end.md',
+        'agent/commands/codex/mxt/commands/end.md',
+        'agent/commands/codex/mxt/skills/mxt-end/SKILL.md'
+    ];
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /收敛验收/);
+        assert.match(content, /禁止深挖/);
+        assert.match(content, /不得扩散整改项/);
+        assert.match(content, /到点停止/);
+    }
+};
+
+const testAiCmdPromptsUseEnglishFirstHarness = async () => {
+    const files = [
+        ...['claude', 'codex', 'opencode'].flatMap((platform) => (
+            ['plan', 'run', 'end', 'goon', 'debug', 'sync', 'start', 'loop']
+                .map((name) => `agent/commands/${platform}/mxt/commands/${name}.md`)
+        )),
+        ...['plan', 'run', 'end', 'goon', 'debug', 'sync', 'start', 'loop']
+            .map((name) => `agent/commands/codex/mxt/skills/mxt-${name}/SKILL.md`)
+    ];
+
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /## Harness/);
+        assert.match(content, /English-first/);
+        assert.match(content, /Use Chinese only when quoting existing repository content/);
+        assert.match(content, /Task isolation lock/);
+        assert.match(content, /Fresh evidence before completion claims/);
+        assert.match(content, /Do not trust conversation memory/);
+    }
+};
+
 const main = async () => {
     await testDefaultThreadFallsBackTo20();
     await testThreadOverridesDefault();
@@ -756,8 +871,13 @@ const main = async () => {
     await testAiCmdInstallsSelectedPlatformsFromAgentCommands();
     await testAiCmdUninstallsSelectedPlatforms();
     await testAiCmdReinstallRefreshesPlatforms();
+    await testAiCmdOpenCodePreservesJsonStringCommentMarkers();
     await testAiCmdClaudeInstallWritesHostPluginState();
     await testDebugCommandsRequireGoonDebugReport();
+    await testLoopCommandsUseScopedVerificationAndReuse();
+    await testGoonCommandsForceFreshDiskLoad();
+    await testEndCommandsConstrainAcceptanceDepth();
+    await testAiCmdPromptsUseEnglishFirstHarness();
     console.log('task tests passed');
 };
 

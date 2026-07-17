@@ -104,6 +104,14 @@ const stripTrailingCommas = (content) => content.replace(/,\s*([}\]])/g, '$1');
 const readJsonc = async (filePath) => {
     try {
         const content = await fs.readFile(filePath, 'utf8');
+        const raw = content.trim();
+        if (!raw) return {};
+        try {
+            return JSON.parse(raw);
+        } catch (_) {
+            // Fall through for JSONC files. Plain JSON may contain command templates
+            // with literal '//' text, so do not strip comments before trying JSON.
+        }
         const normalized = stripTrailingCommas(stripJsonComments(content)).trim();
         return normalized ? JSON.parse(normalized) : {};
     } catch (error) {

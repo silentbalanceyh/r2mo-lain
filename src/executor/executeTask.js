@@ -87,6 +87,24 @@ const _yamlFrontmatter = (attrs) => {
     return lines.join('\n') + '\n';
 };
 
+const _clearGoonForTask = async (taskDir, filename, cwd) => {
+    const match = filename.match(TASK_FILE_RE);
+    if (!match) return false;
+
+    const goonName = `goon-${match[1]}.md`;
+    const goonPath = path.join(taskDir, goonName);
+    try {
+        await fs.access(goonPath);
+    } catch (error) {
+        if (error.code === 'ENOENT') return false;
+        throw error;
+    }
+
+    await fs.writeFile(goonPath, '', 'utf8');
+    Ec.waiting(`已清空整改记录: ${path.relative(cwd, goonPath)}`);
+    return true;
+};
+
 const _archiveTask = async (taskDir, filename, content, cwd, withAudio) => {
     const now = new Date();
     const title = _parseTitleFromContent(content) || '任务';
@@ -116,6 +134,7 @@ const _archiveTask = async (taskDir, filename, content, cwd, withAudio) => {
     await fs.mkdir(hiddenDir, { recursive: true });
     await fs.writeFile(path.join(hiddenDir, historyFilename), content, 'utf8');
     await fs.unlink(path.join(taskDir, filename));
+    await _clearGoonForTask(taskDir, filename, cwd);
     Ec.waiting(`已转移到历史: ${filename} → ${path.relative(cwd, historyPath)}`);
     return historyPath;
 };
