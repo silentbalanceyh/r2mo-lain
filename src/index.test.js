@@ -129,6 +129,27 @@ const testShrinkThreadPrunesOverflow = async () => {
     });
 };
 
+const testTaskArchiveSanitizesSpecialFilenameCharacters = async () => {
+    await _withTempDir(async (root) => {
+        const taskRoot = path.join(root, TASK_DIR);
+        await fs.mkdir(taskRoot, { recursive: true });
+        await fs.writeFile(path.join(taskRoot, 'thread'), '1', 'utf8');
+        await fs.writeFile(
+            path.join(taskRoot, _slotFilename(2)),
+            _taskContent('API/DB\\Auth:Token*Flow?"<>|\u0001. ', '# Body'),
+            'utf8'
+        );
+
+        const result = _runTask(root, { ...process.env, PATH: '' });
+        const historyFiles = await _listHistoryFiles(root);
+
+        assert.strictEqual(historyFiles.length, 1);
+        assert.match(historyFiles[0], /TASK@API_DB_Auth_Token_Flow_\.md$/);
+        assert.doesNotMatch(path.basename(historyFiles[0]), /[/\\:*?"<>|\u0000-\u001f]/);
+        assert.notStrictEqual(result.status, 1, result.stderr || result.stdout);
+    });
+};
+
 const testRunSkipsFocusModeSelection = async () => {
     const runFile = path.resolve(__dirname, 'executor', 'executeRun.js');
 
@@ -863,6 +884,7 @@ const main = async () => {
     await testDefaultThreadFallsBackTo20();
     await testThreadOverridesDefault();
     await testShrinkThreadPrunesOverflow();
+    await testTaskArchiveSanitizesSpecialFilenameCharacters();
     await testRunSkipsFocusModeSelection();
     await testTaskUsesCurrentR2moDirectory();
     await testPlanUsesCurrentR2moDirectory();

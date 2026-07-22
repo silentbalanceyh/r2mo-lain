@@ -66,7 +66,26 @@ const _parseTitleFromContent = (content) => {
     return value.replace(/^['"]|['"]$/g, '').trim() || null;
 };
 
-const _sanitizeTitleForFilename = (title) => (title || '任务').replace(/[/\\:*?"<>|]/g, '-').trim() || '任务';
+const _truncateUtf8 = (value, maxBytes) => {
+    let result = '';
+    let bytes = 0;
+    for (const char of String(value || '')) {
+        const size = Buffer.byteLength(char);
+        if (bytes + size > maxBytes) break;
+        result += char;
+        bytes += size;
+    }
+    return result;
+};
+
+const _sanitizeTitleForFilename = (title) => {
+    const safe = String(title || '任务')
+        .replace(/[<>:"/\\|?*\u0000-\u001f\u007f-\u009f]/g, '_')
+        .replace(/_+/g, '_')
+        .trim()
+        .replace(/[ .]+$/g, '');
+    return _truncateUtf8(safe || '任务', 160);
+};
 
 const _stripFrontmatter = (content) => String(content || '').replace(/^---\s*\n[\s\S]*?\n---\s*\n?/, '');
 

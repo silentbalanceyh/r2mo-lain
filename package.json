@@ -1,6 +1,6 @@
 {
     "name": "r2mo-ai",
-    "version": "1.0.109",
+    "version": "1.0.111",
     "description": "Rachel MXT ( OpenSpec )",
     "main": "src/mxt.js",
     "bin": {
