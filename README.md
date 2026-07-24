@@ -11,6 +11,8 @@
     - [>> 快速开始](https://www.yuque.com/jiezizhu/r2mo/ssl9rl5klogu7cp0)
 - 示例：<https://gitee.com/zero-ws/zero-rachel-mxt>
 
+![R2MO-Lain](docs/images/r2mo-lain.png)
+
 ## 1. 介绍
 
 ### 1.1. 功能说明
