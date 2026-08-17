@@ -1,5 +1,5 @@
 ---
-description: "Debug R2MO issues: detects superpowers for systematic diagnosis, supports additional directives"
+description: "Debug R2MO issues: invokes superpowers systematic-debugging directly, falls back to manual only if the skill is absent"
 argument-hint: "[bug-description] [指令...]"
 allowed-tools: [Read, Glob, Grep, Bash, Edit, Write]
 ---
@@ -20,7 +20,7 @@ This Harness is the binding execution contract for this MXT command across Claud
 - Fresh evidence before completion claims: run the smallest sufficient verification for the changed boundary, read the output, and only then report success. Record skipped gates with the reason.
 - Cross-agent portability: avoid tool-specific assumptions unless the platform section explicitly requires them. Keep prompts deterministic and safe for Claude Code, Codex skills, Codex prompts, and OpenCode JSON command templates.
 
-启动 BUG 排查流程：检测当前环境是否安装 superpowers，有则调用系统化诊断命令，无则降级为手动排查。
+启动 BUG 排查流程：默认直接调用 superpowers 系统化诊断，仅当 Skill 工具报技能不存在时才降级为手动排查。
 
 ## Arguments
 
@@ -36,7 +36,7 @@ The user invoked this command with: $ARGUMENTS
 3. 设定 `<GOON_PATH>` 为 `.r2mo/task/goon-$编号.md`，剩余文本作为 BUG 描述。
 4. 解析后在聊天窗口中声明结果，例如 `📌 BUG描述: 内存泄漏 | 编号: 001 | 指令: 深度`。
 
-**硬规则**：解析失败→终止 | Superpowers检测必执行（无则降级） | Worktree→`.r2mo/worktrees/` | 写回前确认目标路径等于 `<GOON_PATH>`
+**硬规则**：解析失败→终止 | Superpowers直接调用（仅工具报不存在才降级） | Worktree→`.r2mo/worktrees/` | 写回前确认目标路径等于 `<GOON_PATH>`
 
 ## Preflight
 
@@ -45,9 +45,8 @@ The user invoked this command with: $ARGUMENTS
 
 ## Plan
 
-1. 检测当前环境中是否存在 `superpowers:systematic-debugging` 技能。
-2. 若存在，调用该技能，将 BUG 描述传入，按其工作流执行系统化诊断。
-3. 若不存在，执行降级排查流程：收集错误信息 → 定位相关文件 → 分析根因 → 给出修复建议。
+1. 默认认定 `superpowers:systematic-debugging` 已安装，通过 Skill 工具直接调用该技能，将 BUG 描述传入，按其工作流执行系统化诊断。不得依据上下文横幅或模型自省判断可用性（不可靠，易误报"未注册"）。
+2. **唯一降级判据**：仅当 Skill 工具返回明确的"技能不存在/未注册"错误时，才执行降级排查流程：收集错误信息 → 定位相关文件 → 分析根因 → 给出修复建议。调用成功则必须按其工作流执行，不得跳过或自行降级。
 4. 在聊天窗口声明排查路径：`📌 诊断路径: Superpowers[systematic-debugging]` 或 `📌 诊断路径: 标准排查`。
 5. **深度诊断**：若参数解析中检测到 `深度` 指令，扩大排查范围：搜索更多关联文件、检查间接依赖、分析边界条件。
 6. **Worktree 隔离**：若参数解析中检测到 `Worktree` 指令，在 Worktree 中执行排查，避免影响当前工作区。

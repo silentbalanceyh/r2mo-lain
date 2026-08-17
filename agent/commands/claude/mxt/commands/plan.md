@@ -32,7 +32,7 @@ The user invoked this command with: $ARGUMENTS
    - `深度` / `Deep` — 启用深度分析模式，Plan 更详尽
 3. 解析后在聊天窗口中声明结果，例如 `📌 编号: 005 | 指令: Team模式, Worktree`。若未附加指令则仅声明编号。
 
-**硬规则**：解析失败→终止 | Plan仅写`## Plan` | 路径冲突→终止 | 隔离外文件→禁止读写 | Superpowers检测必执行（无则降级）
+**硬规则**：解析失败→终止 | Plan仅写`## Plan` | 路径冲突→终止 | 隔离外文件→禁止读写 | Superpowers直接调用（仅工具报不存在才降级）
 
 ## Workflow
 
@@ -41,11 +41,11 @@ The user invoked this command with: $ARGUMENTS
 3. 将任务路径设为 `.r2mo/task/task-$编号.md`。如果文件不存在，不要猜测其他编号，不要改读别的 task 文件，立即询问用户提供最新任务号。
 4. **隔离锁定**：在聊天窗口中显式声明 `📌 任务隔离锁定: .r2mo/task/task-$编号.md`，此后本指令的所有读操作和写操作只能针对此路径，禁止读写任何其他 `task-*.md` 文件。
 5. 先读取锁定路径 frontmatter 之后的正文；如果正文为空或仅包含空白字符，立即停止并直接返回：锁定路径正文为空，当前不执行 /mxt:plan，请先补充任务内容。
-6. **Superpowers 集成**：检测当前环境是否安装了 superpowers 技能包：
-   - 若存在 `superpowers:brainstorming` 技能，先调用该技能对任务进行头脑风暴分析，将分析结果作为 Plan 的输入。
-   - 若存在 `superpowers:writing-plans` 技能，使用该技能生成结构化 Plan。
-   - 若以上技能均不可用，走原有路径（手动分析并生成 Plan）。
-   - 在聊天窗口声明使用了哪个路径：`📌 规划路径: Superpowers[brainstorming+writing-plans]` 或 `📌 规划路径: 标准流程`。
+6. **Superpowers 集成**：默认认定 superpowers 已安装并直接调用。不得依据"上下文是否出现 superpowers 横幅"或模型对 available-skills 的自省来判断是否可用——此类判断不可靠，已多次误报"未注册"导致错误降级为标准流程。
+   - 通过 Skill 工具直接调用 `superpowers:brainstorming`，对任务进行头脑风暴分析，将分析结果作为 Plan 的输入。
+   - 再通过 Skill 工具调用 `superpowers:writing-plans`，生成结构化 Plan。
+   - **唯一降级判据**：仅当 Skill 工具返回明确的"技能不存在/未注册"错误时，才走手动分析并生成 Plan 的标准流程；调用成功则必须采纳其输出，不得跳过或自行降级。
+   - 在聊天窗口声明路径：`📌 规划路径: Superpowers[brainstorming+writing-plans]`（已调用）或 `📌 规划路径: 标准流程`（仅因 Skill 工具报技能不存在而降级时方可声明）。
 7. 在执行任何编辑或规划处理之前，先在聊天窗口中原样打印本次将执行的提示词，使用 Markdown 代码块包裹。代码块中只打印下面这段最终执行提示词，不要打印本条说明。
 8. 对该任务文件按以下提示词执行，其中任务路径必须替换为实际相对路径：
 

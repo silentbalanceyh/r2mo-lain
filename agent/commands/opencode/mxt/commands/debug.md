@@ -1,5 +1,5 @@
 ---
-description: "Debug R2MO issues: detects superpowers for systematic diagnosis, supports additional directives"
+description: "Debug R2MO issues: invokes superpowers systematic-debugging directly, falls back to manual only if the skill is absent"
 argument-hint: "[bug-description] [指令...]"
 ---
 
@@ -19,7 +19,7 @@ This Harness is the binding execution contract for this MXT command across Claud
 - Fresh evidence before completion claims: run the smallest sufficient verification for the changed boundary, read the output, and only then report success. Record skipped gates with the reason.
 - Cross-agent portability: avoid tool-specific assumptions unless the platform section explicitly requires them. Keep prompts deterministic and safe for Claude Code, Codex skills, Codex prompts, and OpenCode JSON command templates.
 
-启动 BUG 排查流程：检测当前环境是否安装 superpowers，有则调用系统化诊断命令，无则降级为手动排查。
+启动 BUG 排查流程：默认直接调用 superpowers 系统化诊断，仅当 Skill 工具报技能不存在时才降级为手动排查。
 
 The user invoked this command with: $ARGUMENTS
 
@@ -31,15 +31,15 @@ The user invoked this command with: $ARGUMENTS
 2. 解析规则：从 `$ARGUMENTS` 末尾提取已知指令词；从剩余文本中提取第一个三位数字作为编号；若没有编号，立即询问用户提供编号。
 3. 设定 `<GOON_PATH>` 为 `.r2mo/task/goon-$编号.md`，剩余文本作为 BUG 描述。解析后在聊天窗口中声明结果，例如 `📌 BUG描述: 内存泄漏 | 编号: 001 | 指令: 深度`。
 
-**硬规则**：解析失败→终止 | Superpowers检测必执行（无则降级） | Worktree→`.r2mo/worktrees/` | 写回前确认目标路径等于 `<GOON_PATH>`
+**硬规则**：解析失败→终止 | Superpowers直接调用（仅工具报不存在才降级） | Worktree→`.r2mo/worktrees/` | 写回前确认目标路径等于 `<GOON_PATH>`
 
 ## Workflow
 
 1. 先读取并遵守当前仓库的 `AGENTS.md`、`CLAUDE.md`、`CODEX.md`（若存在），以及它们引用的所有规则文件；扫描项目中所有可检索的 `.mdc` 规则文件（`.claude/rules/`、`.codex/rules/`、`.cursor/rules/`、`.opencode/` 及其他任意路径下的 `.mdc`）。
 2. 声明本次执行目标：BUG 排查，问题描述为 BUG 描述部分。
-2. 检测当前环境中是否存在 `superpowers:systematic-debugging` 技能：
-   - 若存在，调用 `superpowers:systematic-debugging` 技能，将 BUG 描述传入，按其工作流执行系统化诊断。
-   - 若不存在，执行以下降级排查流程：
+2. 默认认定 `superpowers:systematic-debugging` 已安装并直接调用，不得依据上下文横幅或模型自省判断可用性（不可靠，易误报"未注册"）：
+   - 通过 Skill 工具调用 `superpowers:systematic-debugging`，将 BUG 描述传入，按其工作流执行系统化诊断。
+   - **唯一降级判据**：仅当 Skill 工具返回明确的"技能不存在/未注册"错误时，才执行以下手动降级排查流程；调用成功则必须按其工作流执行，不得跳过：
      a. 收集错误信息：读取 BUG 描述中提及的文件、日志或堆栈。
      b. 定位相关文件：在当前仓库中搜索与错误相关的模块、函数或配置。
      c. 分析根因：基于代码逻辑和错误现象推断根本原因。
