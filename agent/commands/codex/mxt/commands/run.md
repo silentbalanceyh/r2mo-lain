@@ -35,7 +35,7 @@ The user invoked this command with: $ARGUMENTS
    - `Worktree` → create Worktree regardless of risk assessment
 5. **Worktree spec**: Name prefix `task-NNN` (e.g. `task-005`). Store in `.r2mo/worktrees/` under the current project (not global). Example: `git worktree add .r2mo/worktrees/task-005 -b task-005`.
 
-**Hard rules**: Parse failure → abort. Directives override auto-judgment. Quality gate must pass before writing Done+Changes. Path conflict → abort. No reads/writes outside isolation lock.
+**Hard rules**: Parse failure → abort. Directives override auto-judgment. Quality gate must pass before writing Done+Changes to `<TASK_PATH>`. Path conflict → abort. No reads/writes outside isolation lock.
 
 ## Workflow
 
@@ -58,6 +58,7 @@ The user invoked this command with: $ARGUMENTS
 >   2. **Lint zero-warning**: Run project lint (e.g. `npm run lint`, `eslint .`). Must be zero errors, zero warnings.
 >   3. **Tests pass**: If test config exists (`jest`, `mocha`, `vitest`, `pytest`), run the test suite. All must pass. Skip if no test config.
 >   4. **Record results**: Write each gate's command, pass/fail status into Changes. If a gate is N/A, record as "skipped (N/A)".
+> - **Write-back**: Set task status to Done and append `## Changes` (changed files, quality gate results, verification evidence) to `<TASK_PATH>` only. Never write Changes to a goon file.
 > - **Isolation**: Do not read, edit, or create any `task-*.md` or `goon-*.md` other than `<TASK_PATH>` (except worker files in Team scheduling).
 
 ## Next Steps

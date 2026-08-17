@@ -19,7 +19,7 @@ Binding execution contract for all MXT commands across Claude Code, Codex, and O
 - **Fresh evidence.** Run the smallest sufficient verification for the changed boundary before claiming success. Record skipped gates with reason.
 - **Cross-agent portability.** Keep prompts deterministic and safe for Claude Code, Codex skills, and OpenCode JSON templates.
 
-Launch a bug investigation flow: invoke superpowers systematic-debugging directly, or fall back to manual root-cause analysis only if the skill tool reports it as absent.
+Launch a bug investigation flow: invoke superpowers systematic-debugging directly, or fall back to manual root-cause analysis only if the skill tool reports it as absent. Archive a Bug Report to `.r2mo/bugs/<yyyy-MM-dd>/` recording the problem, diagnostics, and solution.
 
 The user invoked this command with: $ARGUMENTS
 
@@ -31,7 +31,14 @@ The user invoked this command with: $ARGUMENTS
 2. Parse from the end of `$ARGUMENTS` for known directive keywords; extract the first three-digit number from the remaining text; if no number, ask the user.
 3. Set `<GOON_PATH>` to `.r2mo/task/goon-NNN.md`. Remaining text is the bug description. Declare parsed results, e.g. `📌 Bug: memory leak | Task: 001 | Directives: Deep`.
 
-**Hard rules**: Parse failure → abort. Superpowers: invoke directly (fallback only on explicit "skill not found" error). Worktree → `.r2mo/worktrees/`. Write-back guard: confirm target path equals `<GOON_PATH>`.
+**Hard rules**: Parse failure → abort. Superpowers: invoke directly (fallback only on explicit "skill not found" error). Worktree → `.r2mo/worktrees/`. Write-back guard: confirm both the goon target path and the bug archive path before writing.
+
+## Output Targets
+
+Two outputs per debug run:
+
+1. **Goon (remediation handoff)** — `<GOON_PATH>` = `.r2mo/task/goon-NNN.md`: current remediation items so `/mxt:goon <number>` can execute the fix directly.
+2. **Bug archive (appended output)** — `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md`: a full record of **Problem**, **Diagnostics**, and **Solution**. The `<yyyy-MM-dd>` directory is created if absent; one directory per calendar day. Use the current date (timezone-aware) for the directory, and current time for the filename. Derive `<slug>` from the bug description (lowercase, hyphen-separated, max 40 chars).
 
 ## Workflow
 
@@ -48,7 +55,8 @@ The user invoked this command with: $ARGUMENTS
 5. **Deep diagnosis**: If `Deep` directive detected, broaden scope: search more related files, check indirect dependencies, analyze boundary conditions.
 6. **Worktree isolation**: If `Worktree` directive detected, execute investigation in a Worktree under `.r2mo/worktrees/`.
 7. Generate a `DEBUG Report` and write to `<GOON_PATH>` so `/mxt:goon <number>` can execute remediation directly.
-8. Before writing, declare `📌 Write-back check: <GOON_PATH>` and confirm the target path is exactly `.r2mo/task/goon-NNN.md`.
+8. **Bug archive (appended output)**: Generate a `Bug Report` and write to `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md` recording Problem, Diagnostics, and Solution. Create the dated directory if it does not exist. Do not overwrite existing bug files in the same directory — append a sequence suffix if a name collision occurs.
+9. Before writing each output, declare `📌 Write-back check:` with the target path and confirm it matches the intended destination.
 
 ## DEBUG Report
 
@@ -91,6 +99,46 @@ author:
 - [ ] ...
 ```
 
+## Bug Report
+
+Write `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md` with the following format:
+
+```md
+---
+title: Bug-<slug>
+date: <yyyy-MM-dd HH:mm:ss>
+status: Reported
+author:
+related-task: <NNN or none>
+---
+
+# Bug Report
+
+## Problem
+
+- Summary:
+- Trigger condition:
+- Impact scope:
+- Severity:
+
+## Diagnostics
+
+- Reproduction steps:
+- Key logs / errors / stack traces:
+- Related files:
+- Investigation path (Superpowers / Manual):
+- Evidence chain:
+
+## Solution
+
+- Root cause:
+- Fix direction:
+- Applied fix (if any):
+- Risk points:
+- Verification method:
+- Follow-up: `/mxt:goon <number>` for remediation
+```
+
 ## Next Steps
 
 - Confirm bug then fix → verify after code changes
@@ -101,4 +149,4 @@ author:
 
 ## Verification
 
-Report: investigation conclusion, whether superpowers diagnosis was invoked, root cause found, fix suggestions, and confirmation that `DEBUG Report` was written to `<GOON_PATH>`.
+Report: investigation conclusion, whether superpowers diagnosis was invoked, root cause found, fix suggestions, confirmation that the `DEBUG Report` was written to `<GOON_PATH>`, and confirmation that the `Bug Report` was archived to `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md`.

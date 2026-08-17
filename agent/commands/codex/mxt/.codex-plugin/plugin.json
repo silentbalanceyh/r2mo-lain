@@ -1,7 +1,7 @@
 {
   "name": "mxt",
   "version": "1.0.0",
-  "description": "R2MO task workflow skills: mxt-plan, mxt-run, mxt-end, mxt-goon, mxt-debug, mxt-sync, mxt-start.",
+  "description": "R2MO task workflow skills: mxt-plan, mxt-run, mxt-end, mxt-goon, mxt-debug, mxt-sync, mxt-start, mxt-loop.",
   "author": {
     "name": "R2MO"
   },

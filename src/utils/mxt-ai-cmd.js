@@ -531,7 +531,6 @@ const installClaudePlugin = async (platform, homeDir) => {
                 description: 'R2MO task workflow slash commands: /mxt:plan, /mxt:run, /mxt:end, /mxt:goon, /mxt:debug, /mxt:sync, /mxt:start, /mxt:loop.',
                 version: '1.0.0',
                 source: './',
-                commands: commandManifestEntries(),
                 author: {
                     name: 'R2MO'
                 }
@@ -541,7 +540,10 @@ const installClaudePlugin = async (platform, homeDir) => {
 
     const cacheCopied = await copyDir(platform.sourceDir, targetDir);
     const marketplaceCopied = await copyDir(platform.sourceDir, marketplaceDir);
-    const userCommands = await installClaudeUserCommands(path.join(platform.sourceDir, 'commands'), homeDir);
+    // User-level ~/.claude/commands/mxt:*.md is intentionally NOT written.
+    // The enabled plugin cache is the single command source to avoid duplicate
+    // /mxt:* registrations in Claude Code autocomplete.
+    await uninstallClaudeUserCommands(homeDir);
     await fs.mkdir(marketplaceMetaDir, { recursive: true });
     await fs.writeFile(marketplaceFile, JSON.stringify(marketplace, null, 2) + '\n', 'utf8');
     await fs.writeFile(cacheMarketplaceFile, JSON.stringify(marketplace, null, 2) + '\n', 'utf8');

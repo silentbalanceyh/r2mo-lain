@@ -1,5 +1,5 @@
 ---
-description: "Sync current project: conflict detection, smart commit, pull remote, merge to develop/master, and push."
+description: "Sync current project: pull latest and merge with conflict resolution, compile + lint, full commit, and push to remote."
 argument-hint: ""
 ---
 
@@ -19,32 +19,32 @@ Binding execution contract for all MXT commands across Claude Code, Codex, and O
 - **Fresh evidence.** Run the smallest sufficient verification for the changed boundary before claiming success. Record skipped gates with reason.
 - **Cross-agent portability.** Keep prompts deterministic and safe for Claude Code, Codex skills, and OpenCode JSON templates.
 
-Sync current project Git state: conflict detection → smart commit → pull remote → merge to target branch → push.
+Sync current project: pull latest and merge with conflict resolution → compile + lint → full commit → push to remote.
 
 The user invoked this command with: $ARGUMENTS
 
 This command takes no arguments. Execute the sync flow directly.
 
-**Hard rules**: Confirm workspace state before execution. Conflict detected → abort. Merge conflict → abort. Push failure → abort. Worktree check mandatory. Dry-run before intervention.
+**Hard rules**: Confirm workspace state before execution. Conflict resolution required on merge conflict (do not abort on text conflicts — resolve them). Compile or lint failure → abort before push. Push failure → abort. Worktree check mandatory. Dry-run before intervention.
 
 ## Preflight
 
 1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).
 
-## Conflict Detection
+## State Check
 
 Before any write operation, complete these checks:
 
 1. `git status --porcelain` — check for uncommitted changes, list changed files
-2. `git diff --name-only --diff-filter=U` — check for unresolved merge conflicts
+2. `git diff --name-only --diff-filter=U` — check for unresolved merge conflicts (abort if any pre-exist)
 3. `git fetch --all --dry-run 2>&1` — pre-check if remote has new commits (do not actually pull)
 4. `git log HEAD..origin/<current-branch> --oneline` — check if local is behind remote
 5. `git log origin/<current-branch>..HEAD --oneline` — check if local is ahead of remote
 
-**Conflict handling**:
-- Unresolved merge conflicts (diff-filter=U has output) → **abort immediately**, report conflict files, prompt user to resolve manually
-- Local and remote diverged (both have new commits) → **abort and prompt**, suggest rebase or manual merge
-- Remote has new commits and local has uncommitted changes → stash, pull, then stash pop; stash pop conflict → **abort**
+**State handling**:
+- Pre-existing unresolved merge conflicts (diff-filter=U has output) → **abort immediately**, report conflict files, prompt user to resolve first
+- Local and remote diverged → pull with rebase or merge and resolve conflicts in the flow below
+- Remote has new commits and local has uncommitted changes → stash, pull, then stash pop; stash pop conflict → resolve in the flow below
 
 ## Plan
 
@@ -55,31 +55,36 @@ Before any write operation, complete these checks:
    - Local ahead commit count
    - Target merge branch (develop first, then master, then main)
    - Stash count, worktree count
-2. Smart commit (`git add -A` + `git commit`) — infer message from changes:
+2. **Pull latest and merge** (`git fetch --all` + `git pull origin <current-branch>`):
+   - If pull reports merge conflicts → **resolve them**: open each conflicted file, reconcile both sides, keep the correct intent, remove conflict markers, `git add` the resolved files, then `git commit` (or `git merge --continue` / `git rebase --continue`) to complete the merge.
+   - If pull reports no conflicts → continue.
+   - If a rebase was triggered and conflicts arise → resolve each conflict, `git add`, `git rebase --continue` until the rebase completes.
+3. **Full smart commit** (`git add -A` + `git commit`) — stage every change (tracked, untracked, deletions) and infer the message from changes:
    - `.r2mo/task/` changes → `chore: task sync`
    - `src/` changes only → `feat: source sync`
    - Mixed changes → `chore: workspace sync`
    - No changes → skip commit
-3. Pull and merge from remote (`git fetch --all` + `git pull origin <current-branch>`). Pull conflict → **abort**.
-4. Check for extra stashes: if stash records exist, prompt user to confirm cleanup.
-5. Check for extra worktrees: if extra worktrees exist, prompt user to confirm cleanup.
-6. Merge to target branch (priority: develop > master > main):
+4. **Compile (zero-warning gate)**: Run the project compile command (MDC-defined or default by stack: `npm run build` / `mvn compile` / `tsc --noEmit` / `go build ./...`). Zero errors, zero warnings. If warnings → fix and retry. If failure → **abort before push**, report the error.
+5. **Lint (zero-warning gate)**: Run the project lint command (MDC-defined or default: `npm run lint` / `eslint .` / `mvn checkstyle:check` / `golangci-lint run`). Zero errors, zero warnings. If failure → **abort before push**, report the error.
+6. Check for extra stashes: if stash records exist, prompt user to confirm cleanup.
+7. Check for extra worktrees: if extra worktrees exist, prompt user to confirm cleanup.
+8. Merge to target branch (priority: develop > master > main):
    - `git checkout <target-branch>`
    - `git merge <current-branch>`
-   - Merge conflict → **abort**, report files, do not auto-resolve
-7. Push to remote: `git push origin <target>`
+   - Merge conflict → **resolve them** (same resolution flow as step 2), then `git merge --continue`. Do not abort on text conflicts.
+9. **Push to remote**: `git push origin <target>`. Push failure → **abort**, report error.
 
 ## Self-Check
 
 After completion, verify results match expectations:
-1. `git branch --show-current` — confirm returned to original working branch
+1. `git branch --show-current` — confirm returned to original working branch (or on target after push)
 2. `git status --porcelain` — confirm clean workspace (no residual uncommitted files)
 3. `git log --oneline -3` — confirm latest commit includes this sync commit
-4. If anomaly found (not on original branch / dirty workspace / missing commit) → report explicitly, do not silently ignore
+4. If anomaly found (not on expected branch / dirty workspace / missing commit) → report explicitly, do not silently ignore
 
 ## Verification
 
-Report: pre-sync branch → post-sync branch, commit count (new/merged), conflict detection result (pass/found conflicts), target branch and push status, stash/worktree cleanup status.
+Report: pre-sync branch → post-sync branch, pull/merge result (fast-forward / merged / conflicts resolved with file list), compile result (pass/fail), lint result (pass/fail), commit count (new/merged), target branch and push status, stash/worktree cleanup status.
 
 ## Next Steps
 

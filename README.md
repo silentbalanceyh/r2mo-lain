@@ -184,9 +184,10 @@ flowchart TD
 | `/mxt:run 001` | 正文非空 | `Changes` | 优先按 Plan 执行 |
 | `/mxt:end 001` | 正文非空 | `goon-001.md` | 标题为 `整改-` + task 标题 |
 | `/mxt:goon 001` | goon 存在 | `Changes` | 整改后再 end 验证 |
-| `/mxt:debug` | 无 | 无 | BUG 排查 |
-| `/mxt:sync` | 无 | 无 | Git 同步：提交、拉取、合并、推送 |
+| `/mxt:debug` | 无 | 无 | BUG 排查，归档 Bug Report 到 `.r2mo/bugs/<yyyy-MM-dd>/` |
+| `/mxt:sync` | 无 | 无 | Git 同步：拉取合并（解决冲突）、编译 + Lint、全量提交、推送 |
 | `/mxt:start` | 无 | 无 | 拉起开发环境 |
+| `/mxt:loop 001` | 正文非空 | `goon-001.md` | 闭环：RUN → END → GOON → END 直到清空 |
 
 **Codex** — plugin skill
 
@@ -199,6 +200,7 @@ flowchart TD
 | `$mxt-debug` | `/mxt:debug` | BUG 排查 |
 | `$mxt-sync` | `/mxt:sync` | Git 同步 |
 | `$mxt-start` | `/mxt:start` | 拉起环境 |
+| `$mxt-loop 001` | `/mxt:loop` | 三 Agent 闭环 |
 
 参数 `001` 为三位数字任务编号，对应 `.r2mo/task/task-001.md`。格式不对时命令停止并提示正确用法。
 
@@ -253,7 +255,96 @@ mxt ai-cmd --uninstall
 
 安装后请重启应用或开启新会话，让命令或 skill 索引重新加载。
 
-### 2.4. 发布
+---
+
+### 2.4. `mxt ai-cmd` 用法详解
+
+`mxt ai-cmd` 是 R2MO 的 AI 命令安装器，把 `mxt` 闭环命令（plan / run / end / goon / debug / sync / start / loop）一键安装到 Claude Code、Codex、OpenCode 三个平台，并保证三个平台的命令源始终一致。
+
+#### 安装
+
+```bash
+mxt ai-cmd
+```
+
+交互式多选要安装的平台，菜单中会展示各平台的命令用法。每次安装会先清理该平台上的旧命令，再写入最新版并重新注册，因此可重复执行用于刷新。
+
+#### 卸载
+
+```bash
+mxt ai-cmd --uninstall
+# 或简写
+mxt ai-cmd -u
+```
+
+全量清理：已安装的平台会被删除，未安装的跳过。
+
+#### 安装目标（单一命令源，无重复）
+
+为避免 Claude Code 自动补全出现重复 `/mxt:*`，安装器对每个平台只写入**一个命令源**：
+
+| 平台 | 命令源（单一） | 调用方式 |
+|:---|:---|:---|
+| Claude Code | `~/.claude/plugins/cache/mxt-skills/mxt/1.0.0`（已启用插件） | `/mxt:plan 001` |
+| Codex | `~/.codex/plugins/mxt`（plugin skills） | `$mxt-plan 001` |
+| OpenCode | `~/.config/opencode/opencode.json`（`command.*` 模板） | `/mxt:plan 001` |
+
+> Claude Code 的 `~/.claude/plugins/marketplaces/mxt-skills` 仅作为注册表源（registry-only），不再声明 commands，避免与 cache 插件重复注册。用户级 `~/.claude/commands/mxt:*.md` 不再写入，且安装时会主动清理历史遗留的用户级文件。
+
+#### 命令源一致性
+
+仓库内有三套命令源，安装时会保持三者一致：
+
+```
+agent/commands/claude/mxt/commands/*.md   ← 规范源（canonical）
+agent/commands/codex/mxt/commands/*.md   ← 同步副本
+agent/commands/opencode/mxt/commands/*.md ← 同步副本
+```
+
+Codex 另有 `agent/commands/codex/mxt/skills/mxt-*/SKILL.md`，使用 Codex skill frontmatter（`name`/`description`），正文与命令源保持一致。修改命令时以 `claude` 源为基准，再同步到 codex / opencode。
+
+#### 闭环流程
+
+八个命令形成 `plan → run → end → goon` 闭环，`loop` 是自动闭环入口，`sync` / `start` / `debug` 为辅助：
+
+- **plan**（可选）— 只写回 `task-NNN.md` 的 `## Plan`
+- **run** — 按 Plan 执行，质量门通过后写 `Done + ## Changes` 到 `task-NNN.md`
+- **end** — 验证，清空 `goon-NNN.md` 原内容，写入当前整改项（向需求收敛，不发散）
+- **goon** — 按整改项执行，闭环记录追加回 `task-NNN.md` 的 `## Changes`，再 `end` 验证
+- **loop** — 自动执行 RUN → END → GOON → END 循环，直到 `goon-NNN.md` 无待整改项
+- **debug** — BUG 排查，归档 Bug Report（Problem / Diagnostics / Solution）到 `.r2mo/bugs/<yyyy-MM-dd>/`
+- **sync** — Git 全量同步：拉取最新（解决冲突）、编译 + Lint、全量提交、推送
+- **start** — 拉起开发环境（后端优先 → 前端并行 → 网络健康检查）
+
+每个任务只用两个文件：`task-NNN.md`（正文 + Plan + Changes）和 `goon-NNN.md`（当前整改项，清空即闭环）。
+
+#### 整改项格式（闭环计数契约）
+
+`goon-NNN.md` 中每条整改项必须使用固定 header，以便 `loop` 用 `grep -c '^## Remediation Item [0-9]\+ —'` 机械计数：
+
+```md
+## Remediation Item N — <short title>
+
+- Requirement link: 阻塞的需求短语
+- Failure fact: 观测 vs 期望
+- Acceptance criteria: 解决的精确条件
+- Suggested fix direction: 可选、非约束
+```
+
+计数为 0 即闭环完成（单一真值源，不依赖 status 字段）。
+
+#### 验证安装
+
+| 平台 | 验证方式 |
+|:---|:---|
+| Claude Code | 重启会话后 `/mxt:plan 001` 不返回 `Unknown command`；检查 `~/.claude/plugins/cache/mxt-skills/mxt/1.0.0/commands/` 含 8 个 `.md` |
+| Codex | `codex plugin list` 出现 `mxt`；`codex debug prompt-input` 中出现 `mxt:mxt-plan` 等 |
+| OpenCode | `opencode.json` 中 `command["mxt:plan"]` 等 8 条存在 |
+
+> 安装 / 卸载前请关闭正在运行的 Claude Code / Codex / OpenCode，避免文件锁定。Windows 遇 `EPERM`/`EBUSY` 时关闭应用后重试。
+
+### 2.5. 发布
+
 
 可直接通过 `./publish.sh "commit message"` 完成发布，脚本会依次执行：
 

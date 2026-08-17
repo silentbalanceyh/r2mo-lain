@@ -33,7 +33,7 @@ No `loop-NNN.json`, no extra tracking files. Loop state is derived from the goon
 
 - Lock and only read/write `task-NNN.md` and `goon-NNN.md`.
 - RUN/GOON are executors; END/END_REVIEW are independent reviewers — self-review is prohibited.
-- Count remediation items mechanically via `grep -c '^## Remediation Item [0-9]\\+ —'`; zero count ends immediately.
+- Count remediation items mechanically via `grep -c '^## Remediation Item [0-9]\\+ —'`; zero count ends immediately. This count is the single source of truth for loop closure. END writes items and GOON clears them in this exact header format (see `/mxt:end` Remediation Item Format) so the count stays valid.
 - RUN discovers applicable rules once and saves to memory; subsequent phases reuse without re-scanning.
 - Full-workspace, K8S, BUGS, Chat, hot-start stability, and `agent-gate.sh all` are forbidden by default. Only enabled for task-scope, release verification, or explicit user request.
 

@@ -52,15 +52,15 @@ The user invoked this command with: $ARGUMENTS
 > - **Force reload**: Re-read `<GOON_PATH>` from disk. Do not use cache, history, or previous summaries.
 > - **Input**: Use the freshly read goon content as the sole remediation input, cross-referenced with `<TASK_PATH>` original task goals.
 > - **Goon title**: Keep frontmatter title as `Remediation-` + `<TASK_PATH>` frontmatter title.
-> - **Remediation**: Process each item in `<GOON_PATH>` sequentially, staying within `<TASK_PATH>` original goals.
+> - **Remediation**: Process each item in `<GOON_PATH>` sequentially, staying within `<TASK_PATH>` original goals. Each item is a `## Remediation Item N — <title>` block (see `/mxt:end` Remediation Item Format). Fixes must converge toward the linked requirement — no divergence into adjacent modules, style, or speculative robustness.
 > - **Scheduling**: Auto-judge Team mode by complexity; auto-judge Worktree by risk. Directives override auto-judgment.
 > - **Quality gate** (mandatory before clearing goon or writing Changes, max 3 auto-retry rounds; 3 failures → stop, report, do not clear goon):
 >   1. **Compile zero-warning**: Run project compile (e.g. `npm run build`, `mvn compile`, `tsc --noEmit`). Zero errors, zero warnings.
 >   2. **Lint zero-warning**: Run project lint (e.g. `npm run lint`, `eslint .`). Zero errors, zero warnings.
 >   3. **Tests pass**: If test config exists, run the suite. All must pass. Skip if no test config.
 >   4. **Record results**: Write each gate's command, pass/fail into Changes. If N/A, record as "skipped (N/A)".
-> - **Goon write-back**: After quality gate passes and remediation is complete, **clear `<GOON_PATH>` original content** first, then write any remaining incomplete items.
-> - **No remaining items**: If all items are done, rewrite `<GOON_PATH>` as empty / no-pending-items status.
+> - **Goon write-back**: After quality gate passes and remediation is complete, **clear `<GOON_PATH>` original content** first, then write any remaining incomplete items. Re-emit each remaining item in the exact `## Remediation Item N — <title>` format so the loop count stays valid. Renumber sequentially from 1.
+> - **No remaining items**: If all items are done (i.e. `grep -c '^## Remediation Item [0-9]\+ —' <GOON_PATH>` returns 0), rewrite `<GOON_PATH>` as empty / no-pending-items status. The count, not the status field, is the single source of truth for loop closure.
 > - **Changes write-back**: Do not write Changes to `<GOON_PATH>`. Append remediation completion, affected files, quality gate results, and closure notes to `<TASK_PATH>` `## Changes`.
 > - **Write-back guard**: Verify destination matches isolation lock before writing. If mismatch, stop and report.
 > - **Isolation**: Do not read, edit, or create any `task-*.md` or `goon-*.md` other than `<GOON_PATH>` and `<TASK_PATH>` (except worker files in Team scheduling).

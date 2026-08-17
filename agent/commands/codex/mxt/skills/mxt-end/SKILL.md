@@ -33,6 +33,23 @@ The user invoked this command with: $ARGUMENTS
 
 **Hard rules**: Parse failure → abort. Goon: clear-then-write. Never modify task Changes. Path conflict → abort. No reads/writes outside isolation lock.
 
+## Remediation Item Format
+
+Every remediation item in `<GOON_PATH>` MUST use this exact header so the closed-loop count works mechanically:
+
+```md
+## Remediation Item N — <short title>
+
+- Requirement link: which task requirement this blocks (quote the requirement phrase)
+- Failure fact: observed behavior vs expected behavior
+- Acceptance criteria: the precise condition that makes this item resolved
+- Suggested fix direction: optional, non-binding hint
+```
+
+- `N` is a sequential integer starting at 1. Title is lowercase-hyphenated, max 50 chars.
+- The loop counts items via `grep -c '^## Remediation Item [0-9]\+ —'`. Any other header format breaks the closed-loop count and is a violation.
+- Keep one item per `## Remediation Item` header. Do not nest items.
+
 ## Core Verification Constraints (cannot be overridden by Deep/Strict)
 
 1. Repo rules and MDC are hard constraints. Verification budget / no-repeat / incremental verification rules take priority over any default full-scan language in this command.
@@ -41,9 +58,23 @@ The user invoked this command with: $ARGUMENTS
 4. **No P2/P3, optimizations, style issues, speculative risks, unrelated legacy debt, or "could be better" refactors.**
 5. First end must deliver all current blocking items in one pass within the selected scope. Multiple evidence for the same failure → merge into one item with clear acceptance criteria. No piecemeal additions across rounds.
 6. Post-remediation re-verification only checks listed goon items and direct P0/P1 blockers introduced by the fix. Do not re-scan the full scope to manufacture new rounds.
-7. **Scope discipline**: Verify against task body, Plan, Changes declared scope, and minimal affected verification results. Do not dig into out-of-scope implementation details, legacy debt, repo-wide potential risks, speculative reasoning, or "let me also check" extra scope. Do not expand from one issue to adjacent modules, style optimizations, or follow-up topics. After completing one pass of in-boundary verification and minimal necessary validation, write the conclusion immediately. If evidence is insufficient, record the unverified scope — do not keep searching for new issues.
-8. Verification uses minimal affected targets; once green, it is fixed. Without explicit user authorization, do not run full/workspace gates or repeat already-green checks.
-9. Solution stability: goon writes failure facts + acceptance criteria. Unless a single safe path is clearly identified, do not force or repeatedly switch between A/B implementations.
+7. **Requirements-first priority**: Judge completion against the task's stated requirements first. A task is done when its requirements are satisfied — not when every adjacent concern is perfect. Only after requirements are met do P0/P1 reliability blockers matter. Never let a non-requirement concern block a requirement-satisfying change.
+8. **Convergence, not divergence**: Every remediation item must trace back to a specific task requirement it helps satisfy, or a direct P0/P1 blocker to that requirement. Items must converge the code toward the requirements — fewer, tighter, closer to the goal each round. Forbidden (divergence): items that open new topics, expand to adjacent modules, chase style/optimization, refactor "while here", or add speculative robustness. If an observation does not move the task toward requirement satisfaction, do not write it as an item.
+9. **Scope discipline**: Verify against task body, Plan, Changes declared scope, and minimal affected verification results. Do not dig into out-of-scope implementation details, legacy debt, repo-wide potential risks, speculative reasoning, or "let me also check" extra scope. Do not expand from one issue to adjacent modules, style optimizations, or follow-up topics. After completing one pass of in-boundary verification and minimal necessary validation, write the conclusion immediately. If evidence is insufficient, record the unverified scope — do not keep searching for new issues.
+10. Verification uses minimal affected targets; once green, it is fixed. Without explicit user authorization, do not run full/workspace gates or repeat already-green checks.
+11. Solution stability: goon writes failure facts + acceptance criteria. Unless a single safe path is clearly identified, do not force or repeatedly switch between A/B implementations.
+
+## Verification Hints
+
+Before writing the goon, run these checks (print which were used and their results):
+
+1. **Requirement coverage**: List each task requirement and mark satisfied / unsatisfied / partially. Unsatisfied requirements are the top-priority remediation items.
+2. **Diff review**: Read the git diff of changed files. Each change should map to a requirement. Changes with no requirement link are candidates for removal, not for new items.
+3. **Build + run**: Compile and (if feasible) run the affected path. Errors that block requirement satisfaction are P0; cosmetic warnings are not items.
+4. **Boundary check**: Confirm the change stays within the declared Plan/Changes scope. Out-of-scope drift is a P1 item (scope correction toward requirements), not a chance to expand.
+5. **Regression sniff**: Only if the fix touched shared code, check direct callers. Do not launch a repo-wide regression hunt.
+
+If a check is N/A for this task, record it as "skipped (N/A)" with reason — do not leave it silent.
 
 ## Workflow
 
@@ -61,10 +92,14 @@ The user invoked this command with: $ARGUMENTS
 > - **Pre-check**: If body is empty, return "Task body is empty, verification skipped" and do not modify any file.
 > - **Verification basis**: Compare task body, existing Plan, existing Changes, and current code state to determine completion.
 > - **Core constraints**: This is risk-controlled verification, not a perfect-system audit. Repo MDC / verification budget takes priority. Deep/Strict cannot override.
+> - **Requirements-first**: Judge completion against stated requirements first. Done = requirements satisfied, not "everything perfect". A non-requirement concern must not block a requirement-satisfying change.
+> - **Convergence**: Every remediation item must trace to a requirement or a direct P0/P1 blocker of a requirement. Items must converge toward requirements — fewer and tighter each round. No divergence: no new topics, no adjacent modules, no style/optimization, no speculative robustness, no "while here" refactors. If it does not move toward requirement satisfaction, do not write it.
 > - **Scope discipline**: Verify against task body, Plan, Changes declared scope, and minimal affected verification results. No out-of-scope digging, legacy debt, repo-wide risks, speculative reasoning, or "let me also check" extras. Do not expand from one issue to adjacent modules or follow-up topics. Complete one pass → write conclusion.
 > - **Remediation threshold**: Only write P0/P1 issues that directly break task verification, compile/run, or change boundary reliability. No P2/P3, optimizations, style, speculative risks, or unrelated legacy debt.
+> - **Item format**: Write each item as `## Remediation Item N — <title>` with Requirement link / Failure fact / Acceptance criteria / Suggested fix direction. This exact header is required for the loop count.
 > - **One-shot completeness**: All current blocking items in the selected scope must be delivered in one pass. Multiple evidence for same failure → merge into one item with acceptance criteria. No piecemeal additions.
 > - **Re-verification boundary**: If this is a post-goon re-verification, only check listed goon items and direct P0/P1 blockers from the fix. Do not re-scan to create new rounds.
+> - **Verification hints**: Run the checks in § Verification Hints (requirement coverage, diff review, build+run, boundary check, regression sniff). Record each as used/skipped with result. Unmet requirements are top-priority items.
 > - **Deep mode**: If `Deep` directive detected, read each changed file and compare against task requirements. Otherwise, standard granularity.
 > - **Strict mode**: If `Strict` directive detected, raise sensitivity within current task boundary. Still only P0/P1, never P2/P3.
 > - **Goon title**: `<GOON_PATH>` frontmatter title must be `Remediation-` + `<TASK_PATH>` frontmatter title.
@@ -84,4 +119,4 @@ The user invoked this command with: $ARGUMENTS
 
 ## Verification
 
-Report: verification conclusion, remediation item count, and the written `.r2mo/task/goon-NNN.md` path.
+Report: requirement coverage (satisfied/unsatisfied/partial counts), verification hints used (each check: used/skipped + result), remediation item count, convergence confirmation (every item traces to a requirement), and the written `.r2mo/task/goon-NNN.md` path.
