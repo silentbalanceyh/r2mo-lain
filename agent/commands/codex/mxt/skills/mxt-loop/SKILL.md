@@ -7,60 +7,62 @@ description: Use when the user asks Codex to run a closed-loop task workflow wit
 
 ## Harness
 
-This Harness is the binding execution contract for this MXT command across Claude Code, Codex, and OpenCode. Treat localized sections below as legacy detail; this section wins when wording conflicts.
+Binding execution contract for all MXT commands across Claude Code, Codex, and OpenCode.
 
-- English-first: write instructions, analysis, verification notes, and summaries in English by default. Use Chinese only when quoting existing repository content, preserving task titles/frontmatter/status values, showing exact localized command errors already required by this file, or when the user explicitly asks for Chinese.
-- Rule loading: before task action, load repository entry rules (`AGENTS.md`, `CLAUDE.md`, `CODEX.md`), project rule files (`.claude/rules`, `.codex/rules`, `.cursor/rules`, `.opencode`, other relevant `.mdc`), and `~/.codex/rules/r2mo-task-workflow.md` when present. Missing optional files do not block execution.
-- Argument contract: resolve the explicit three-digit number first. If absent, list current-directory `.r2mo/task/` candidates only. Never resolve from parent, child, sibling, or historical timestamped task directories unless the user names that path.
-- Task isolation lock: after resolving paths, print the locked path(s) before reading task content, and only read/write those locked `task-*.md`, `goon-*.md`, or `loop-*.json` files for this invocation.
-- Disk source of truth: Do not trust conversation memory, previous summaries, installed plugin cache, or earlier reads. Re-read the locked files from disk immediately before decisions and again before write-back.
-- Prompt echo: before editing, verification, or task execution, print the final action prompt in one Markdown code block with concrete paths substituted.
-- Write-back guard: before any write, verify the destination exactly matches the isolation lock. Never duplicate `Plan` or `Changes`; update in place or append under the existing canonical section as instructed.
-- Fresh evidence before completion claims: run the smallest sufficient verification for the changed boundary, read the output, and only then report success. Record skipped gates with the reason.
-- Cross-agent portability: avoid tool-specific assumptions unless the platform section explicitly requires them. Keep prompts deterministic and safe for Claude Code, Codex skills, Codex prompts, and OpenCode JSON command templates.
+- **English-first.** Write all output in English. Use Chinese only when quoting existing repo content (task titles, frontmatter values, status fields, localized error messages) or when the user explicitly asks.
+- **Rule loading.** Load `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `.claude/rules/*.mdc`, `.codex/rules/*.mdc`, `.cursor/rules/*.mdc`, `.opencode/*.mdc`, and `~/.codex/rules/r2mo-task-workflow.md` before task action. Missing files do not block.
+- **Argument contract.** Resolve the three-digit task number first. If absent, list `.r2mo/task/` candidates in the current directory only. Never resolve from parent/sibling/historical directories.
+- **Isolation lock.** Print locked path(s) before reading. Only read/write locked `task-*.md` and `goon-*.md` files.
+- **Disk source of truth.** Re-read locked files from disk before decisions and before write-back. Do not trust conversation memory, summaries, or cache.
+- **Prompt echo.** Print the final action prompt in a code block before editing or execution.
+- **Write-back guard.** Verify destination matches isolation lock before any write. Never duplicate `Plan` or `Changes`; update in place.
+- **Fresh evidence.** Run the smallest sufficient verification for the changed boundary before claiming success. Record skipped gates with reason.
+- **Cross-agent portability.** Keep prompts deterministic and safe for Claude Code, Codex skills, and OpenCode JSON templates.
 
-执行 `RUN → VERIFY → END → [GOON → VERIFY → END_REVIEW]`，仅在审查产生整改项时进入修复循环。调用参数：`$ARGUMENTS`。
+Execute `RUN → VERIFY → END → [GOON → VERIFY → END_REVIEW]` — only enter the remediation loop when review produces items. Argument: `$ARGUMENTS`.
 
-## 不可变契约
+## File Model
 
-- 锁定且只读写 `.r2mo/task/task-NNN.md`、`goon-NNN.md`、`loop-NNN.json`。
-- RUN/GOON 是执行者；END/END_REVIEW 是独立审查者，不允许自审。
-- 整改项用 `grep -c '^## 整改项 [0-9]\+ —'` 机械计数；归零立即结束。
-- 每阶段更新状态文件，保留断点恢复、角色调用记录、规则清单和验证证据。
-- RUN 只发现一次适用规则并保存到 `mdcFiles`；后续阶段直接复用，不重复 find/grep。
-- 默认禁止全 workspace、K8S、BUGS、Chat、热启动稳定性和 `agent-gate.sh all`。仅任务范围、发布验收或用户显式要求时选择。
+Only two files per task:
+- `.r2mo/task/task-NNN.md` — task body, `## Plan` section, and `## Changes` section.
+- `.r2mo/task/goon-NNN.md` — current remediation items only. Cleared when no items remain.
 
-## 状态文件
+No `loop-NNN.json`, no extra tracking files. Loop state is derived from the goon file: if goon-NNN.md is empty or has no pending items, the loop is closed.
 
-`.r2mo/task/loop-NNN.json` 至少保存：`phase`、`loop`、`mdcFiles`、`filesChanged`、`codeFingerprint`、`verification`、`goonItemCount`、`agentCalls`、`lastCheckpoint`。
+## Immutable Contract
 
-恢复时先读状态。已完成 RUN 且代码指纹未变化时，END 复用 RUN 的验证结果；GOON 修改代码后使缓存失效，只验证受影响范围。
+- Lock and only read/write `task-NNN.md` and `goon-NNN.md`.
+- RUN/GOON are executors; END/END_REVIEW are independent reviewers — self-review is prohibited.
+- Count remediation items mechanically via `grep -c '^## Remediation Item [0-9]\\+ —'`; zero count ends immediately.
+- RUN discovers applicable rules once and saves to memory; subsequent phases reuse without re-scanning.
+- Full-workspace, K8S, BUGS, Chat, hot-start stability, and `agent-gate.sh all` are forbidden by default. Only enabled for task-scope, release verification, or explicit user request.
 
 ## Phase 1 — RUN
 
-1. 锁定任务路径，读取任务正文和仓库入口规则。
-2. 一次性发现并按任务 scope 选择相关规则，将路径保存至 `mdcFiles`；禁止后续重新发现。
-3. 执行者单次实现任务，记录变更文件和代码指纹。
-4. 按以下优先级选择最小充分验证：
-   1. 真实运行环境、进程归属、监听端口和业务健康路径；
-   2. owning submodule 的针对性测试；
-   3. 任务要求的 source guard、lint、compile。
-5. 记录命令、结果、适用范围和指纹，进入 END。
+1. Lock task path, read task body and repo entry rules.
+2. Discover and select relevant rules by task scope in one pass; reuse in later phases without re-scanning.
+3. Executor implements the task in one pass, recording changed files.
+4. Select minimal sufficient verification by priority:
+   1. Real runtime environment, process ownership, listening ports, and business health paths
+   2. Owning submodule targeted tests
+   3. Task-required source guard, lint, compile
+5. Record commands and results. Proceed to END.
 
 ## Phase 2 — END
 
-1. 使用不同审查者，读取状态中的 `mdcFiles`，不得重新扫描规则。
-2. 若代码指纹与 RUN 相同，复用已通过验证；只补做审查特有检查。
-3. 对照任务、diff 和证据独立审查。
-4. 无问题时将 goon 写为 `status: Done`、`item_count: 0` 并立即结束；有问题时仅写当前整改项，进入 GOON。
+1. Use a different reviewer. Read rules from RUN's saved list — do not re-scan.
+2. Independently review against task body, diff, and evidence.
+3. No issues → write goon as `status: Done`, empty items, loop closed immediately.
+4. Has issues → write only current P0/P1 remediation items to goon, proceed to GOON.
 
 ## Phase 3 — GOON / END_REVIEW
 
-1. 执行者只修复当前 goon 项，更新代码指纹。
-2. 只重跑受影响的运行验证、针对性测试和必要质量门，不重跑无关全量门。
-3. 独立审查者复核修复，移除已解决项并机械计数。
-4. 计数为零立即结束；仍有项则继续。连续两轮无减少时标记 Blocked/WONTFIX，停止无意义 Agent 重试。
+1. Executor fixes only current goon items.
+2. Re-run only affected runtime verification, targeted tests, and necessary quality gates — do not re-run unrelated full gates.
+3. Independent reviewer re-checks fixes, removes resolved items, count mechanically.
+4. **Zero items** → clear goon-NNN.md (rewrite as empty / no-pending-items), loop closed.
+5. Still has items → continue loop. Two consecutive rounds with no decrease → mark Blocked/WONTFIX, stop meaningless retries.
 
-## 完成与写回
+## Completion
 
-闭环完成后 task 为 Done，goon 为 Done/Closed，loop phase 为 DONE。Changes 必须列出变更文件、真实运行验证、针对性测试、必要静态门及跳过重型门禁的范围理由。
+Loop complete: task-NNN.md is Done, goon-NNN.md is empty/cleared. Changes in task-NNN.md must list changed files, real runtime verification, targeted tests, necessary static gates, and scope rationale for skipped heavy gates.

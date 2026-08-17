@@ -7,66 +7,82 @@ argument-hint: ""
 
 ## Harness
 
-This Harness is the binding execution contract for this MXT command across Claude Code, Codex, and OpenCode. Treat localized sections below as legacy detail; this section wins when wording conflicts.
+Binding execution contract for all MXT commands across Claude Code, Codex, and OpenCode.
 
-- English-first: write instructions, analysis, verification notes, and summaries in English by default. Use Chinese only when quoting existing repository content, preserving task titles/frontmatter/status values, showing exact localized command errors already required by this file, or when the user explicitly asks for Chinese.
-- Rule loading: before task action, load repository entry rules (`AGENTS.md`, `CLAUDE.md`, `CODEX.md`), project rule files (`.claude/rules`, `.codex/rules`, `.cursor/rules`, `.opencode`, other relevant `.mdc`), and `~/.codex/rules/r2mo-task-workflow.md` when present. Missing optional files do not block execution.
-- Argument contract: resolve the explicit three-digit number first. If absent, list current-directory `.r2mo/task/` candidates only. Never resolve from parent, child, sibling, or historical timestamped task directories unless the user names that path.
-- Task isolation lock: after resolving paths, print the locked path(s) before reading task content, and only read/write those locked `task-*.md`, `goon-*.md`, or `loop-*.json` files for this invocation.
-- Disk source of truth: Do not trust conversation memory, previous summaries, installed plugin cache, or earlier reads. Re-read the locked files from disk immediately before decisions and again before write-back.
-- Prompt echo: before editing, verification, or task execution, print the final action prompt in one Markdown code block with concrete paths substituted.
-- Write-back guard: before any write, verify the destination exactly matches the isolation lock. Never duplicate `Plan` or `Changes`; update in place or append under the existing canonical section as instructed.
-- Fresh evidence before completion claims: run the smallest sufficient verification for the changed boundary, read the output, and only then report success. Record skipped gates with the reason.
-- Cross-agent portability: avoid tool-specific assumptions unless the platform section explicitly requires them. Keep prompts deterministic and safe for Claude Code, Codex skills, Codex prompts, and OpenCode JSON command templates.
+- **English-first.** Write all output in English. Use Chinese only when quoting existing repo content (task titles, frontmatter values, status fields, localized error messages) or when the user explicitly asks.
+- **Rule loading.** Load `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `.claude/rules/*.mdc`, `.codex/rules/*.mdc`, `.cursor/rules/*.mdc`, `.opencode/*.mdc`, and `~/.codex/rules/r2mo-task-workflow.md` before task action. Missing files do not block.
+- **Argument contract.** Resolve the three-digit task number first. If absent, list `.r2mo/task/` candidates in the current directory only. Never resolve from parent/sibling/historical directories.
+- **Isolation lock.** Print locked path(s) before reading. Only read/write locked `task-*.md` and `goon-*.md` files.
+- **Disk source of truth.** Re-read locked files from disk before decisions and before write-back. Do not trust conversation memory, summaries, or cache.
+- **Prompt echo.** Print the final action prompt in a code block before editing or execution.
+- **Write-back guard.** Verify destination matches isolation lock before any write. Never duplicate `Plan` or `Changes`; update in place.
+- **Fresh evidence.** Run the smallest sufficient verification for the changed boundary before claiming success. Record skipped gates with reason.
+- **Cross-agent portability.** Keep prompts deterministic and safe for Claude Code, Codex skills, and OpenCode JSON templates.
 
-同步当前项目 Git 状态：全量提交、冲突检测、安全合并到目标分支并推送。
+Sync current project Git state: conflict detection → smart commit → pull remote → merge to target branch → push.
 
 The user invoked this command with: $ARGUMENTS
 
-## 参数解析
+This command takes no arguments. Execute the sync flow directly.
 
-本命令无参数。直接执行同步流程。
+**Hard rules**: Confirm workspace state before execution. Conflict detected → abort. Merge conflict → abort. Push failure → abort. Worktree check mandatory. Dry-run before intervention.
 
-**硬规则**：执行前确认工作区状态 | fetch后先检测冲突再合并 | 冲突→终止并报告 | 推送失败→终止 | Worktree检查必执行 | stash冲突→提示用户
+## Preflight
 
-## Workflow
+1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).
 
-1. 先读取并遵守当前仓库的 `AGENTS.md`、`CLAUDE.md`、`CODEX.md`（若存在），以及它们引用的所有规则文件；扫描项目中所有可检索的 `.mdc` 规则文件（`.claude/rules/`、`.codex/rules/`、`.cursor/rules/`、`.opencode/` 及其他任意路径下的 `.mdc`），以及 `~/.codex/rules/r2mo-task-workflow.md`（若存在）。
-2. 预检：运行 `git status` 确认工作区状态，记录当前分支名。
-3. 将当前系统中所有改动全量提交：
-   - `git add -A && git commit -m "sync: auto commit before sync"`
-   - 若无改动则跳过提交，继续后续步骤。
-4. 从远程拉取最新代码：`git fetch --all`。
-5. **冲突检测（核心强化）**：在 merge 之前，使用 `git diff --name-only --diff-filter=U` 和 dry-run 合并检测冲突：
-   - 执行 `git merge --no-commit --no-ff origin/<current-branch>` 进行试合并。
-   - 若检测到冲突文件（`git diff --name-only --diff-filter=U` 不为空）：
-     - 立即中止合并：`git merge --abort`。
-     - 报告冲突文件列表及冲突详情。
-     - **终止流程**，提示用户手动解决冲突后再执行 sync。
-   - 若无冲突，完成合并：`git commit --no-edit`。
-6. 确认环境中没有多余 stash：若有 stash 记录，提示用户确认是否需要清理。
-7. 确认环境中没有多余 worktree：若有额外 worktree，提示用户确认是否需要清理。
-8. 合并到目标分支：
-   - 优先检测 `develop` 分支是否存在（`git branch -a | grep develop`）。
-   - 若存在 develop：`git checkout develop && git merge <current-branch>`。
-   - 若不存在 develop：`git checkout master && git merge <current-branch>`。
-   - 合并前同样执行冲突检测（步骤5的流程）。
-9. 合并完成后 push 到远程对应分支：`git push origin <target-branch>`。
-10. 切回原始工作分支：`git checkout <original-branch>`。
+## Conflict Detection
+
+Before any write operation, complete these checks:
+
+1. `git status --porcelain` — check for uncommitted changes, list changed files
+2. `git diff --name-only --diff-filter=U` — check for unresolved merge conflicts
+3. `git fetch --all --dry-run 2>&1` — pre-check if remote has new commits (do not actually pull)
+4. `git log HEAD..origin/<current-branch> --oneline` — check if local is behind remote
+5. `git log origin/<current-branch>..HEAD --oneline` — check if local is ahead of remote
+
+**Conflict handling**:
+- Unresolved merge conflicts (diff-filter=U has output) → **abort immediately**, report conflict files, prompt user to resolve manually
+- Local and remote diverged (both have new commits) → **abort and prompt**, suggest rebase or manual merge
+- Remote has new commits and local has uncommitted changes → stash, pull, then stash pop; stash pop conflict → **abort**
+
+## Plan
+
+1. **Dry-run**: Display the operation checklist:
+   - Current branch name, remote tracking branch
+   - Uncommitted change count
+   - Remote new commit count (how many behind)
+   - Local ahead commit count
+   - Target merge branch (develop first, then master, then main)
+   - Stash count, worktree count
+2. Smart commit (`git add -A` + `git commit`) — infer message from changes:
+   - `.r2mo/task/` changes → `chore: task sync`
+   - `src/` changes only → `feat: source sync`
+   - Mixed changes → `chore: workspace sync`
+   - No changes → skip commit
+3. Pull and merge from remote (`git fetch --all` + `git pull origin <current-branch>`). Pull conflict → **abort**.
+4. Check for extra stashes: if stash records exist, prompt user to confirm cleanup.
+5. Check for extra worktrees: if extra worktrees exist, prompt user to confirm cleanup.
+6. Merge to target branch (priority: develop > master > main):
+   - `git checkout <target-branch>`
+   - `git merge <current-branch>`
+   - Merge conflict → **abort**, report files, do not auto-resolve
+7. Push to remote: `git push origin <target>`
+
+## Self-Check
+
+After completion, verify results match expectations:
+1. `git branch --show-current` — confirm returned to original working branch
+2. `git status --porcelain` — confirm clean workspace (no residual uncommitted files)
+3. `git log --oneline -3` — confirm latest commit includes this sync commit
+4. If anomaly found (not on original branch / dirty workspace / missing commit) → report explicitly, do not silently ignore
 
 ## Verification
 
-完成后说明：
-- 当前分支（应切回原始分支）
-- 目标分支
-- 合并结果（成功/冲突已中止）
-- 推送结果
-- 冲突文件列表（如有）
+Report: pre-sync branch → post-sync branch, commit count (new/merged), conflict detection result (pass/found conflicts), target branch and push status, stash/worktree cleanup status.
 
-## 闭环指引
+## Next Steps
 
-Sync 完成后的典型路径：
-- 执行任务 → `/mxt:run <编号>`
-- 拉起环境 → `/mxt:start`
-- 如遇 BUG → `/mxt:debug <描述>`
-- 如遇冲突 → 手动解决后重新 `/mxt:sync`
+- Execute task → `/mxt:run <number>` or `$mxt-run <number>`
+- Start environment → `/mxt:start` or `$mxt-start`
+- Bug encountered → `/mxt:debug <description>` or `$mxt-debug <description>`

@@ -1,94 +1,112 @@
 ---
-description: "Start dev environment: backend first → frontend parallel → network health check."
+description: "Start dev environment: backend first → frontend parallel → network health check. Rebuilds if already running."
 argument-hint: ""
+allowed-tools: [Read, Glob, Grep, Bash, Edit, Write]
 ---
 
 # /mxt:start
 
 ## Harness
 
-This Harness is the binding execution contract for this MXT command across Claude Code, Codex, and OpenCode. Treat localized sections below as legacy detail; this section wins when wording conflicts.
+Binding execution contract for all MXT commands across Claude Code, Codex, and OpenCode.
 
-- English-first: write instructions, analysis, verification notes, and summaries in English by default. Use Chinese only when quoting existing repository content, preserving task titles/frontmatter/status values, showing exact localized command errors already required by this file, or when the user explicitly asks for Chinese.
-- Rule loading: before task action, load repository entry rules (`AGENTS.md`, `CLAUDE.md`, `CODEX.md`), project rule files (`.claude/rules`, `.codex/rules`, `.cursor/rules`, `.opencode`, other relevant `.mdc`), and `~/.codex/rules/r2mo-task-workflow.md` when present. Missing optional files do not block execution.
-- Argument contract: resolve the explicit three-digit number first. If absent, list current-directory `.r2mo/task/` candidates only. Never resolve from parent, child, sibling, or historical timestamped task directories unless the user names that path.
-- Task isolation lock: after resolving paths, print the locked path(s) before reading task content, and only read/write those locked `task-*.md`, `goon-*.md`, or `loop-*.json` files for this invocation.
-- Disk source of truth: Do not trust conversation memory, previous summaries, installed plugin cache, or earlier reads. Re-read the locked files from disk immediately before decisions and again before write-back.
-- Prompt echo: before editing, verification, or task execution, print the final action prompt in one Markdown code block with concrete paths substituted.
-- Write-back guard: before any write, verify the destination exactly matches the isolation lock. Never duplicate `Plan` or `Changes`; update in place or append under the existing canonical section as instructed.
-- Fresh evidence before completion claims: run the smallest sufficient verification for the changed boundary, read the output, and only then report success. Record skipped gates with the reason.
-- Cross-agent portability: avoid tool-specific assumptions unless the platform section explicitly requires them. Keep prompts deterministic and safe for Claude Code, Codex skills, Codex prompts, and OpenCode JSON command templates.
+- **English-first.** Write all output in English. Use Chinese only when quoting existing repo content (task titles, frontmatter values, status fields, localized error messages) or when the user explicitly asks.
+- **Rule loading.** Load `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `.claude/rules/*.mdc`, `.codex/rules/*.mdc`, `.cursor/rules/*.mdc`, `.opencode/*.mdc`, and `~/.codex/rules/r2mo-task-workflow.md` before task action. Missing files do not block.
+- **Argument contract.** Resolve the three-digit task number first. If absent, list `.r2mo/task/` candidates in the current directory only. Never resolve from parent/sibling/historical directories.
+- **Isolation lock.** Print locked path(s) before reading. Only read/write locked `task-*.md` and `goon-*.md` files.
+- **Disk source of truth.** Re-read locked files from disk before decisions and before write-back. Do not trust conversation memory, summaries, or cache.
+- **Prompt echo.** Print the final action prompt in a code block before editing or execution.
+- **Write-back guard.** Verify destination matches isolation lock before any write. Never duplicate `Plan` or `Changes`; update in place.
+- **Fresh evidence.** Run the smallest sufficient verification for the changed boundary before claiming success. Record skipped gates with reason.
+- **Cross-agent portability.** Keep prompts deterministic and safe for Claude Code, Codex skills, and OpenCode JSON templates.
 
-拉起当前项目开发环境：后端优先启动，前端并行启动，启动后网络健康验证。
+Start the current project dev environment: backend first → frontend in parallel → network health verification.
 
 The user invoked this command with: $ARGUMENTS
 
-## 参数解析
+This command takes no arguments. Execute the environment startup flow directly.
 
-本命令无参数。直接执行环境拉起流程。
+**Hard rules**: Backend first → frontend parallel. Already running → stop, rebuild, restart. Network verification mandatory after startup. Verification failure → report error. MDC startup/shutdown rules take priority over default inference. Idempotent: stop must succeed before continuing.
 
-**硬规则**：必须扫描项目 mdc 启停规则并优先执行 | 幂等保证：停→编→启三步原子 | 后端先于前端 | 启动后必须网络验证 | 自检防漂移 | 已启动→先停止再编译再启动
+## Preflight
 
-## Mdc Scan Protocol
+1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).
 
-在执行任何启停操作前，必须完成以下 mdc 扫描：
+2. **MDC startup/shutdown rule scan protocol** (mandatory, cannot be skipped):
 
-1. 扫描路径（按顺序，全部扫描，不跳过）：
-   - `.claude/rules/*.mdc`
-   - `.codex/rules/*.mdc`
-   - `.cursor/rules/*.mdc`
-   - `.opencode/*.mdc`
-   - 项目根目录及子目录中的其他 `.mdc` 文件
-   - `~/.codex/rules/r2mo-task-workflow.md`（若存在）
-2. 搜索关键字：`dev-start`、`dev-stop`、`dev-build`、`npm run`、`mvn`、`spring-boot:run`、`vertx`、`hap`、`hvigor`、`start`、`stop`、`launch`、`serve`、`port`、`health`
-3. 提取规则：
-   - 启动命令及参数
-   - 停止命令及参数
-   - 编译命令及参数
-   - 端口配置
-   - 健康检查端点
-   - 依赖顺序
-   - 环境变量要求
-4. **mdc 中定义的启停命令优先于通用推断**。若 mdc 中无启停规则 → 使用通用推断逻辑。
+   **Scan paths** (in priority order):
+   - `.claude/rules/*.mdc` → `.codex/rules/*.mdc` → `.cursor/rules/*.mdc` → `.opencode/*.mdc`
+   - All `.mdc` files in project root and subdirectories
+   - Rule files referenced by `AGENTS.md`, `CLAUDE.md`, `CODEX.md`
 
-## Workflow
+   **Search keywords** (any match → extract):
+   - Start: `dev-start`, `npm run dev`, `npm start`, `mvn spring-boot:run`, `vertx`, `hvigor`, `hap`, `serve`, `launch`
+   - Stop: `dev-stop`, `stop`, `shutdown`, `kill`
+   - Build: `dev-build`, `npm run build`, `mvn compile`, `mvn package`, `hvigor build`
+   - Port: `port`, `localhost:`, `0.0.0.0:`
+   - Health: `health`, `actuator`, `ping`, `readiness`
+   - Order: `depends on`, `before`, `after`
 
-1. 先读取并遵守当前仓库的 `AGENTS.md`、`CLAUDE.md`、`CODEX.md`（若存在），以及它们引用的所有规则文件。
-2. 执行 Mdc Scan Protocol，提取启停规则摘要。
-3. **后端检测与启动（幂等保证）**：
-   - 检测后端进程是否已启动：
-     - 若已启动 → 执行停止（`./dev-stop.sh` 或 mdc 中的停止命令）→ 确认进程已完全退出 → 编译 → 启动。
-     - 若未启动 → 编译 → 启动。
-   - **编译失败 → 终止，不启动后端**。
-   - **启动后等待就绪**：轮询健康检查端点，最多 60 秒。后端未就绪 → 报告错误，不启动前端。
-4. **前端检测与启动**：
-   - 检测前端项目目录是否存在（`frontend/`、`web/`、`ui/`、`app-*/` 等子目录）。
-   - 若存在前端项目：
-     - 检测前端进程是否已启动，若已启动则先停止。
-     - 并行拉起前端环境（不阻塞后端已启动的服务）。
-   - 若不存在前端项目，跳过此步骤。
-5. **多应用工作区**（如 HarmonyOS 多 app 项目）：
-   - 若 mdc 规则或项目结构表明是多应用工作区，识别需要启动的子应用列表。
-   - 按 mdc 规则中定义的依赖顺序或逐一拉起各子应用。
-6. **启动后网络健康验证**：
-   - 对后端服务执行 HTTP 健康检查（`curl -sf`），最多重试 5 次，间隔 3 秒。
-   - 若前端已启动，对前端执行 HTTP 可达性检查。
-   - 验证失败时输出失败的服务和端点信息。
-7. **自检防漂移**：
-   - 核对实际执行的命令是否与 mdc 规则一致。
-   - 若执行了通用推断命令但 mdc 中有对应规则 → 报告漂移警告。
+   **Extract**: start/stop/build commands and args, port config, health check endpoints, startup dependency order, environment variable requirements.
+
+   **Execution strategy**: If MDC defines startup/shutdown rules → **must use MDC**. If MDC is undefined → use default inference from Plan. Output a rule summary table as input for all subsequent steps.
+
+## Plan
+
+### Phase 1 — Backend Check and Start (Idempotent)
+
+1. **Stop backend** (if running):
+   - Detect process via startup command pattern (e.g. `pgrep -f "dev-start.sh"`) or port (`lsof -i :<port>`)
+   - If running → execute stop command (MDC-defined or `./dev-stop.sh`)
+   - **Idempotent guarantee**: After stop, re-detect process; if still running → report error and abort
+   - If not running → continue
+
+2. **Build backend**: Execute build command (MDC-defined or `./dev-build.sh`). Build failure → report error and abort.
+
+3. **Start backend**: Execute start command (MDC-defined or `./dev-start.sh`).
+
+4. **Backend readiness**:
+   - Poll health check endpoint (MDC-defined or `http://localhost:<port>/health`), max 60 seconds (3s interval)
+   - Backend not ready → report error and abort, **do not start frontend**
+
+### Phase 2 — Frontend Check and Start (Parallel)
+
+1. **Detect frontend project directory**:
+   - HarmonyOS multi-app structure (`app-center/`, `entry/`) → identify as multi-frontend workspace, default start `app-center`
+   - Standard structure (`frontend/`, `web/`, `client/`) → standard frontend-backend separation
+   - No independent frontend dir → skip frontend startup
+
+2. **Stop frontend** (if running): Detect (`pgrep -f "vite"` or `pgrep -f "npm.*dev"`). If running → stop; else continue.
+
+3. **Install frontend dependencies** (only if `node_modules` missing or `package-lock` changed)
+
+4. **Start frontend**: Execute start command (MDC-defined or `npm run dev`)
+
+### Phase 3 — Network Health Verification
+
+1. Backend: `curl -sf http://localhost:<port>/health` or MDC-extracted health endpoint
+   - 2xx → OK; no response or non-2xx → FAIL, report error details
+
+2. Frontend: `curl -sf http://localhost:<port>/` or MDC-extracted frontend URL
+   - 2xx → OK; no response → WARN (may need more startup time, report warning not abort)
+
+3. **Self-check**: Compare actual executed commands with MDC rules
+   - Used default inference instead of MDC rules → report "MDC has no startup/shutdown rules, used default inference"
+   - MDC rules inconsistent with actual execution → report drift warning
+
+4. Output verification summary:
+
+| Service | Address | Status | Rule Source |
+|---------|---------|--------|-------------|
+| Backend | http://localhost:xxxx | OK/FAIL | mdc:xxx / default |
+| Frontend | http://localhost:xxxx | OK/FAIL/WARN | mdc:xxx / default |
 
 ## Verification
 
-完成后报告：
-- mdc 扫描结果（找到/未找到启停规则）
-- 后端启动命令、编译结果、运行状态、健康检查结果
-- 前端启动命令、运行状态、可达性检查结果
-- 自检结果（mdc 一致性/漂移警告）
+Report: backend start command, build result, health check status, rule source; frontend start command, running status, access address, rule source; network endpoint reachability; MDC consistency self-check result. Mark FAIL explicitly with troubleshooting suggestions for any failure.
 
-## 闭环指引
+## Next Steps
 
-Start 完成后的典型路径：
-- 开发调试 → `/mxt:debug <描述>`
-- 执行任务 → `/mxt:run <编号>`
-- 同步项目 → `/mxt:sync`
+- Development/debugging → `/mxt:debug <description>` or `$mxt-debug <description>`
+- Execute task → `/mxt:run <number>` or `$mxt-run <number>`
+- Sync project → `/mxt:sync` or `$mxt-sync`

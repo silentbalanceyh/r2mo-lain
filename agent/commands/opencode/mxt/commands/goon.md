@@ -1,81 +1,77 @@
 ---
 description: "Execute R2MO goon remediation by 3-digit number such as 001; read .r2mo/task/goon-xxx.md, clear completed items, append closure Changes to task."
-argument-hint: "[001] [指令...]"
+argument-hint: "[001] [directives...]"
 ---
 
 # /mxt:goon
 
 ## Harness
 
-This Harness is the binding execution contract for this MXT command across Claude Code, Codex, and OpenCode. Treat localized sections below as legacy detail; this section wins when wording conflicts.
+Binding execution contract for all MXT commands across Claude Code, Codex, and OpenCode.
 
-- English-first: write instructions, analysis, verification notes, and summaries in English by default. Use Chinese only when quoting existing repository content, preserving task titles/frontmatter/status values, showing exact localized command errors already required by this file, or when the user explicitly asks for Chinese.
-- Rule loading: before task action, load repository entry rules (`AGENTS.md`, `CLAUDE.md`, `CODEX.md`), project rule files (`.claude/rules`, `.codex/rules`, `.cursor/rules`, `.opencode`, other relevant `.mdc`), and `~/.codex/rules/r2mo-task-workflow.md` when present. Missing optional files do not block execution.
-- Argument contract: resolve the explicit three-digit number first. If absent, list current-directory `.r2mo/task/` candidates only. Never resolve from parent, child, sibling, or historical timestamped task directories unless the user names that path.
-- Task isolation lock: after resolving paths, print the locked path(s) before reading task content, and only read/write those locked `task-*.md`, `goon-*.md`, or `loop-*.json` files for this invocation.
-- Disk source of truth: Do not trust conversation memory, previous summaries, installed plugin cache, or earlier reads. Re-read the locked files from disk immediately before decisions and again before write-back.
-- Prompt echo: before editing, verification, or task execution, print the final action prompt in one Markdown code block with concrete paths substituted.
-- Write-back guard: before any write, verify the destination exactly matches the isolation lock. Never duplicate `Plan` or `Changes`; update in place or append under the existing canonical section as instructed.
-- Fresh evidence before completion claims: run the smallest sufficient verification for the changed boundary, read the output, and only then report success. Record skipped gates with the reason.
-- Cross-agent portability: avoid tool-specific assumptions unless the platform section explicitly requires them. Keep prompts deterministic and safe for Claude Code, Codex skills, Codex prompts, and OpenCode JSON command templates.
+- **English-first.** Write all output in English. Use Chinese only when quoting existing repo content (task titles, frontmatter values, status fields, localized error messages) or when the user explicitly asks.
+- **Rule loading.** Load `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `.claude/rules/*.mdc`, `.codex/rules/*.mdc`, `.cursor/rules/*.mdc`, `.opencode/*.mdc`, and `~/.codex/rules/r2mo-task-workflow.md` before task action. Missing files do not block.
+- **Argument contract.** Resolve the three-digit task number first. If absent, list `.r2mo/task/` candidates in the current directory only. Never resolve from parent/sibling/historical directories.
+- **Isolation lock.** Print locked path(s) before reading. Only read/write locked `task-*.md` and `goon-*.md` files.
+- **Disk source of truth.** Re-read locked files from disk before decisions and before write-back. Do not trust conversation memory, summaries, or cache.
+- **Prompt echo.** Print the final action prompt in a code block before editing or execution.
+- **Write-back guard.** Verify destination matches isolation lock before any write. Never duplicate `Plan` or `Changes`; update in place.
+- **Fresh evidence.** Run the smallest sufficient verification for the changed boundary before claiming success. Record skipped gates with reason.
+- **Cross-agent portability.** Keep prompts deterministic and safe for Claude Code, Codex skills, and OpenCode JSON templates.
 
-读取当前工作目录下指定编号的 `.r2mo/task/goon-xxx.md` 临时整改队列，执行整改任务，并将闭环结果写回对应 task。
+Read `.r2mo/task/goon-NNN.md` for the given number, execute remediation tasks, and write closure results back to the corresponding task file.
 
 The user invoked this command with: $ARGUMENTS
 
-## 参数解析
+## Arguments
 
-1. `$ARGUMENTS` 以三位数字编号开头，正则为 `^[0-9]{3}`，例如 `001`。
-2. 编号之后的附加文本作为**执行指令**，以空格分隔，不区分大小写。支持的指令：
-   - `Team` / `Team模式` — 强制启用 Team 模式（多 Agent 协作）
-   - `Worktree` / `WT` — 强制使用 Worktree 隔离执行
-3. 解析后在聊天窗口中声明结果，例如 `📌 编号: 005 | 指令: Team模式`。若未附加指令则仅声明编号。
-4. 指令直接作用于执行环境：
-   - `Team模式` → 忽略复杂度自动判断，直接启用 Team 模式
-   - `Worktree` → 忽略变更风险判断，直接创建 Worktree 隔离
-5. **Worktree 规范**：若创建 Worktree，必须遵循以下规则：
-   - 名称前缀为 `task-<编号>`（如 `task-005`）
-   - 存储位置为当前项目下的 `.r2mo/worktrees/` 目录（非全局），确保 Codex、Claude、OpenCode 三平台可共享同一 worktree 目录
-   - 创建命令示例：`git worktree add .r2mo/worktrees/task-005 -b task-005`
+1. `$ARGUMENTS` starts with a three-digit number (regex `^[0-9]{3}`), e.g. `001`.
+2. Additional tokens are **directives** (space-separated, case-insensitive):
+   - `Team` — force Team mode (multi-agent collaboration)
+   - `Worktree` / `WT` — force Worktree isolation
+3. Declare parsed results, e.g. `📌 Task: 005 | Directives: Team`. If no directives, declare task number only.
+4. Directives override auto-judgment:
+   - `Team` → enable Team mode regardless of complexity
+   - `Worktree` → create Worktree regardless of risk assessment
+5. **Worktree spec**: Name prefix `task-NNN`. Store in `.r2mo/worktrees/` under current project. Example: `git worktree add .r2mo/worktrees/task-005 -b task-005`.
 
-**硬规则**：解析失败→终止 | 指令覆盖自动判断 | Worktree→`.r2mo/worktrees/task-<编号>` | Changes写task非goon | 质量门禁必通过→才可清空goon+写Changes | 路径冲突→终止 | 隔离外文件→禁止读写 | 强制重新加载goon禁止缓存 | Superpowers检测必执行（无则降级）
+**Hard rules**: Parse failure → abort. Directives override auto-judgment. Changes write to task, not goon. Quality gate must pass before clearing goon + writing Changes. Path conflict → abort. Force reload goon from disk — no caching.
 
 ## Workflow
 
-1. 先读取并遵守当前仓库的 `AGENTS.md`、`CLAUDE.md`、`CODEX.md`（若存在），以及它们引用的所有规则文件；扫描项目中所有可检索的 `.mdc` 规则文件（`.claude/rules/`、`.codex/rules/`、`.cursor/rules/`、`.opencode/` 及其他任意路径下的 `.mdc`），以及 `~/.codex/rules/r2mo-task-workflow.md`（若存在）。
-2. 解析 `$ARGUMENTS`：提取编号和执行指令。如果 `$ARGUMENTS` 为空，扫描当前工作目录 `.r2mo/task/` 下的 `goon-*.md` 文件，读取每个文件的 frontmatter 中的 `title` 和 `status`，列出编号与标题供用户选择，用户选择后用对应编号继续执行；如果 `.r2mo/task/` 下没有 `goon-*.md` 文件，提示用户当前没有待整改任务。如果 `$ARGUMENTS` 不为空但开头不匹配 `^[0-9]{3}`，立即停止，只提示：`请使用 /mxt:goon 001 [指令...] 格式执行，其中 001 是三位数字整改编号。`
-3. 将整改单路径设为 `.r2mo/task/goon-$编号.md`，将对应任务路径设为 `.r2mo/task/task-$编号.md`。如果整改单或任务文件不存在，不要猜测其他编号，不要改读别的 task/goon 文件，立即询问用户提供最新任务号。
-4. **隔离锁定**：在聊天窗口中显式声明 `📌 任务隔离锁定: .r2mo/task/goon-$编号.md | .r2mo/task/task-$编号.md`，此后本指令的读写操作只能针对这两个路径，禁止读写任何其他 `task-*.md` 或 `goon-*.md` 文件。
-5. **强制重新加载**：在任何编辑、验证、整改处理、判断“无待整改项”或打印最终提示词之前，必须从磁盘重新读取 `.r2mo/task/goon-$编号.md` 的当前内容；禁止使用上下文缓存、历史对话、上一轮 end/goon 摘要、模型缓存或之前读取过的内容作为依据。该次磁盘读取到的 `goon-xxx.md` 正文是本轮唯一整改输入；读取结果为空或 status 已完成时，也必须以本次读取结果说明后结束，不得跳过本步。
-6. 在完成强制重新加载后，执行任何编辑、验证或整改处理之前，先在聊天窗口中原样打印本次将执行的提示词，使用 Markdown 代码块包裹。代码块中只打印下面这段最终执行提示词，不要打印本条说明。
-7. 对该整改单按以下提示词执行，其中整改单路径和对应任务路径必须替换为实际相对路径：
+1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).
+2. Parse `$ARGUMENTS`: extract task number and directives. If empty, scan `.r2mo/task/goon-*.md`, list for user selection. If no goon files exist, prompt: `No pending remediation tasks.` If non-empty but does not match `^[0-9]{3}`, stop and print: `Usage: /mxt:goon 001 [directives...] where 001 is a 3-digit remediation number.`
+3. Set goon path to `.r2mo/task/goon-NNN.md` and task path to `.r2mo/task/task-NNN.md`. If either does not exist, do not guess — ask user for correct number.
+4. **Isolation lock**: Print `📌 Locked: .r2mo/task/goon-NNN.md | .r2mo/task/task-NNN.md`. All reads/writes target these two paths only.
+5. **Force reload**: Before any editing, verification, remediation processing, judging "no pending items", or printing the prompt — re-read `.r2mo/task/goon-NNN.md` from disk. Do not use context cache, conversation history, previous end/goon summaries, or model cache. The disk-read content is the sole remediation input for this round. If empty or status is already Done, report and stop.
+6. Print the final execution prompt in a Markdown code block before editing.
+7. Execute the prompt below with paths replaced by actual relative paths:
 
-任务：根据 `<GOON_PATH>` 完成整改，并回写 `<TASK_PATH>` 闭环记录。
+> **Task**: Complete remediation per `<GOON_PATH>` and write closure to `<TASK_PATH>`.
+>
+> - **Force reload**: Re-read `<GOON_PATH>` from disk. Do not use cache, history, or previous summaries.
+> - **Input**: Use the freshly read goon content as the sole remediation input, cross-referenced with `<TASK_PATH>` original task goals.
+> - **Goon title**: Keep frontmatter title as `Remediation-` + `<TASK_PATH>` frontmatter title.
+> - **Remediation**: Process each item in `<GOON_PATH>` sequentially, staying within `<TASK_PATH>` original goals.
+> - **Scheduling**: Auto-judge Team mode by complexity; auto-judge Worktree by risk. Directives override auto-judgment.
+> - **Quality gate** (mandatory before clearing goon or writing Changes, max 3 auto-retry rounds; 3 failures → stop, report, do not clear goon):
+>   1. **Compile zero-warning**: Run project compile (e.g. `npm run build`, `mvn compile`, `tsc --noEmit`). Zero errors, zero warnings.
+>   2. **Lint zero-warning**: Run project lint (e.g. `npm run lint`, `eslint .`). Zero errors, zero warnings.
+>   3. **Tests pass**: If test config exists, run the suite. All must pass. Skip if no test config.
+>   4. **Record results**: Write each gate's command, pass/fail into Changes. If N/A, record as "skipped (N/A)".
+> - **Goon write-back**: After quality gate passes and remediation is complete, **clear `<GOON_PATH>` original content** first, then write any remaining incomplete items.
+> - **No remaining items**: If all items are done, rewrite `<GOON_PATH>` as empty / no-pending-items status.
+> - **Changes write-back**: Do not write Changes to `<GOON_PATH>`. Append remediation completion, affected files, quality gate results, and closure notes to `<TASK_PATH>` `## Changes`.
+> - **Write-back guard**: Verify destination matches isolation lock before writing. If mismatch, stop and report.
+> - **Isolation**: Do not read, edit, or create any `task-*.md` or `goon-*.md` other than `<GOON_PATH>` and `<TASK_PATH>` (except worker files in Team scheduling).
 
-- **强制重新加载**：每次执行都必须重新从磁盘读取 `<GOON_PATH>` 当前内容；禁止使用上下文缓存、历史对话、上一轮 end/goon 摘要、模型缓存或之前读取过的内容判断是否需要整改。
-- 输入范围：以本轮重新读取的 `goon-xxx.md` 作为唯一整改输入，并对照 `<TASK_PATH>` 原始任务目标。
-- goon 标题：`<GOON_PATH>` frontmatter 的 title 必须保持为 `整改-` + `<TASK_PATH>` frontmatter 中的 title。
-- 整改执行：逐项处理 `<GOON_PATH>` 中当前列出的整改项，避免偏离 `<TASK_PATH>` 的原始目标。
-- 调度策略：根据整改复杂度判断是否启用 Team 模式；根据变更风险判断是否需要 worktree，用户已指定时必须创建。**执行指令覆盖**：若参数解析中检测到 `Team模式`，直接启用 Team 模式；若检测到 `Worktree`，直接创建 Worktree。
-- **质量门禁（写回前置，不可跳过）**：在清空 goon 或写 Changes 之前，必须按顺序通过以下门禁，任一门禁失败则不得写回，必须修复后重试（最多 3 轮自动修复；3 轮后仍未通过→停止，报告失败项，不写 Changes）：
-  1. **编译零警告**：执行项目编译命令（如 `npm run build`、`mvn compile`、`tsc --noEmit` 等，按项目类型选择），编译必须零错误零警告。若有警告，必须修复后再通过。
-  2. **Lint 零警告**：执行项目 lint 命令（如 `npm run lint`、`eslint .`、`npx tsc --noEmit` 等），lint 必须零错误零警告。若有警告，必须修复后再通过。
-  3. **测试全通过**：若项目存在测试配置（`jest`、`mocha`、`vitest`、`pytest` 等），必须执行测试套件，全部通过方可继续。若项目无测试配置则跳过此门禁。
-  4. **门禁结果记录**：将每个门禁的执行命令、输出结果（通过/失败）写入 Changes 记录。若某门禁不适用（如项目无 lint 配置），记录为"跳过（不适用）"。
-- goon 写回：**质量门禁全部通过且整改完成后必须先清空 `<GOON_PATH>` 原始内容**，再写入仍未完成的整改项。
-- 无剩余项：若整改项已全部完成，将 `<GOON_PATH>` 重写为空整改单或无待整改项状态。
-- Changes 写回：不得在 `<GOON_PATH>` 写 Changes；必须向 `<TASK_PATH>` 的 `## Changes` 追加整改完成情况、涉及文件、**质量门禁验证命令与结果**和闭环说明。
-- **写回校验**：执行写回前必须验证目标文件路径与隔离锁定路径一致；若不一致，立即停止并报告路径冲突，不得写入。
-- 隔离约束：全程不得读取、编辑或创建除 `<GOON_PATH>` 和 `<TASK_PATH>` 以外的任何 `task-*.md` 或 `goon-*.md` 文件（团队调度中 worker 的文件除外）。
+## Next Steps
 
-## 闭环指引
-
-Goon 完成后的典型路径：
-- 再验收 → `/mxt:end <编号>`
-- 仍有整改项 → `/mxt:goon <编号>`（循环）
-- 如遇新 BUG → `/mxt:debug <描述>`
-- 全部通过 → 任务闭环完成
+- Re-verify → `/mxt:end <number>`
+- Still has items → `/mxt:goon <number>` (loop)
+- New bug → `/mxt:debug <description>`
+- All passed → task loop closed
 
 ## Verification
 
-完成后说明已执行的验证命令、结果，`<GOON_PATH>` 是否已清空或仍保留待整改项，以及追加到 `<TASK_PATH>` 的 Changes 内容。
+Report: verification commands executed and results, whether `<GOON_PATH>` was cleared or retains pending items, and the Changes appended to `<TASK_PATH>`.

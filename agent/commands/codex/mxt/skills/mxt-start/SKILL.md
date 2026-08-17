@@ -3,108 +3,109 @@ name: mxt-start
 description: Use when the user asks Codex to start the dev environment with "$mxt-start"; scans project mdc rules for startup commands, starts backend then frontend, verifies via network health check.
 ---
 
-# MXT Start
+# /mxt:start
 
 ## Harness
 
-This Harness is the binding execution contract for this MXT command across Claude Code, Codex, and OpenCode. Treat localized sections below as legacy detail; this section wins when wording conflicts.
+Binding execution contract for all MXT commands across Claude Code, Codex, and OpenCode.
 
-- English-first: write instructions, analysis, verification notes, and summaries in English by default. Use Chinese only when quoting existing repository content, preserving task titles/frontmatter/status values, showing exact localized command errors already required by this file, or when the user explicitly asks for Chinese.
-- Rule loading: before task action, load repository entry rules (`AGENTS.md`, `CLAUDE.md`, `CODEX.md`), project rule files (`.claude/rules`, `.codex/rules`, `.cursor/rules`, `.opencode`, other relevant `.mdc`), and `~/.codex/rules/r2mo-task-workflow.md` when present. Missing optional files do not block execution.
-- Argument contract: resolve the explicit three-digit number first. If absent, list current-directory `.r2mo/task/` candidates only. Never resolve from parent, child, sibling, or historical timestamped task directories unless the user names that path.
-- Task isolation lock: after resolving paths, print the locked path(s) before reading task content, and only read/write those locked `task-*.md`, `goon-*.md`, or `loop-*.json` files for this invocation.
-- Disk source of truth: Do not trust conversation memory, previous summaries, installed plugin cache, or earlier reads. Re-read the locked files from disk immediately before decisions and again before write-back.
-- Prompt echo: before editing, verification, or task execution, print the final action prompt in one Markdown code block with concrete paths substituted.
-- Write-back guard: before any write, verify the destination exactly matches the isolation lock. Never duplicate `Plan` or `Changes`; update in place or append under the existing canonical section as instructed.
-- Fresh evidence before completion claims: run the smallest sufficient verification for the changed boundary, read the output, and only then report success. Record skipped gates with the reason.
-- Cross-agent portability: avoid tool-specific assumptions unless the platform section explicitly requires them. Keep prompts deterministic and safe for Claude Code, Codex skills, Codex prompts, and OpenCode JSON command templates.
+- **English-first.** Write all output in English. Use Chinese only when quoting existing repo content (task titles, frontmatter values, status fields, localized error messages) or when the user explicitly asks.
+- **Rule loading.** Load `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `.claude/rules/*.mdc`, `.codex/rules/*.mdc`, `.cursor/rules/*.mdc`, `.opencode/*.mdc`, and `~/.codex/rules/r2mo-task-workflow.md` before task action. Missing files do not block.
+- **Argument contract.** Resolve the three-digit task number first. If absent, list `.r2mo/task/` candidates in the current directory only. Never resolve from parent/sibling/historical directories.
+- **Isolation lock.** Print locked path(s) before reading. Only read/write locked `task-*.md` and `goon-*.md` files.
+- **Disk source of truth.** Re-read locked files from disk before decisions and before write-back. Do not trust conversation memory, summaries, or cache.
+- **Prompt echo.** Print the final action prompt in a code block before editing or execution.
+- **Write-back guard.** Verify destination matches isolation lock before any write. Never duplicate `Plan` or `Changes`; update in place.
+- **Fresh evidence.** Run the smallest sufficient verification for the changed boundary before claiming success. Record skipped gates with reason.
+- **Cross-agent portability.** Keep prompts deterministic and safe for Claude Code, Codex skills, and OpenCode JSON templates.
 
-Start the current project dev environment: scan project mdc for startup rules, start backend first then frontend, verify via network health check.
+Start the current project dev environment: backend first → frontend in parallel → network health verification.
 
-## Arguments
+The user invoked this command with: $ARGUMENTS
 
 This command takes no arguments. Execute the environment startup flow directly.
 
-**Hard rules**: Scan project mdc for startup rules first — mdc rules override defaults | Backend first, then frontend | Stop→Build→Start is idempotent | Health check required after startup | Self-check: verify executed commands match mdc rules
+**Hard rules**: Backend first → frontend parallel. Already running → stop, rebuild, restart. Network verification mandatory after startup. Verification failure → report error. MDC startup/shutdown rules take priority over default inference. Idempotent: stop must succeed before continuing.
 
-## MDC Scan Protocol
+## Preflight
 
-**Mandatory first step** — scan all project `.mdc` files for startup/shutdown rules before any action:
+1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).
 
-1. **Scan paths** (in order): `.claude/rules/*.mdc` → `.codex/rules/*.mdc` → `.cursor/rules/*.mdc` → `.opencode/*.mdc` → project root `*.mdc` → `AGENTS.md`/`CLAUDE.md`/`CODEX.md` embedded rules
-2. **Search keywords**: `dev-start`, `dev-stop`, `dev-build`, `start`, `stop`, `launch`, `serve`, `run dev`, `npm run`, `mvn`, `spring-boot:run`, `vertx`, `hap`, `hvigor`, `health`, `port`, `environment`
-3. **Extract**: startup command, stop command, build command, port config, health endpoint, dependency order, environment variables
-4. **Rule**: If mdc defines startup commands → **must use mdc commands, not defaults**. If mdc has no startup rules → use default heuristics below.
-5. **Output**: Print extracted startup rule summary before executing (so user can verify correctness).
+2. **MDC startup/shutdown rule scan protocol** (mandatory, cannot be skipped):
 
-## Idempotent Startup Guard
+   **Scan paths** (in priority order):
+   - `.claude/rules/*.mdc` → `.codex/rules/*.mdc` → `.cursor/rules/*.mdc` → `.opencode/*.mdc`
+   - All `.mdc` files in project root and subdirectories
+   - Rule files referenced by `AGENTS.md`, `CLAUDE.md`, `CODEX.md`
 
-Every startup follows the same idempotent sequence — no half-states:
+   **Search keywords** (any match → extract):
+   - Start: `dev-start`, `npm run dev`, `npm start`, `mvn spring-boot:run`, `vertx`, `hvigor`, `hap`, `serve`, `launch`
+   - Stop: `dev-stop`, `stop`, `shutdown`, `kill`
+   - Build: `dev-build`, `npm run build`, `mvn compile`, `mvn package`, `hvigor build`
+   - Port: `port`, `localhost:`, `0.0.0.0:`
+   - Health: `health`, `actuator`, `ping`, `readiness`
+   - Order: `depends on`, `before`, `after`
 
-```
-stop (if running) → build → start → health check
-```
+   **Extract**: start/stop/build commands and args, port config, health check endpoints, startup dependency order, environment variable requirements.
 
-- If any step fails mid-sequence → report which step failed and the current state. Do NOT silently continue.
-- If `stop` fails (process not found) → proceed to `build` (not an error).
-- If `build` fails → **do not start**, report build error.
-- If `start` fails → **do not health-check**, report start error.
-- If health check fails → report error, suggest manual investigation.
+   **Execution strategy**: If MDC defines startup/shutdown rules → **must use MDC**. If MDC is undefined → use default inference from Plan. Output a rule summary table as input for all subsequent steps.
 
-## Workflow
+## Plan
 
-### Phase 1 — Backend
+### Phase 1 — Backend Check and Start (Idempotent)
 
-1. Check if backend is running (based on mdc command signatures or port detection).
-2. If running → stop first (`./dev-stop.sh` or mdc-defined stop command).
-3. Build backend (`./dev-build.sh` or mdc-defined build command).
-4. Start backend (`./dev-start.sh` or mdc-defined start command).
-5. Health check: poll mdc-defined or default health endpoint (`curl -sf http://localhost:<port>/health`). Retry up to 60s (3s intervals).
-   - If backend health check fails → **report error, do NOT start frontend**.
+1. **Stop backend** (if running):
+   - Detect process via startup command pattern (e.g. `pgrep -f "dev-start.sh"`) or port (`lsof -i :<port>`)
+   - If running → execute stop command (MDC-defined or `./dev-stop.sh`)
+   - **Idempotent guarantee**: After stop, re-detect process; if still running → report error and abort
+   - If not running → continue
 
-### Phase 2 — Frontend
+2. **Build backend**: Execute build command (MDC-defined or `./dev-build.sh`). Build failure → report error and abort.
 
-1. Detect frontend directory: `app-center/`, `frontend/`, `web/`, `client/`, or mdc-defined path.
-2. If running → stop first.
-3. Install dependencies (only if `node_modules` missing or lockfile changed).
-4. Start frontend (`npm run dev` or mdc-defined command).
-5. Health check: `curl -sf http://localhost:<port>`. Retry up to 30s.
+3. **Start backend**: Execute start command (MDC-defined or `./dev-start.sh`).
 
-### Phase 3 — Self-Check (Drift Prevention)
+4. **Backend readiness**:
+   - Poll health check endpoint (MDC-defined or `http://localhost:<port>/health`), max 60 seconds (3s interval)
+   - Backend not ready → report error and abort, **do not start frontend**
 
-Verify the commands actually executed match the mdc rules:
+### Phase 2 — Frontend Check and Start (Parallel)
 
-1. Compare executed commands against mdc-defined commands.
-2. If any command was substituted (mdc not found, used default) → **warn the user**.
-3. If mdc rules exist but were not followed → **report as error**.
+1. **Detect frontend project directory**:
+   - HarmonyOS multi-app structure (`app-center/`, `entry/`) → identify as multi-frontend workspace, default start `app-center`
+   - Standard structure (`frontend/`, `web/`, `client/`) → standard frontend-backend separation
+   - No independent frontend dir → skip frontend startup
 
-## Commands
+2. **Stop frontend** (if running): Detect (`pgrep -f "vite"` or `pgrep -f "npm.*dev"`). If running → stop; else continue.
 
-1. `find . -name "*.mdc" -exec grep -l "dev-start\|dev-stop\|dev-build\|start\|stop" {} +` — locate mdc startup rules
-2. `pgrep -f "<startup-keyword>"` — detect running processes
-3. `./dev-stop.sh` — stop (if running)
-4. `./dev-build.sh` — build
-5. `./dev-start.sh` — start
-6. `curl -sf http://localhost:<port>/health` — backend health check
-7. `ls -d app-center frontend web client 2>/dev/null` — detect frontend
-8. `npm run dev` — start frontend
-9. `curl -sf http://localhost:<port>` — frontend health check
+3. **Install frontend dependencies** (only if `node_modules` missing or `package-lock` changed)
+
+4. **Start frontend**: Execute start command (MDC-defined or `npm run dev`)
+
+### Phase 3 — Network Health Verification
+
+1. Backend: `curl -sf http://localhost:<port>/health` or MDC-extracted health endpoint
+   - 2xx → OK; no response or non-2xx → FAIL, report error details
+
+2. Frontend: `curl -sf http://localhost:<port>/` or MDC-extracted frontend URL
+   - 2xx → OK; no response → WARN (may need more startup time, report warning not abort)
+
+3. **Self-check**: Compare actual executed commands with MDC rules
+   - Used default inference instead of MDC rules → report "MDC has no startup/shutdown rules, used default inference"
+   - MDC rules inconsistent with actual execution → report drift warning
+
+4. Output verification summary:
+
+| Service | Address | Status | Rule Source |
+|---------|---------|--------|-------------|
+| Backend | http://localhost:xxxx | OK/FAIL | mdc:xxx / default |
+| Frontend | http://localhost:xxxx | OK/FAIL/WARN | mdc:xxx / default |
 
 ## Verification
 
-Report per component:
-- mdc rule source file and extracted commands
-- Executed commands vs mdc-defined commands (match/substituted)
-- Build result, running status, health check result
-- Any drift warnings (command substituted, mdc rule not followed)
-
-## Summary
-
-Report: mdc rule scan results, per-component startup status, health check outcomes, drift check result.
+Report: backend start command, build result, health check status, rule source; frontend start command, running status, access address, rule source; network endpoint reachability; MDC consistency self-check result. Mark FAIL explicitly with troubleshooting suggestions for any failure.
 
 ## Next Steps
 
-Start completion typical paths:
-- Development debugging → `$mxt-debug <description>`
-- Execute a task → `$mxt-run <number>`
-- Sync project → `$mxt-sync`
+- Development/debugging → `/mxt:debug <description>` or `$mxt-debug <description>`
+- Execute task → `/mxt:run <number>` or `$mxt-run <number>`
+- Sync project → `/mxt:sync` or `$mxt-sync`

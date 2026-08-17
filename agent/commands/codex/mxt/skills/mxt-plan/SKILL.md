@@ -3,54 +3,70 @@ name: mxt-plan
 description: Use when the user asks Codex to plan an R2MO task by number, such as "$mxt-plan 001" or "mxt-plan 001"; reads .r2mo/task/task-xxx.md and writes or updates only the Plan section.
 ---
 
-# MXT Plan
+# /mxt:plan
 
 ## Harness
 
-This Harness is the binding execution contract for this MXT command across Claude Code, Codex, and OpenCode. Treat localized sections below as legacy detail; this section wins when wording conflicts.
+Binding execution contract for all MXT commands across Claude Code, Codex, and OpenCode.
 
-- English-first: write instructions, analysis, verification notes, and summaries in English by default. Use Chinese only when quoting existing repository content, preserving task titles/frontmatter/status values, showing exact localized command errors already required by this file, or when the user explicitly asks for Chinese.
-- Rule loading: before task action, load repository entry rules (`AGENTS.md`, `CLAUDE.md`, `CODEX.md`), project rule files (`.claude/rules`, `.codex/rules`, `.cursor/rules`, `.opencode`, other relevant `.mdc`), and `~/.codex/rules/r2mo-task-workflow.md` when present. Missing optional files do not block execution.
-- Argument contract: resolve the explicit three-digit number first. If absent, list current-directory `.r2mo/task/` candidates only. Never resolve from parent, child, sibling, or historical timestamped task directories unless the user names that path.
-- Task isolation lock: after resolving paths, print the locked path(s) before reading task content, and only read/write those locked `task-*.md`, `goon-*.md`, or `loop-*.json` files for this invocation.
-- Disk source of truth: Do not trust conversation memory, previous summaries, installed plugin cache, or earlier reads. Re-read the locked files from disk immediately before decisions and again before write-back.
-- Prompt echo: before editing, verification, or task execution, print the final action prompt in one Markdown code block with concrete paths substituted.
-- Write-back guard: before any write, verify the destination exactly matches the isolation lock. Never duplicate `Plan` or `Changes`; update in place or append under the existing canonical section as instructed.
-- Fresh evidence before completion claims: run the smallest sufficient verification for the changed boundary, read the output, and only then report success. Record skipped gates with the reason.
-- Cross-agent portability: avoid tool-specific assumptions unless the platform section explicitly requires them. Keep prompts deterministic and safe for Claude Code, Codex skills, Codex prompts, and OpenCode JSON command templates.
+- **English-first.** Write all output in English. Use Chinese only when quoting existing repo content (task titles, frontmatter values, status fields, localized error messages) or when the user explicitly asks.
+- **Rule loading.** Load `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `.claude/rules/*.mdc`, `.codex/rules/*.mdc`, `.cursor/rules/*.mdc`, `.opencode/*.mdc`, and `~/.codex/rules/r2mo-task-workflow.md` before task action. Missing files do not block.
+- **Argument contract.** Resolve the three-digit task number first. If absent, list `.r2mo/task/` candidates in the current directory only. Never resolve from parent/sibling/historical directories.
+- **Isolation lock.** Print locked path(s) before reading. Only read/write locked `task-*.md` and `goon-*.md` files.
+- **Disk source of truth.** Re-read locked files from disk before decisions and before write-back. Do not trust conversation memory, summaries, or cache.
+- **Prompt echo.** Print the final action prompt in a code block before editing or execution.
+- **Write-back guard.** Verify destination matches isolation lock before any write. Never duplicate `Plan` or `Changes`; update in place.
+- **Fresh evidence.** Run the smallest sufficient verification for the changed boundary before claiming success. Record skipped gates with reason.
+- **Cross-agent portability.** Keep prompts deterministic and safe for Claude Code, Codex skills, and OpenCode JSON templates.
 
-Create a detailed execution plan for an R2MO task by three-digit task number.
+Read `.r2mo/task/task-NNN.md` for the given number, generate an execution plan, and write it back to the `Plan` section of that task file.
+
+The user invoked this command with: $ARGUMENTS
 
 ## Arguments
 
-The user must provide a three-digit number such as `001`.
+1. `$ARGUMENTS` starts with a three-digit number (regex `^[0-9]{3}`), e.g. `001`.
+2. Additional tokens after the number are **directives** (space-separated, case-insensitive):
+   - `Team` — flag subsequent run to force Team mode (plan itself does not activate it)
+   - `Worktree` / `WT` — flag subsequent run to force Worktree isolation
+   - `Deep` — enable deep analysis mode for a more detailed Plan
+3. Declare parsed results, e.g. `📌 Task: 005 | Directives: Team, Worktree`. If no directives, declare task number only.
 
-If the number is missing, scan `.r2mo/task/` for `task-*.md` files, read the `title` and `status` from each file's frontmatter, list the number and title for the user to choose from, and continue with the selected number. If no `task-*.md` files exist, tell the user to create a task first.
-
-If the number is provided but does not match `^[0-9]{3}$`, stop and say:
-
-`请使用 $mxt-plan 001 格式执行，其中 001 是三位数字任务编号。`
+**Hard rules**: Parse failure → abort. Plan writes only `## Plan`. Path conflict → abort. No reads/writes outside isolation lock.
 
 ## Workflow
 
-1. Load and follow repository instructions: `AGENTS.md`, `CLAUDE.md`, `CODEX.md` when present, and `~/.codex/rules/r2mo-task-workflow.md` when present.
-2. Set the task path to `.r2mo/task/task-<number>.md`.
-3. If the task file is missing, do not guess another number and do not read another task file; immediately ask the user for the latest task number.
-4. Read the body after the frontmatter first. If it is empty or whitespace-only, stop immediately and return: `<TASK_PATH> 正文为空，当前不执行 /mxt-plan，请先补充任务内容。`
-5. Before reading the task body or editing the plan, print only the final prompt below in a Markdown code block, replacing `<TASK_PATH>` with the actual path.
-6. Execute the final prompt.
+1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).
+2. Parse `$ARGUMENTS`: extract task number and directives. If empty, scan `.r2mo/task/task-*.md` files, read each frontmatter `title` and `status`, list for user selection. If no task files exist, prompt user to create one first. If `$ARGUMENTS` is non-empty but does not match `^[0-9]{3}`, stop and print: `Usage: /mxt:plan 001 [directives...] where 001 is a 3-digit task number.`
+3. Set task path to `.r2mo/task/task-NNN.md`. If the file does not exist, do not guess another number — ask the user for the correct task number.
+4. **Isolation lock**: Print `📌 Locked: .r2mo/task/task-NNN.md`. All subsequent reads/writes target this path only.
+5. Read the task body (after frontmatter). If the body is empty or whitespace-only, stop and return: `Task body is empty. Cannot generate Plan. Please populate the task file first.`
+6. **Superpowers integration**: Assume superpowers is installed and call it directly. Do not rely on context banners or model self-introspection to judge availability (unreliable, causes false negatives).
+   - Call `superpowers:brainstorming` to analyze the task; use results as Plan input.
+   - Call `superpowers:writing-plans` to generate a structured Plan.
+   - **Fallback only**: If the Skill tool returns an explicit "skill not found / not registered" error, proceed with manual analysis. Otherwise, must adopt superpowers output.
+   - Declare path: `📌 Planning: Superpowers[brainstorming+writing-plans]` or `📌 Planning: Manual` (fallback only).
+7. Print the final execution prompt in a Markdown code block before editing.
+8. Execute the prompt below with `<TASK_PATH>` replaced by the actual relative path:
 
-Final prompt:
+> **Task**: Generate an execution plan for `<TASK_PATH>`.
+>
+> - **Input**: Read body after frontmatter of `<TASK_PATH>`.
+> - **Pre-check**: If body is empty, return "Task body is empty, Plan not generated" and do not modify any file.
+> - **Write target**: Only the `## Plan` section of `<TASK_PATH>`.
+> - **Write-back guard**: Verify destination path matches isolation lock before writing. If mismatch, stop and report path conflict.
+> - **Write rule**: If `## Plan` already exists, update in place. Never append duplicate Plans.
+> - **Plan content**: Goal decomposition, affected files/modules, execution steps, verification method, risks and handoff notes.
+> - **Boundary**: Do not implement. Do not modify status. Do not append Changes. Do not create or modify goon files.
+> - **Isolation**: Do not read, edit, or create any `task-*.md` or `goon-*.md` other than `<TASK_PATH>`.
 
-任务：为 `<TASK_PATH>` 生成执行计划。
+## Next Steps
 
-- 输入范围：读取 `<TASK_PATH>` frontmatter 之后的正文。
-- 前置校验：若正文为空或仅包含空白字符，返回“任务正文为空，未生成 Plan”，且不修改任何文件。
-- 写回位置：仅写回 `<TASK_PATH>` 的 `## Plan` 章节。
-- 写回规则：若 `## Plan` 已存在，则原位更新；不得重复追加多个 Plan。
-- Plan 要求：包含目标拆解、涉及文件/模块、执行步骤、验证方式、风险与交接说明。
-- 边界约束：不执行实现，不修改 status，不追加 Changes，不创建或修改 goon 文件。
+- Execute the task → `/mxt:run <number>`
+- Team collaboration → `/mxt:run <number> Team`
+- Isolated execution → `/mxt:run <number> Worktree`
+- Verify after execution → `/mxt:end <number>`
 
 ## Verification
 
-Report where `## Plan` was written, whether an existing plan was updated, and confirm no implementation, Changes append, or goon file edit was performed.
+Report: `## Plan` write-back location, whether existing Plan was updated, Superpowers invocation status, and confirmation that no implementation was done and no Changes were appended.

@@ -1,105 +1,104 @@
 ---
 description: "Debug R2MO issues: invokes superpowers systematic-debugging directly, falls back to manual only if the skill is absent"
-argument-hint: "[bug-description] [指令...]"
+argument-hint: "[bug-description] [directives...]"
 ---
 
 # /mxt:debug
 
 ## Harness
 
-This Harness is the binding execution contract for this MXT command across Claude Code, Codex, and OpenCode. Treat localized sections below as legacy detail; this section wins when wording conflicts.
+Binding execution contract for all MXT commands across Claude Code, Codex, and OpenCode.
 
-- English-first: write instructions, analysis, verification notes, and summaries in English by default. Use Chinese only when quoting existing repository content, preserving task titles/frontmatter/status values, showing exact localized command errors already required by this file, or when the user explicitly asks for Chinese.
-- Rule loading: before task action, load repository entry rules (`AGENTS.md`, `CLAUDE.md`, `CODEX.md`), project rule files (`.claude/rules`, `.codex/rules`, `.cursor/rules`, `.opencode`, other relevant `.mdc`), and `~/.codex/rules/r2mo-task-workflow.md` when present. Missing optional files do not block execution.
-- Argument contract: resolve the explicit three-digit number first. If absent, list current-directory `.r2mo/task/` candidates only. Never resolve from parent, child, sibling, or historical timestamped task directories unless the user names that path.
-- Task isolation lock: after resolving paths, print the locked path(s) before reading task content, and only read/write those locked `task-*.md`, `goon-*.md`, or `loop-*.json` files for this invocation.
-- Disk source of truth: Do not trust conversation memory, previous summaries, installed plugin cache, or earlier reads. Re-read the locked files from disk immediately before decisions and again before write-back.
-- Prompt echo: before editing, verification, or task execution, print the final action prompt in one Markdown code block with concrete paths substituted.
-- Write-back guard: before any write, verify the destination exactly matches the isolation lock. Never duplicate `Plan` or `Changes`; update in place or append under the existing canonical section as instructed.
-- Fresh evidence before completion claims: run the smallest sufficient verification for the changed boundary, read the output, and only then report success. Record skipped gates with the reason.
-- Cross-agent portability: avoid tool-specific assumptions unless the platform section explicitly requires them. Keep prompts deterministic and safe for Claude Code, Codex skills, Codex prompts, and OpenCode JSON command templates.
+- **English-first.** Write all output in English. Use Chinese only when quoting existing repo content (task titles, frontmatter values, status fields, localized error messages) or when the user explicitly asks.
+- **Rule loading.** Load `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `.claude/rules/*.mdc`, `.codex/rules/*.mdc`, `.cursor/rules/*.mdc`, `.opencode/*.mdc`, and `~/.codex/rules/r2mo-task-workflow.md` before task action. Missing files do not block.
+- **Argument contract.** Resolve the three-digit task number first. If absent, list `.r2mo/task/` candidates in the current directory only. Never resolve from parent/sibling/historical directories.
+- **Isolation lock.** Print locked path(s) before reading. Only read/write locked `task-*.md` and `goon-*.md` files.
+- **Disk source of truth.** Re-read locked files from disk before decisions and before write-back. Do not trust conversation memory, summaries, or cache.
+- **Prompt echo.** Print the final action prompt in a code block before editing or execution.
+- **Write-back guard.** Verify destination matches isolation lock before any write. Never duplicate `Plan` or `Changes`; update in place.
+- **Fresh evidence.** Run the smallest sufficient verification for the changed boundary before claiming success. Record skipped gates with reason.
+- **Cross-agent portability.** Keep prompts deterministic and safe for Claude Code, Codex skills, and OpenCode JSON templates.
 
-启动 BUG 排查流程：默认直接调用 superpowers 系统化诊断，仅当 Skill 工具报技能不存在时才降级为手动排查。
+Launch a bug investigation flow: invoke superpowers systematic-debugging directly, or fall back to manual root-cause analysis only if the skill tool reports it as absent.
 
 The user invoked this command with: $ARGUMENTS
 
-## 参数解析
+## Arguments
 
-1. `$ARGUMENTS` 为 BUG 描述文本，可包含三位数字任务编号，末尾可附加**执行指令**，以空格分隔，不区分大小写。支持的指令：
-   - `深度` / `Deep` — 启用深度诊断，扩大排查范围
-   - `Worktree` / `WT` — 在 Worktree 中隔离排查
-2. 解析规则：从 `$ARGUMENTS` 末尾提取已知指令词；从剩余文本中提取第一个三位数字作为编号；若没有编号，立即询问用户提供编号。
-3. 设定 `<GOON_PATH>` 为 `.r2mo/task/goon-$编号.md`，剩余文本作为 BUG 描述。解析后在聊天窗口中声明结果，例如 `📌 BUG描述: 内存泄漏 | 编号: 001 | 指令: 深度`。
+1. `$ARGUMENTS` is a bug description text, optionally containing a three-digit task number, with optional **directives** at the end (space-separated, case-insensitive):
+   - `Deep` — enable deep diagnosis, broaden investigation scope
+   - `Worktree` / `WT` — isolate investigation in a Worktree
+2. Parse from the end of `$ARGUMENTS` for known directive keywords; extract the first three-digit number from the remaining text; if no number, ask the user.
+3. Set `<GOON_PATH>` to `.r2mo/task/goon-NNN.md`. Remaining text is the bug description. Declare parsed results, e.g. `📌 Bug: memory leak | Task: 001 | Directives: Deep`.
 
-**硬规则**：解析失败→终止 | Superpowers直接调用（仅工具报不存在才降级） | Worktree→`.r2mo/worktrees/` | 写回前确认目标路径等于 `<GOON_PATH>`
+**Hard rules**: Parse failure → abort. Superpowers: invoke directly (fallback only on explicit "skill not found" error). Worktree → `.r2mo/worktrees/`. Write-back guard: confirm target path equals `<GOON_PATH>`.
 
 ## Workflow
 
-1. 先读取并遵守当前仓库的 `AGENTS.md`、`CLAUDE.md`、`CODEX.md`（若存在），以及它们引用的所有规则文件；扫描项目中所有可检索的 `.mdc` 规则文件（`.claude/rules/`、`.codex/rules/`、`.cursor/rules/`、`.opencode/` 及其他任意路径下的 `.mdc`）。
-2. 声明本次执行目标：BUG 排查，问题描述为 BUG 描述部分。
-2. 默认认定 `superpowers:systematic-debugging` 已安装并直接调用，不得依据上下文横幅或模型自省判断可用性（不可靠，易误报"未注册"）：
-   - 通过 Skill 工具调用 `superpowers:systematic-debugging`，将 BUG 描述传入，按其工作流执行系统化诊断。
-   - **唯一降级判据**：仅当 Skill 工具返回明确的"技能不存在/未注册"错误时，才执行以下手动降级排查流程；调用成功则必须按其工作流执行，不得跳过：
-     a. 收集错误信息：读取 BUG 描述中提及的文件、日志或堆栈。
-     b. 定位相关文件：在当前仓库中搜索与错误相关的模块、函数或配置。
-     c. 分析根因：基于代码逻辑和错误现象推断根本原因。
-     d. 给出修复建议：输出诊断结论和具体修复方向。
-3. 在聊天窗口声明排查路径：`📌 诊断路径: Superpowers[systematic-debugging]` 或 `📌 诊断路径: 标准排查`。
-4. **深度诊断**：若参数解析中检测到 `深度` 指令，扩大排查范围：搜索更多关联文件、检查间接依赖、分析边界条件。
-5. **Worktree 隔离**：若参数解析中检测到 `Worktree` 指令，在 Worktree 中执行排查，避免影响当前工作区。
-6. 排查完成后生成 `DEBUG Report` 并写入 `<GOON_PATH>`，使后续 `/mxt:goon <编号>` 可直接执行整改。
-7. 写入 `<GOON_PATH>` 前必须再次声明 `📌 写回校验: <GOON_PATH>`，确认没有写入其他 `goon-*.md`。
+1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).
+2. Declare investigation target: bug diagnosis, description is the parsed bug text.
+3. Assume `superpowers:systematic-debugging` is installed and invoke it directly via the Skill tool. Do not rely on context banners or model self-introspection — these are unreliable and cause false negatives.
+   - If the Skill tool returns an explicit "skill not found / not registered" error → execute fallback:
+     a. Collect error info: read files, logs, or stack traces mentioned in `$ARGUMENTS`.
+     b. Locate related files: search the repository for modules, functions, or config related to the error.
+     c. Analyze root cause: infer fundamental cause from code logic and error symptoms.
+     d. Provide fix suggestions: output diagnostic conclusions and specific fix directions.
+   - If the call succeeds → must follow its workflow. Do not skip or self-downgrade.
+4. Declare investigation path: `📌 Path: Superpowers[systematic-debugging]` or `📌 Path: Manual`.
+5. **Deep diagnosis**: If `Deep` directive detected, broaden scope: search more related files, check indirect dependencies, analyze boundary conditions.
+6. **Worktree isolation**: If `Worktree` directive detected, execute investigation in a Worktree under `.r2mo/worktrees/`.
+7. Generate a `DEBUG Report` and write to `<GOON_PATH>` so `/mxt:goon <number>` can execute remediation directly.
+8. Before writing, declare `📌 Write-back check: <GOON_PATH>` and confirm the target path is exactly `.r2mo/task/goon-NNN.md`.
 
 ## DEBUG Report
 
-将 `<GOON_PATH>` 内容更新为以下格式：
+Write `<GOON_PATH>` with the following format:
 
 ```md
 ---
-title: 整改-DEBUG-$编号
+title: Remediation-DEBUG-NNN
 status: Pending
 author:
 ---
 
 # DEBUG Report
 
-## BUG
+## Bug
 
-- 描述：
-- 触发条件：
-- 影响范围：
+- Description:
+- Trigger condition:
+- Impact scope:
 
 ## Evidence
 
-- 复现步骤：
-- 关键日志/错误：
-- 相关文件：
+- Reproduction steps:
+- Key logs/errors:
+- Related files:
 
 ## Root Cause
 
-- 根因：
-- 证据链：
+- Root cause:
+- Evidence chain:
 
 ## Fix Direction
 
-- 修复方向：
-- 风险点：
-- 验证方式：
+- Fix direction:
+- Risk points:
+- Verification method:
 
-## 整改项
+## Remediation Items
 
 - [ ] ...
 ```
 
-## 闭环指引
+## Next Steps
 
-Debug 完成后的典型路径：
-- 确认 BUG 后修复 → 修改代码后验证
-- 直接整改 DEBUG 报告 → `/mxt:goon <编号>`
-- 修复后验收 → `/mxt:end <编号>`（若关联具体任务）
-- 复杂修复需规划 → `/mxt:plan <编号>`
-- 修复后持续执行 → `/mxt:run <编号>`
+- Confirm bug then fix → verify after code changes
+- Remediate from DEBUG report → `/mxt:goon <number>`
+- Verify after fix → `/mxt:end <number>` (if linked to a task)
+- Complex fix needs planning → `/mxt:plan <number>`
+- Continue execution → `/mxt:run <number>`
 
 ## Verification
 
-完成后说明排查结论、是否调用了 superpowers 诊断、发现的根因和修复建议，并确认 `DEBUG Report` 已写入 `<GOON_PATH>`。
+Report: investigation conclusion, whether superpowers diagnosis was invoked, root cause found, fix suggestions, and confirmation that `DEBUG Report` was written to `<GOON_PATH>`.
