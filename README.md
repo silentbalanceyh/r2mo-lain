@@ -60,18 +60,16 @@ npm uninstall -g r2mo-ai
 
 `r2mo-ai` 是 `SDD - Spec Driven Development` 命令行工具，命令名为 `mxt`。它面向 R2MO / MXT 工作流，提供项目初始化、规范文档、OpenAPI 提取、代码生成辅助、Obsidian 文档打开，以及 Claude Code / Codex / OpenCode 的 AI 命令安装与闭环执行提示词。
 
-本教程按 `task-001` 的结构拆分：README 只保留入口教程、保留图和闭环图、保留索引；命令细节进入 `docs/command/`；`mxt ai-cmd` 的独立教程进入 `docs/ai-cmd.md`；`docs/skills/` 进一步拆成平台入口与每个 Skill 的独立说明。
+本教程按 `task-001` 的结构拆分：README 只保留入口教程、保留图和闭环图、保留索引；`docs/command/` 汇总 `mxt xxx` commands；`docs/skills/` 汇总 `mxt-*` Skills；具体命令和 Skill 细节只放到子文档。
 
 ---
 
 ### 入口索引
 
-本页只保留核心索引，不再展开命令参数或执行细节。完整说明请看：
+本页只保留两个核心入口，不再展开命令参数、平台差异或 Skill 细节：
 
-- [命令索引与各子命令详情](docs/command/README.md)
-- [mxt ai-cmd 说明](docs/ai-cmd.md)
-- [AI 平台与 Skills 索引](docs/skills/README.md)
-- [Codex Skills 详情](docs/skills/mxt-plan.md)
+- [mxt xxx Commands](docs/command/README.md) — `mxt` CLI 命令总览与每个子命令文档索引。
+- [mxt-* Skills](docs/skills/README.md) — AI 闭环 Skills 总览、安装位置、配置信息与每个 Skill 文档索引。
 
 ### 闭环流程
 
@@ -104,7 +102,7 @@ flowchart TD
     class H done
 ```
 
-闭环命令的具体写法、平台差异和技能说明已经拆到子文档里；这里仅保留流程图，便于首页快速理解整体循环。
+闭环命令的具体写法和 Skill 说明已经拆到子文档里；这里仅保留流程图，便于首页快速理解整体循环。
 
 ### 发布
 

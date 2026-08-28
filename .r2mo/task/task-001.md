@@ -31,3 +31,8 @@ README.md 调整
 - 2026-08-28 12:20: 继续补强命令与 Skills 的总览层：README 章节收束为引导/工具安装/核心功能/参考链接；`docs/command/README.md` 与 `docs/skills/README.md` 增加总体介绍、安装位置、配置来源和索引说明；`docs/command/docs.md` 补充默认启用插件表；模板源头移除 `claudian`，并让 `mxt docs` 同步时清理目标里已不存在的旧插件目录。
   - Files changed: `README.md`, `docs/command/README.md`, `docs/skills/README.md`, `docs/command/docs.md`, `src/executor/executeDocs.js`, `src/_template/LAIN/.obsidian/workspace.json`, `.obsidian/workspace.json`, `.r2mo/.obsidian/workspace.json`
   - Verification: `node -c src/executor/executeDocs.js` 通过；`node -c src/utils/mxt-ai-cmd.js` 通过；`npm run validate:commands` 通过；`node src/mxt.js help` 和 `node src/mxt.js help -c docs` 执行成功；自定义检查确认 README 仅保留 4 个一级章节、两张图与核心 mermaid、命令/Skill 总览链接、`claudian` 已从源头与目标清理、启用插件表与源头一致。
+
+
+- 2026-08-28 12:28: 按反馈继续收敛文档入口：README 的“入口索引”只保留 `mxt xxx Commands` 与 `mxt-* Skills` 两个主链接；`docs/skills/README.md` 合并 Claude Code / Codex / OpenCode 平台说明，不再拆分平台入口页；移除命令/Skill 文档入口中对 `r2mo-ui-*` Skills 的介绍，仅保留 `mxt-*` 命令 Skill 子文档。
+  - Files changed: `README.md`, `docs/ai-cmd.md`, `docs/skills/README.md`, removed generated top-level `docs/skills/claude-code.md`, `docs/skills/codex.md`, `docs/skills/opencode.md`, `docs/skills/r2mo-ui-*.md`
+  - Verification: `node -c src/executor/executeDocs.js` 通过；`npm run validate:commands` 通过；`node src/mxt.js help` 和 `node src/mxt.js help -c docs` 执行成功；自定义检查确认 README 仍为 4 个主章节、两张图和 mermaid 保留在首页核心功能中、入口索引仅 2 个链接、top-level Skill 文档收敛为 `README.md` + 8 个 `mxt-*` 文档且链接有效。
