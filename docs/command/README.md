@@ -66,7 +66,22 @@
 ## 命令执行记录
 
 ```bash
-mxt help
-mxt help -c docs
-mxt docs
+$ REPO="/Users/lang/zero-cloud/app-zero/r2mo-matrix/r2mo-lain"
+$ WORK_DIR="/var/folders/sj/rxs6q2ds7xx8rp3vzddfzxsh0000gn/T/mxt-docs-record-eDCd9K"
+$ cd "$WORK_DIR"
+$ node "$REPO/src/mxt.js" help
+[MXT AI] SDD / Spec Driven Development ...
+
+Usage:
+mxt <command>
+
+All commands:
+
+    admin        根据项目需求文档生成前端页面结构
+    ai-cmd       安装 mxt AI 命令到 Claude Code / Codex / OpenCode；Codex 安装为 plugin skills
+    app          创建 R2MO/Spring 或 ZERO/Vertx 应用
+    apply        从远程仓库安装技能到当前项目（默认）；-i 将当前项目 skills/ 反馈到 Z_LAIN_SKILL/skills
+    ask          从模板目录中选择提示词并复制到剪切板
+$ echo $?
+0
 ```

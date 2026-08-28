@@ -17,6 +17,19 @@
 ## 命令执行记录
 
 ```bash
-mxt help
-mxt help -c docs
+$ REPO="/Users/lang/zero-cloud/app-zero/r2mo-matrix/r2mo-lain"
+$ WORK_DIR="/var/folders/sj/rxs6q2ds7xx8rp3vzddfzxsh0000gn/T/mxt-docs-record-eDCd9K"
+$ cd "$WORK_DIR"
+$ node "$REPO/src/mxt.js" help -c help
+[MXT AI] SDD / Spec Driven Development ...
+
+显示帮助的详细信息！
+
+Usage:
+mxt help [options]
+
+Options:
+[-c|--command]           命令名称（Command）
+$ echo $?
+0
 ```

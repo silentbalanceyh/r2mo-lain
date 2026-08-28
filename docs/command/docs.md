@@ -36,6 +36,20 @@
 ## 命令执行记录
 
 ```bash
-mxt docs
-mxt docs -d .r2mo
+$ REPO="/Users/lang/zero-cloud/app-zero/r2mo-matrix/r2mo-lain"
+$ WORK_DIR="/var/folders/sj/rxs6q2ds7xx8rp3vzddfzxsh0000gn/T/mxt-docs-record-eDCd9K"
+$ cd "$WORK_DIR"
+$ node "$REPO/src/mxt.js" help -c docs
+[MXT AI] SDD / Spec Driven Development ...
+
+使用 Obsidian 打开文档目录
+
+Usage:
+mxt docs [options]
+
+Options:
+[-d|--dir]               目标目录（默认当前目录）
+[-r|--remove]            清理指定目录的 Obsidian 配置（与 -d 互斥）
+$ echo $?
+0
 ```

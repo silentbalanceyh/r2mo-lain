@@ -19,6 +19,19 @@
 ## 命令执行记录
 
 ```bash
-mxt ai-cmd
-mxt ai-cmd --uninstall
+$ REPO="/Users/lang/zero-cloud/app-zero/r2mo-matrix/r2mo-lain"
+$ WORK_DIR="/var/folders/sj/rxs6q2ds7xx8rp3vzddfzxsh0000gn/T/mxt-docs-record-eDCd9K"
+$ cd "$WORK_DIR"
+$ node "$REPO/src/mxt.js" help -c ai-cmd
+[MXT AI] SDD / Spec Driven Development ...
+
+安装 mxt AI 命令到 Claude Code / Codex / OpenCode；Codex 安装为 plugin skills
+
+Usage:
+mxt ai-cmd [options]
+
+Options:
+[-u|--uninstall]         全量卸载 Claude Code / Codex / OpenCode 中的 mxt 命令
+$ echo $?
+0
 ```

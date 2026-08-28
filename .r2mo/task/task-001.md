@@ -36,3 +36,8 @@ README.md 调整
 - 2026-08-28 12:28: 按反馈继续收敛文档入口：README 的“入口索引”只保留 `mxt xxx Commands` 与 `mxt-* Skills` 两个主链接；`docs/skills/README.md` 合并 Claude Code / Codex / OpenCode 平台说明，不再拆分平台入口页；移除命令/Skill 文档入口中对 `r2mo-ui-*` Skills 的介绍，仅保留 `mxt-*` 命令 Skill 子文档。
   - Files changed: `README.md`, `docs/ai-cmd.md`, `docs/skills/README.md`, removed generated top-level `docs/skills/claude-code.md`, `docs/skills/codex.md`, `docs/skills/opencode.md`, `docs/skills/r2mo-ui-*.md`
   - Verification: `node -c src/executor/executeDocs.js` 通过；`npm run validate:commands` 通过；`node src/mxt.js help` 和 `node src/mxt.js help -c docs` 执行成功；自定义检查确认 README 仍为 4 个主章节、两张图和 mermaid 保留在首页核心功能中、入口索引仅 2 个链接、top-level Skill 文档收敛为 `README.md` + 8 个 `mxt-*` 文档且链接有效。
+
+
+- 2026-08-28 12:34: 在空目录中批量实际执行 `node src/mxt.js help -c <command>`，为所有 `docs/command/*.md` 补齐/刷新 `bash` 命令执行记录；同时补充 `docs/command/README.md` 的总览执行记录，确保每个命令文档都有可复制的 bash block。
+  - Files changed: `docs/command/*.md`, `docs/command/README.md`
+  - Verification: 在临时空目录中批量执行 24 个命令帮助检查；`node -c src/executor/executeDocs.js` 通过；`node -c src/utils/mxt-ai-cmd.js` 通过；`npm run validate:commands` 通过；`node src/mxt.js help` 与 `node src/mxt.js help -c docs` 通过；自定义检查确认 command docs 24/24 都含 `## 命令执行记录` 与 `bash` block。
