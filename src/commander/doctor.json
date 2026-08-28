@@ -1,0 +1,43 @@
+{
+    "executor": "executeDoctor",
+    "description": "防漂移扫描：检测项目配置漂移，生成基线或出报告",
+    "command": "doctor",
+    "options": [
+        {
+            "name": "generate",
+            "alias": "g",
+            "description": "生成基线配置到 .r2mo/doctor/<profile>/",
+            "default": false
+        },
+        {
+            "name": "profile",
+            "alias": "p",
+            "description": "profile (loc/k8s/mob/win)",
+            "default": null
+        },
+        {
+            "name": "genk8s",
+            "alias": "K",
+            "description": "快捷: --generate --profile k8s",
+            "default": false
+        },
+        {
+            "name": "genloc",
+            "alias": "L",
+            "description": "快捷: --generate --profile loc",
+            "default": false
+        },
+        {
+            "name": "genmob",
+            "alias": "M",
+            "description": "快捷: --generate --profile mob",
+            "default": false
+        },
+        {
+            "name": "genwin",
+            "alias": "W",
+            "description": "快捷: --generate --profile win",
+            "default": false
+        }
+    ]
+}

@@ -64,6 +64,62 @@ Every remediation item in `<GOON_PATH>` MUST use this exact header so the closed
 10. Verification uses minimal affected targets; once green, it is fixed. Without explicit user authorization, do not run full/workspace gates or repeat already-green checks.
 11. Solution stability: goon writes failure facts + acceptance criteria. Unless a single safe path is clearly identified, do not force or repeatedly switch between A/B implementations.
 
+## Content-Match Verification (MANDATORY — not optional)
+
+The most common verification failure is checking that a Changes entry *exists* (file was touched, function was added) without verifying that the **actual content** of the change **matches what the task requirement asked for**. Existence ≠ correctness.
+
+### The 3-Layer Verification Protocol
+
+Every Changes entry must pass all three layers. Failure at any layer is a P0/P1 goon item.
+
+#### Layer 1: Existence Check (was the change made?)
+
+- Verify the file/function/config mentioned in Changes actually exists on disk.
+- Use `git diff`, `git show`, `grep`, or direct file reading.
+- If the file or function does not exist → **P0 FAIL**.
+
+#### Layer 2: Content-Match Check (does the change match the requirement?)
+
+- Read the **task requirement** (from the task body, not just the Changes summary).
+- Read the **actual changed content** on disk (not just the Changes description).
+- Compare them: does the implementation actually do what the task asked?
+- Check for:
+  - **Stub/placeholder**: function exists but body is empty, returns hardcoded value, or has `TODO`/`FIXME`/`not implemented` — **P0 FAIL**.
+  - **Wrong logic**: function exists, signature matches, but the implementation logic does not satisfy the requirement — **P0 FAIL**.
+  - **Partial implementation**: only part of the requirement is addressed, other parts are missing — **P1 FAIL**.
+  - **Misnamed identifier**: the change exists but under a different name/pattern than what the task specified — **P1 FAIL** (only if the task explicitly names it).
+  - **Wrong location**: file exists in the wrong directory/module than what the task specified — **P1 FAIL** (only if the task explicitly specifies location).
+- If content matches → PASS, move to Layer 3.
+
+#### Layer 3: Requirement-Completeness Check (are all requirements covered?)
+
+- Extract every explicit requirement from the task body (bullet points, numbered lists, "must"/"should"/"需要" statements).
+- Cross-check each requirement against the Changes entries and actual code.
+- Any requirement with no corresponding change → **P1 FAIL** (missing requirement).
+- Any requirement where the change exists but the implementation doesn't fully satisfy it → **P0/P1 per severity**.
+
+### Verification Evidence Format
+
+For each Changes entry, print a one-line verdict:
+
+```
+✅ [L1:exists] [L2:content-match] [L3:requirement-covered] path/to/file — Changes summary
+❌ [L1:exists] [L2:FAIL: stub/placeholder] path/to/file — function body is empty
+❌ [L1:exists] [L2:FAIL: wrong logic] path/to/file — does not handle edge case X
+❌ [L1:FAIL: missing] path/to/file — file not found on disk
+❌ [L3:FAIL: missing requirement] — task requires Y but no Changes entry addresses it
+```
+
+### Anti-Patterns (MUST avoid)
+
+1. **"File exists, so it's done"** — reading only the Changes summary without reading actual file content. Always read the file.
+2. **"Changes says it was implemented"** — trusting the Changes description as proof. Always verify against disk content.
+3. **"Compile passes, so it's correct"** — compilation only proves syntax, not logic correctness.
+4. **"No error in log"** — absence of errors does not mean the requirement is satisfied.
+5. **"Function name matches"** — name matching without reading the function body. The body may be a stub.
+6. **Skimming Changes without mapping to task requirements** — Changes may list files touched but not map to specific requirements. Always cross-reference.
+7. **"Description in Changes looks right"** — the Changes description is a claim, not evidence. Read the actual code.
+
 ## Verification Hints
 
 Before writing the goon, run these checks (print which were used and their results):
@@ -90,7 +146,14 @@ If a check is N/A for this task, record it as "skipped (N/A)" with reason — do
 >
 > - **Input**: Read body after frontmatter of `<TASK_PATH>`.
 > - **Pre-check**: If body is empty, return "Task body is empty, verification skipped" and do not modify any file.
+> - **Requirement extraction**: Extract every explicit requirement from the task body (bullet points, numbered lists, "must"/"should"/"需要" statements). List them before verification.
 > - **Verification basis**: Compare task body, existing Plan, existing Changes, and current code state to determine completion.
+> - **Content-Match Verification (MANDATORY)**: For each Changes entry, perform the 3-Layer Verification Protocol:
+>   - Layer 1 (Existence): Does the file/function/config exist on disk? Use `git diff`, `grep`, or file reading.
+>   - Layer 2 (Content-Match): Read the actual file content on disk and compare against the task requirement. Existence ≠ correctness. Check for stubs, wrong logic, partial implementation, misnamed identifiers, wrong location.
+>   - Layer 3 (Requirement-Completeness): Are all task requirements covered by Changes entries? Any requirement with no corresponding change is a FAIL.
+>   - Print one-line verdict per entry using the evidence format (✅/❌ with L1/L2/L3 tags).
+>   - Anti-patterns to avoid: "file exists so done", "Changes says implemented", "compile passes so correct", "no error in log", "function name matches", "skimming without mapping to requirements", "description looks right".
 > - **Core constraints**: This is risk-controlled verification, not a perfect-system audit. Repo MDC / verification budget takes priority. Deep/Strict cannot override.
 > - **Requirements-first**: Judge completion against stated requirements first. Done = requirements satisfied, not "everything perfect". A non-requirement concern must not block a requirement-satisfying change.
 > - **Convergence**: Every remediation item must trace to a requirement or a direct P0/P1 blocker of a requirement. Items must converge toward requirements — fewer and tighter each round. No divergence: no new topics, no adjacent modules, no style/optimization, no speculative robustness, no "while here" refactors. If it does not move toward requirement satisfaction, do not write it.
@@ -100,7 +163,7 @@ If a check is N/A for this task, record it as "skipped (N/A)" with reason — do
 > - **One-shot completeness**: All current blocking items in the selected scope must be delivered in one pass. Multiple evidence for same failure → merge into one item with acceptance criteria. No piecemeal additions.
 > - **Re-verification boundary**: If this is a post-goon re-verification, only check listed goon items and direct P0/P1 blockers from the fix. Do not re-scan to create new rounds.
 > - **Verification hints**: Run the checks in § Verification Hints (requirement coverage, diff review, build+run, boundary check, regression sniff). Record each as used/skipped with result. Unmet requirements are top-priority items.
-> - **Deep mode**: If `Deep` directive detected, read each changed file and compare against task requirements. Otherwise, standard granularity.
+> - **Deep mode**: If `Deep` directive detected, read each changed file in full and compare line-by-line against task requirements. Otherwise, standard granularity (read key sections, not full files).
 > - **Strict mode**: If `Strict` directive detected, raise sensitivity within current task boundary. Still only P0/P1, never P2/P3.
 > - **Goon title**: `<GOON_PATH>` frontmatter title must be `Remediation-` + `<TASK_PATH>` frontmatter title.
 > - **Goon write**: Clear `<GOON_PATH>` original content before writing current remediation items.
@@ -119,4 +182,4 @@ If a check is N/A for this task, record it as "skipped (N/A)" with reason — do
 
 ## Verification
 
-Report: requirement coverage (satisfied/unsatisfied/partial counts), verification hints used (each check: used/skipped + result), remediation item count, convergence confirmation (every item traces to a requirement), and the written `.r2mo/task/goon-NNN.md` path.
+Report: requirement coverage (satisfied/unsatisfied/partial counts), per-entry verdicts (using 3-Layer evidence format), verification hints used (each check: used/skipped + result), remediation item count, convergence confirmation (every item traces to a requirement), and the written `.r2mo/task/goon-NNN.md` path.

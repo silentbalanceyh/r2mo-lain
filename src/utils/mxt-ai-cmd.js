@@ -9,7 +9,7 @@ const COMMAND_NAME = 'mxt';
 const MARKETPLACE_NAME = `${COMMAND_NAME}-skills`;
 const LEGACY_COMMAND_NAME = 'mo' + 'mo';
 const LEGACY_MARKETPLACE_NAME = `${LEGACY_COMMAND_NAME}-skills`;
-const COMMAND_BASENAMES = ['plan', 'run', 'end', 'goon', 'debug', 'sync', 'start', 'loop'];
+const COMMAND_BASENAMES = ['plan', 'run', 'end', 'goon', 'debug', 'sync', 'start', 'loop', 'doctor'];
 const MXT_COMMANDS = COMMAND_BASENAMES.map((name) => `${COMMAND_NAME}:${name}`);
 const LEGACY_COMMANDS = ['plan', 'run', 'end', 'goon', 'debug', 'sync', 'start']
     .map((name) => `${LEGACY_COMMAND_NAME}:${name}`);

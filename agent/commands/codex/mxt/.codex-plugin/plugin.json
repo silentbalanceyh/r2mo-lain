@@ -1,7 +1,7 @@
 {
   "name": "mxt",
   "version": "1.0.0",
-  "description": "R2MO task workflow skills: mxt-plan, mxt-run, mxt-end, mxt-goon, mxt-debug, mxt-sync, mxt-start, mxt-loop.",
+  "description": "R2MO task workflow skills: mxt-plan, mxt-run, mxt-end, mxt-goon, mxt-debug, mxt-sync, mxt-start, mxt-loop, mxt-doctor.",
   "author": {
     "name": "R2MO"
   },
@@ -18,8 +18,8 @@
   ],
   "interface": {
     "displayName": "MXT Task Commands",
-    "shortDescription": "Plan, run, verify, and continue R2MO task files.",
-    "longDescription": "Codex skills for planning R2MO task files, executing task work, writing current goon remediation queues, and closing the loop with task Changes write-back.",
+    "shortDescription": "Plan, run, verify, continue R2MO tasks, and review anti-drift baselines.",
+    "longDescription": "Codex skills for planning R2MO task files, executing task work, writing current goon remediation queues, closing the loop with task Changes write-back, and reviewing mxt doctor anti-drift baseline metadata.",
     "developerName": "R2MO",
     "category": "Coding",
     "capabilities": [
@@ -31,7 +31,8 @@
       "Use $mxt-plan 001 to plan an R2MO task",
       "Use $mxt-run 001 to execute an R2MO task",
       "Use $mxt-sync to sync git",
-      "Use $mxt-start to start dev environment"
+      "Use $mxt-start to start dev environment",
+      "Use $mxt-doctor to review anti-drift baseline metadata"
     ],
     "screenshots": []
   }

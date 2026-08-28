@@ -27,6 +27,7 @@
 
 - [mxt app](app.md) — 创建 R2MO/Spring 或 ZERO/Vertx 应用
 - [mxt apply](apply.md) — 从远程仓库安装技能到当前项目（默认）；-i 将当前项目 skills/ 反馈到 Z_LAIN_SKILL/skills
+- [mxt doctor](doctor.md) — 防漂移扫描：检测项目配置漂移，生成基线或出报告
 - [mxt env](env.md) — 环境信息检查！
 - [mxt focus](focus.md) — 在 DPA 父项目下维护 .r2mo/focus/ 与 rachel-mxt.yaml，绑定后端/前端/集体任务；-d 完成并备份；-c 同步 .r2mo/api/metadata.yaml
 - [mxt help](help.md) — 显示帮助的详细信息！

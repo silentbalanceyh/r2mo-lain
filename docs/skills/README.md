@@ -37,6 +37,7 @@
 | 整改 | `$mxt-goon 001` | `/mxt:goon 001` | [mxt-goon](mxt-goon.md) |
 | 自动闭环 | `$mxt-loop 001` | `/mxt:loop 001` | [mxt-loop](mxt-loop.md) |
 | 调试 | `$mxt-debug 001 login fails` | `/mxt:debug 001 login fails` | [mxt-debug](mxt-debug.md) |
+| 防漂移 | `$mxt-doctor loc` | `/mxt:doctor loc` | [mxt-doctor](mxt-doctor.md) |
 | 同步 | `$mxt-sync` | `/mxt:sync` | [mxt-sync](mxt-sync.md) |
 | 启动 | `$mxt-start` | `/mxt:start` | [mxt-start](mxt-start.md) |
 
@@ -50,6 +51,7 @@
 - [mxt-goon](mxt-goon.md)
 - [mxt-loop](mxt-loop.md)
 - [mxt-debug](mxt-debug.md)
+- [mxt-doctor](mxt-doctor.md)
 - [mxt-sync](mxt-sync.md)
 - [mxt-start](mxt-start.md)
 

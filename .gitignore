@@ -71,3 +71,6 @@ apps/
 .trae/documents
 .obsidian/workspace.json
 .omc/
+__pycache__/
+*.pyc
+*.bak
