@@ -407,6 +407,48 @@ const _collectRelativePaths = async (dir, base = dir) => {
     return result;
 };
 
+/**
+ * 读取插件 manifest 信息
+ * @param {string} pluginDir 插件目录
+ * @returns {Promise<{id: string, name: string, version: string}|null>} manifest 信息
+ */
+const _readPluginManifest = async (pluginDir) => {
+    const manifestPath = path.join(pluginDir, 'manifest.json');
+    if (!fs.existsSync(manifestPath)) return null;
+
+    try {
+        const content = await fsAsync.readFile(manifestPath, 'utf8');
+        const manifest = JSON.parse(content);
+        return {
+            id: manifest.id || path.basename(pluginDir),
+            name: manifest.name || manifest.id || path.basename(pluginDir),
+            version: manifest.version || '?'
+        };
+    } catch (error) {
+        Ec.warn(`⚠ 插件 manifest 读取失败: ${manifestPath} (${error.message})`);
+        return null;
+    }
+};
+
+/**
+ * 读取 Obsidian 启用插件列表
+ * @param {string} obsidianDir .obsidian 目录
+ * @returns {Promise<Set<string>>} 已启用插件 ID 集合
+ */
+const _readEnabledPlugins = async (obsidianDir) => {
+    const pluginsPath = path.join(obsidianDir, 'community-plugins.json');
+    if (!fs.existsSync(pluginsPath)) return new Set();
+
+    try {
+        const content = await fsAsync.readFile(pluginsPath, 'utf8');
+        const plugins = JSON.parse(content);
+        return new Set(Array.isArray(plugins) ? plugins : []);
+    } catch (error) {
+        Ec.warn(`⚠ 启用插件列表读取失败: ${pluginsPath} (${error.message})`);
+        return new Set();
+    }
+};
+
 // 需要同步的顶层配置文件（workspace.json 除外，它是运行时状态）
 const _OBSIDIAN_CONFIG_FILES = [
     'community-plugins.json',
@@ -419,14 +461,17 @@ const _OBSIDIAN_CONFIG_FILES = [
 /**
  * 同步 .obsidian 配置（幂等）
  * 1. 同步顶层配置文件（community-plugins.json 等）
- * 2. 同步插件目录（已安装的全量覆盖，未安装的跳过）
+ * 2. 同步插件目录（先删除目标旧插件，再从模板源头全量覆盖）
  * @param {string} targetDir 目标 vault 目录
- * @returns {Promise<{synced: number, skipped: number, configs: number}>} 同步插件数/跳过数/配置文件更新数
+ * @returns {Promise<{synced: number, skipped: number, configs: number, plugins: Array}>} 同步插件数/跳过数/配置文件更新数/插件清单
  */
 const _syncObsidianConfig = async (targetDir) => {
     const srcObsidianDir = path.resolve(__dirname, '../_template/LAIN/.obsidian');
     const destObsidianDir = path.join(targetDir, '.obsidian');
     let configs = 0;
+
+    Ec.info(`Obsidian 配置源头: ${srcObsidianDir.cyan}`);
+    Ec.info(`Obsidian 配置目标: ${destObsidianDir.cyan}`);
 
     // 同步顶层配置文件
     for (const configFile of _OBSIDIAN_CONFIG_FILES) {
@@ -458,14 +503,32 @@ const _syncObsidianConfig = async (targetDir) => {
     const destPluginsDir = path.join(destObsidianDir, 'plugins');
 
     if (!fs.existsSync(srcPluginsDir)) {
-        return { synced: 0, skipped: 0, configs };
+        return { synced: 0, skipped: 0, configs, plugins: [] };
     }
 
     await fsAsync.mkdir(destPluginsDir, { recursive: true });
 
-    const srcPlugins = await fsAsync.readdir(srcPluginsDir);
+    const srcPlugins = (await fsAsync.readdir(srcPluginsDir)).sort();
+    const srcPluginSet = new Set(srcPlugins);
+    const enabledPlugins = await _readEnabledPlugins(destObsidianDir);
     let synced = 0;
     let skipped = 0;
+    const plugins = [];
+
+    Ec.info(`插件源头: ${srcPluginsDir.cyan}`);
+    Ec.info(`插件目标: ${destPluginsDir.cyan}`);
+
+    // 清理目标里已经不在源头中的旧插件目录，确保“覆盖”同时也能“移除”
+    if (fs.existsSync(destPluginsDir)) {
+        const destPlugins = (await fsAsync.readdir(destPluginsDir)).sort();
+        for (const pluginName of destPlugins) {
+            if (!srcPluginSet.has(pluginName)) {
+                const stalePlugin = path.join(destPluginsDir, pluginName);
+                await fsAsync.rm(stalePlugin, { recursive: true, force: true });
+                Ec.info(`→ 清理旧插件目录: ${pluginName}`);
+            }
+        }
+    }
 
     for (const pluginName of srcPlugins) {
         const srcPlugin = path.join(srcPluginsDir, pluginName);
@@ -474,55 +537,27 @@ const _syncObsidianConfig = async (targetDir) => {
         const stat = await fsAsync.stat(srcPlugin);
         if (!stat.isDirectory()) continue;
 
-        // vault 中不存在此插件 → 跳过，不强制安装
-        if (!fs.existsSync(destPlugin)) {
+        const manifest = await _readPluginManifest(srcPlugin);
+        if (!manifest) {
             skipped++;
+            Ec.warn(`→ 跳过非标准插件目录: ${pluginName}`);
             continue;
         }
 
-        // 收集模板和目标的相对路径集合
-        const srcFiles = new Set(await _collectRelativePaths(srcPlugin));
-        const destFiles = new Set(await _collectRelativePaths(destPlugin));
+        // 每次打开前都以模板插件为准：先删除目标旧目录，再重新复制。
+        // 这样其它项目中不存在、版本过旧或带有陈旧文件的插件都会被强制覆盖。
+        Ec.waiting(`插件覆盖: ${manifest.id} (${manifest.name} ${manifest.version})`);
+        await fsAsync.rm(destPlugin, { recursive: true, force: true });
+        await copyDir(srcPlugin, destPlugin);
 
-        let pluginChanged = false;
-
-        // 检查模板中有但目标缺失或内容不同的文件
-        for (const rel of srcFiles) {
-            const srcFile = path.join(srcPlugin, rel);
-            const destFile = path.join(destPlugin, rel);
-
-            if (!fs.existsSync(destFile)) {
-                pluginChanged = true;
-                break;
-            }
-
-            const srcContent = await fsAsync.readFile(srcFile);
-            const destContent = await fsAsync.readFile(destFile);
-            if (!srcContent.equals(destContent)) {
-                pluginChanged = true;
-                break;
-            }
-        }
-
-        // 检查目标中有但模板中已移除的陈旧文件
-        if (!pluginChanged) {
-            for (const rel of destFiles) {
-                if (!srcFiles.has(rel)) {
-                    pluginChanged = true;
-                    break;
-                }
-            }
-        }
-
-        if (pluginChanged) {
-            // 删除旧插件目录后重新复制，确保全量覆盖
-            await fsAsync.rm(destPlugin, { recursive: true, force: true });
-            await copyDir(srcPlugin, destPlugin);
-            synced++;
-        }
+        plugins.push({
+            ...manifest,
+            enabled: enabledPlugins.has(manifest.id)
+        });
+        synced++;
     }
 
-    return { synced, skipped, configs };
+    return { synced, skipped, configs, plugins };
 };
 
 /**
@@ -608,15 +643,19 @@ module.exports = async (_options) => {
 
         // 4.1 同步 Obsidian 配置（每次打开前都检查，含首次初始化后）
         Ec.waiting('正在同步 Obsidian 配置...');
-        const { synced, skipped, configs } = await _syncObsidianConfig(targetDir);
+        const { synced, skipped, configs, plugins } = await _syncObsidianConfig(targetDir);
         if (configs > 0) {
             Ec.info(`✓ 已同步 ${configs} 个配置文件更新`);
         }
         if (synced > 0) {
-            Ec.info(`✓ 已同步 ${synced} 个插件更新`);
+            Ec.info(`✓ 已覆盖加载 ${synced} 个插件`);
+            plugins.forEach(plugin => {
+                const status = plugin.enabled ? '加载' : '仅复制';
+                Ec.info(`  - [${status}] ${plugin.id} (${plugin.name} ${plugin.version})`);
+            });
         }
         if (skipped > 0) {
-            Ec.info(`→ 跳过 ${skipped} 个未安装插件`);
+            Ec.info(`→ 跳过 ${skipped} 个非标准插件目录`);
         }
 
         // 4.5. 更新 .gitignore，添加 .obsidian/workspace.json

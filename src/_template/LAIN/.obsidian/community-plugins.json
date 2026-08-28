@@ -1,14 +1,11 @@
 [
-  "realclaudian",
   "dataview",
   "obsidian-excalidraw-plugin",
-  "obsidian-git",
   "obsidian-kanban",
-  "obsidian-meta-bind-plugin",
-  "obsidian-plantuml",
-  "obsidian-shellcommands",
   "obsidian-tasks-plugin",
-  "obsidian42-brat",
   "templater-obsidian",
-  "terminal"
+  "terminal",
+  "obsidian-shellcommands",
+  "obsidian-git",
+  "obsidian-meta-bind-plugin"
 ]

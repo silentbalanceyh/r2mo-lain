@@ -9,7 +9,8 @@
     },
     "scripts": {
         "test": "node src/index.test.js",
-        "validate:commands": "node scripts/validate-commands.js"
+        "validate:commands": "node scripts/validate-commands.js",
+        "update:plugins": "node scripts/update-plugins.js"
     },
     "repository": {
         "type": "git",

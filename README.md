@@ -8,137 +8,86 @@
 ## 引导
 
 - 文档：<https://www.yuque.com/jiezizhu/r2mo>
-    - [>> 快速开始](https://www.yuque.com/jiezizhu/r2mo/ssl9rl5klogu7cp0)
+  - [>> 快速开始](https://www.yuque.com/jiezizhu/r2mo/ssl9rl5klogu7cp0)
 - 示例：<https://gitee.com/zero-ws/zero-rachel-mxt>
 
 ![R2MO-Lain](docs/images/r2mo-lain.png)
 
-## 1. 介绍
-
-### 1.1. 功能说明
-
-`r2mo-ai` 是 `SDD - Spec Driven Development` 命令行工具，提供项目初始化、规范与 OpenAPI 辅助、任务提示词生成，以及 Claude Code / Codex / OpenCode 的 `mxt` AI 命令安装与刷新。
-
----
-
-## 2. 工具使用
-
-### 2.1. 安装
+## 工具安装
 
 **前置条件**：Node.js 18+（推荐 LTS 版本）
 
-**macOS / Linux**
+### macOS / Linux
 
 ```bash
 npm install -g r2mo-ai
-# 验证
 mxt help
 ```
 
-若遇到权限问题：
+若遇到全局安装权限问题，建议优先使用 nvm 管理 Node；临时处理可使用：
 
 ```bash
 sudo npm install -g r2mo-ai
-# 或使用 nvm 管理 Node 版本，避免 sudo
-```
-
-**Windows**
-
-```bash
-npm install -g r2mo-ai
-# 验证
 mxt help
 ```
 
-若遇到执行策略限制（PowerShell）：
+### Windows
+
+```bash
+npm install -g r2mo-ai
+mxt help
+```
+
+若遇到 PowerShell 执行策略限制：
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 npm install -g r2mo-ai
+mxt help
 ```
 
-**卸载**
+### 卸载
 
 ```bash
 npm uninstall -g r2mo-ai
 ```
 
-> **Windows 提示**：安装或卸载 `mxt ai-cmd` 时，请先关闭 Claude Code / Codex / OpenCode，否则文件可能被锁定导致操作失败。若仍遇到 `EPERM` 或 `EBUSY` 错误，关闭应用后重试即可。
-
-### 2.2. 常用命令
-
-#### 🛠️ 环境初始化（工程初始化）
-
-| 命令 | 说明 | 选项 | 示例 |
-|:---|:---|:---|:---|
-| `mxt app` | 创建 R2MO/Spring 或 ZERO/Vertx 应用 | `-n` 指定名称 | `mxt app -n my-app` |
-| `mxt apply` | 从远程仓库安装技能到当前项目 | `-i` 反馈到仓库 | `mxt apply` |
-| `mxt env` | 环境信息检查 | | `mxt env` |
-| `mxt focus` | 维护 DPA focus 配置与任务绑定 | `-d` 完成备份；`-c` 同步配置 | `mxt focus` |
-| `mxt help` | 显示帮助的详细信息 | | `mxt help` |
-| `mxt init` | 初始化 `.r2mo` 规范目录结构 | | `mxt init` |
-| `mxt mcp` | 配置 MCP Skills Server | | `mxt mcp` |
-| `mxt open` | 使用指定 AI 工具打开项目 | | `mxt open` |
-| `mxt team` | 写入 `.r2mo/mxt.yaml` 角色配置 | | `mxt team` |
-| `mxt ui` | 创建/更新 UI 子项目 | | `mxt ui` |
-
-#### 📋 需求分析
-
-| 命令 | 说明 | 示例 |
-|:---|:---|:---|
-| `mxt docs` | 使用 Obsidian 打开文档目录 | `mxt docs` |
-| `mxt menu` | 扫描 `src/pages` 下 `menu.yaml` 打印树型菜单 | `mxt menu` |
-| `mxt mod` | 拉取 r2mo-spec，拷贝 OpenAPI 到 `.r2mo/api/` | `mxt mod` |
-| `mxt openapi` | 提取子项目 OpenAPI 文档到 `-ui/.r2mo/api/` | `mxt openapi` |
-
-#### 🚀 开发实施
-
-| 命令 | 说明 | 选项 | 示例 |
-|:---|:---|:---|:---|
-| `mxt admin` | 根据需求文档生成前端页面结构 | | `mxt admin` |
-| `mxt dict` | 读取 schemas 导出字典 | `-r` 逆向生成 SQL | `mxt dict` |
-| `mxt domain` | 执行 r2mo_proto 生成 Protobuf | | `mxt domain` |
-| `mxt mmr0` | 下载并生成 Flyway SQL 文件 | | `mxt mmr0` |
-| `mxt mmr2` | 下载并生成 Entity 类 | | `mxt mmr2` |
-
-#### 🤖 SDD 开发
-
-| 命令 | 说明 | 示例 |
-|:---|:---|:---|
-| `mxt ai-cmd` | 安装 AI 命令到 Claude Code / Codex / OpenCode | `mxt ai-cmd` |
-| `mxt ask` | 从模板选择提示词复制到剪贴板 | `mxt ask` |
-| `mxt plan` | 选择任务生成 Plan 提示词到剪贴板 | `mxt plan` |
-| `mxt run` | 选择任务生成提示词到剪贴板 | `mxt run` |
-| `mxt task` | 按 `task/thread` 配置对齐任务槽位 | `mxt task` |
-
-### 2.3. AI 平台命令安装
-
-`mxt ai-cmd` 将命令安装到 Claude Code、Codex、OpenCode 的可用位置。安装时菜单中会展示各平台的命令用法说明。命令源随 npm 包发布，位于 `agent/commands/`。
-
-```bash
-# 交互式选择安装平台（菜单中显示各平台用法）
-mxt ai-cmd
-```
-
-每次安装会先清理该命令在所选平台上的旧记录，再写入最新命令并重新注册。重复执行可用于刷新索引。
+> Windows 提示：安装或卸载 `mxt ai-cmd` 前请关闭 Claude Code / Codex / OpenCode，避免文件锁定导致 `EPERM` 或 `EBUSY`。
 
 ---
 
-#### 闭环流程
+## 核心功能
 
-六个命令形成一个 `plan → run → end → goon` 闭环，`sync` 和 `start` 为辅助命令：
+`r2mo-ai` 是 `SDD - Spec Driven Development` 命令行工具，命令名为 `mxt`。它面向 R2MO / MXT 工作流，提供项目初始化、规范文档、OpenAPI 提取、代码生成辅助、Obsidian 文档打开，以及 Claude Code / Codex / OpenCode 的 AI 命令安装与闭环执行提示词。
+
+本教程按 `task-001` 的结构拆分：README 只保留入口教程、保留图和闭环图、保留索引；命令细节进入 `docs/command/`；`mxt ai-cmd` 的独立教程进入 `docs/ai-cmd.md`；`docs/skills/` 进一步拆成平台入口与每个 Skill 的独立说明。
+
+---
+
+### 入口索引
+
+本页只保留核心索引，不再展开命令参数或执行细节。完整说明请看：
+
+- [命令索引与各子命令详情](docs/command/README.md)
+- [mxt ai-cmd 说明](docs/ai-cmd.md)
+- [AI 平台与 Skills 索引](docs/skills/README.md)
+- [Codex Skills 详情](docs/skills/mxt-plan.md)
+
+### 闭环流程
+
+`mxt ai-cmd` 安装的 AI 命令形成 `plan → run → end → goon` 闭环，`loop` 是自动闭环入口，`sync` / `start` / `debug` 为辅助命令。每个子命令和每个 Codex Skill 都有独立文档，便于逐页阅读与记录执行块。
 
 ```mermaid
 flowchart TD
-    A[“`task-xxx.md`”] --> B[“mxt:plan<br/>可选”]
-    A --> C[“mxt:run”]
+    A["task-xxx.md"] --> B["mxt:plan<br/>可选"]
+    A --> C["mxt:run"]
     B --> C
-    C --> D[“mxt:end”]
-    D --> E{“有待整改？”}
-    E -- 有 --> F[“mxt:goon”]
-    F --> G[“追加 Changes”]
+    C --> D["mxt:end"]
+    D --> E{"有待整改？"}
+    E -- 有 --> F["mxt:goon"]
+    F --> G["追加 Changes"]
     G --> D
-    E -- 无 --> H[“Done ✅”]
+    E -- 无 --> H["Done ✅"]
 
     classDef requirement fill:#e8f1ff,stroke:#4a7bd1,color:#12325b
     classDef optional fill:#fff4d6,stroke:#d4a72c,color:#5b4300
@@ -155,223 +104,23 @@ flowchart TD
     class H done
 ```
 
-各步骤行为：
+闭环命令的具体写法、平台差异和技能说明已经拆到子文档里；这里仅保留流程图，便于首页快速理解整体循环。
 
-- **plan**（可选）— 只写回 `task-xxx.md` 的 `## Plan`，不执行实现
-- **run** — 优先按已有 `## Plan` 执行，无 Plan 时按任务正文执行，追加 `Changes`
-- **end** — 清空 `goon-xxx.md` 原始内容，写入当前待整改项
-- **goon** — 按整改项执行，闭环记录追加回 `task-xxx.md` 的 `Changes`，再执行 `end` 验证
-
-当 `end` 验证后 `goon-xxx.md` 无待整改项时，该编号任务闭环完成。
-
-> `goon-xxx.md` 的 frontmatter `title` 必须与对应 `task-xxx.md` 标题一致，并追加 `整改-` 前缀。
-
----
-
-#### 前置校验
-
-`plan`、`run`、`end` 要求对应 `task-xxx.md` 在 frontmatter 之后必须存在非空正文。正文为空时命令立即返回，不执行后续提示词。`sync` 和 `start` 无前置校验，直接执行。
-
----
-
-#### 各平台调用方式
-
-**Claude Code / OpenCode** — slash command
-
-| 命令 | 前置 | 写回 | 说明 |
-|:---|:---|:---|:---|
-| `/mxt:plan 001` | 正文非空 | `## Plan` | 不执行、不追加 Changes |
-| `/mxt:run 001` | 正文非空 | `Changes` | 优先按 Plan 执行 |
-| `/mxt:end 001` | 正文非空 | `goon-001.md` | 标题为 `整改-` + task 标题 |
-| `/mxt:goon 001` | goon 存在 | `Changes` | 整改后再 end 验证 |
-| `/mxt:debug` | 无 | 无 | BUG 排查，归档 Bug Report 到 `.r2mo/bugs/<yyyy-MM-dd>/` |
-| `/mxt:sync` | 无 | 无 | Git 同步：拉取合并（解决冲突）、编译 + Lint、全量提交、推送 |
-| `/mxt:start` | 无 | 无 | 拉起开发环境 |
-| `/mxt:loop 001` | 正文非空 | `goon-001.md` | 闭环：RUN → END → GOON → END 直到清空 |
-
-**Codex** — plugin skill
-
-| 命令 | 等价 | 说明 |
-|:---|:---|:---|
-| `$mxt-plan 001` | `/mxt:plan` | 写 Plan |
-| `$mxt-run 001` | `/mxt:run` | 执行开发 |
-| `$mxt-end 001` | `/mxt:end` | 验证整改 |
-| `$mxt-goon 001` | `/mxt:goon` | 整改后验证 |
-| `$mxt-debug` | `/mxt:debug` | BUG 排查 |
-| `$mxt-sync` | `/mxt:sync` | Git 同步 |
-| `$mxt-start` | `/mxt:start` | 拉起环境 |
-| `$mxt-loop 001` | `/mxt:loop` | 三 Agent 闭环 |
-
-参数 `001` 为三位数字任务编号，对应 `.r2mo/task/task-001.md`。格式不对时命令停止并提示正确用法。
-
-不同命令的 `001` 含义：
-
-| 命令 | `001` 对应文件 |
-|:---|:---|
-| `plan` / `run` / `end` | `.r2mo/task/task-001.md` |
-| `goon` | `.r2mo/task/task-001.md` + `.r2mo/task/goon-001.md` |
-
-文件不存在时命令直接询问最新任务号。
-
-四个命令发送给 AI Agent 的提示词统一使用”任务派发单”短列表格式，包含输入范围、前置校验、调度策略和写回规则。
-
----
-
-#### 卸载
+### 发布
 
 ```bash
-mxt ai-cmd --uninstall
+./publish.sh "release: update docs"
 ```
 
-全量清理：已安装的平台会被删除，未安装的跳过。
+脚本会执行版本号更新、npm 发布、git 提交和推送。发布前请确认已登录 npm、拥有包权限，并且工作区只包含本次发布内容。
 
----
-
-#### 平台安装细节
-
-**Claude Code**
-
-- 写入 `~/.claude/commands/mxt:*.md`，按 Claude Code 官方 user commands 目录暴露 `/mxt:*`
-- 写入 `~/.claude/plugins/marketplaces/mxt-skills`
-- 写入 `~/.claude/plugins/cache/mxt-skills/mxt/1.0.0`
-- 更新 `~/.claude/settings.json`（启用插件、注册 marketplace）
-- 若 `claude` CLI 可用：自动执行 `plugin marketplace add/update` 和 `plugin install`
-- 验证：`claude -p "/mxt:plan 001"` 不应返回 `Unknown command: /mxt:plan`；也可检查 `~/.claude/commands/mxt:plan.md`
-
-**Codex**
-
-- 写入 `~/.codex/plugins/mxt` 及 `~/.codex/marketplaces/mxt-skills`
-- 写入 `~/.codex/prompts/mxt-*.md` 兼容 prompts
-- 更新 `~/.codex/config.toml`（注册 marketplace 和 plugin）
-- 若 `codex` CLI 可用：自动执行 `plugin marketplace add` 和 `plugin add`
-- 验证：`codex plugin list`；`codex debug prompt-input` 中应出现 `mxt:mxt-plan` 等
-
-**OpenCode**
-
-- macOS / Linux：写入 `~/.config/opencode/opencode.json`
-- Windows：写入 `%APPDATA%\opencode\opencode.json`
-- 清理旧 `opencode.jsonc` 中该命令残留
-- 验证：检查 `command[“mxt:plan”]` 等是否存在
-
-安装后请重启应用或开启新会话，让命令或 skill 索引重新加载。
-
----
-
-### 2.4. `mxt ai-cmd` 用法详解
-
-`mxt ai-cmd` 是 R2MO 的 AI 命令安装器，把 `mxt` 闭环命令（plan / run / end / goon / debug / sync / start / loop）一键安装到 Claude Code、Codex、OpenCode 三个平台，并保证三个平台的命令源始终一致。
-
-#### 安装
-
-```bash
-mxt ai-cmd
-```
-
-交互式多选要安装的平台，菜单中会展示各平台的命令用法。每次安装会先清理该平台上的旧命令，再写入最新版并重新注册，因此可重复执行用于刷新。
-
-#### 卸载
-
-```bash
-mxt ai-cmd --uninstall
-# 或简写
-mxt ai-cmd -u
-```
-
-全量清理：已安装的平台会被删除，未安装的跳过。
-
-#### 安装目标（单一命令源，无重复）
-
-为避免 Claude Code 自动补全出现重复 `/mxt:*`，安装器对每个平台只写入**一个命令源**：
-
-| 平台 | 命令源（单一） | 调用方式 |
-|:---|:---|:---|
-| Claude Code | `~/.claude/plugins/cache/mxt-skills/mxt/1.0.0`（已启用插件） | `/mxt:plan 001` |
-| Codex | `~/.codex/plugins/mxt`（plugin skills） | `$mxt-plan 001` |
-| OpenCode | `~/.config/opencode/opencode.json`（`command.*` 模板） | `/mxt:plan 001` |
-
-> Claude Code 的 `~/.claude/plugins/marketplaces/mxt-skills` 仅作为注册表源（registry-only），不再声明 commands，避免与 cache 插件重复注册。用户级 `~/.claude/commands/mxt:*.md` 不再写入，且安装时会主动清理历史遗留的用户级文件。
-
-#### 命令源一致性
-
-仓库内有三套命令源，安装时会保持三者一致：
-
-```
-agent/commands/claude/mxt/commands/*.md   ← 规范源（canonical）
-agent/commands/codex/mxt/commands/*.md   ← 同步副本
-agent/commands/opencode/mxt/commands/*.md ← 同步副本
-```
-
-Codex 另有 `agent/commands/codex/mxt/skills/mxt-*/SKILL.md`，使用 Codex skill frontmatter（`name`/`description`），正文与命令源保持一致。修改命令时以 `claude` 源为基准，再同步到 codex / opencode。
-
-#### 闭环流程
-
-八个命令形成 `plan → run → end → goon` 闭环，`loop` 是自动闭环入口，`sync` / `start` / `debug` 为辅助：
-
-- **plan**（可选）— 只写回 `task-NNN.md` 的 `## Plan`
-- **run** — 按 Plan 执行，质量门通过后写 `Done + ## Changes` 到 `task-NNN.md`
-- **end** — 验证，清空 `goon-NNN.md` 原内容，写入当前整改项（向需求收敛，不发散）
-- **goon** — 按整改项执行，闭环记录追加回 `task-NNN.md` 的 `## Changes`，再 `end` 验证
-- **loop** — 自动执行 RUN → END → GOON → END 循环，直到 `goon-NNN.md` 无待整改项
-- **debug** — BUG 排查，归档 Bug Report（Problem / Diagnostics / Solution）到 `.r2mo/bugs/<yyyy-MM-dd>/`
-- **sync** — Git 全量同步：拉取最新（解决冲突）、编译 + Lint、全量提交、推送
-- **start** — 拉起开发环境（后端优先 → 前端并行 → 网络健康检查）
-
-每个任务只用两个文件：`task-NNN.md`（正文 + Plan + Changes）和 `goon-NNN.md`（当前整改项，清空即闭环）。
-
-#### 整改项格式（闭环计数契约）
-
-`goon-NNN.md` 中每条整改项必须使用固定 header，以便 `loop` 用 `grep -c '^## Remediation Item [0-9]\+ —'` 机械计数：
-
-```md
-## Remediation Item N — <short title>
-
-- Requirement link: 阻塞的需求短语
-- Failure fact: 观测 vs 期望
-- Acceptance criteria: 解决的精确条件
-- Suggested fix direction: 可选、非约束
-```
-
-计数为 0 即闭环完成（单一真值源，不依赖 status 字段）。
-
-#### 验证安装
-
-| 平台 | 验证方式 |
-|:---|:---|
-| Claude Code | 重启会话后 `/mxt:plan 001` 不返回 `Unknown command`；检查 `~/.claude/plugins/cache/mxt-skills/mxt/1.0.0/commands/` 含 8 个 `.md` |
-| Codex | `codex plugin list` 出现 `mxt`；`codex debug prompt-input` 中出现 `mxt:mxt-plan` 等 |
-| OpenCode | `opencode.json` 中 `command["mxt:plan"]` 等 8 条存在 |
-
-> 安装 / 卸载前请关闭正在运行的 Claude Code / Codex / OpenCode，避免文件锁定。Windows 遇 `EPERM`/`EBUSY` 时关闭应用后重试。
-
-### 2.5. 发布
-
-
-可直接通过 `./publish.sh "commit message"` 完成发布，脚本会依次执行：
-
-1. `npm version patch --no-git-tag-version` — 自动升级补丁版本号
-2. `npm publish --registry=https://registry.npmjs.org/` — 发布到 npm 官方源
-3. `git add . && git commit -m "commit message" && git push` — 提交并推送代码
-
-执行前需确认：
-
-- 已执行 `npm login` 且拥有 `r2mo-ai` 包的发布权限
-- 当前网络可访问 `registry.npmjs.org`
-- git remote 和目标分支正确，工作区只包含本次要发布的文件
-
-<hr/>
-
-## 3. 参考链接
-
-### 3.1. 旧版
-
-- （后端）Zero Ecotope：<https://www.zerows.io>
-- （前端）Zero UI：<https://www.vertxui.cn>
-- （工具）Zero AI：<https://www.vertxai.cn>
-- （标准）Zero Schema：<https://www.vertx-cloud.cn>
-
-### 3.2. 新增
+## 参考链接
 
 - Maven 统一版本管理：<https://gitee.com/silentbalanceyh/rachel-mxt>
-- Rapid快速开发框架：<https://gitee.com/silentbalanceyh/r2mo-rapid>
+- Rapid 快速开发框架：<https://gitee.com/silentbalanceyh/r2mo-rapid>
 - Zero Epoch：<https://www.zerows.io>
 - Zero Demo：<https://gitee.com/zero-ws/zero-rachel-mxt>
+- 旧版后端 Zero Ecotope：<https://www.zerows.io>
+- 旧版前端 Zero UI：<https://www.vertxui.cn>
+- 旧版工具 Zero AI：<https://www.vertxai.cn>
+- 旧版标准 Zero Schema：<https://www.vertx-cloud.cn>

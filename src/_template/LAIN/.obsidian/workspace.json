@@ -200,7 +200,6 @@
       "workspaces:管理工作区布局": false,
       "publish:发布更改": false,
       "bases:新建数据库": false,
-      "claudian:Open Claudian": false,
       "obsidian-excalidraw-plugin:新建绘图文件": false,
       "obsidian-git:Open Git source control": false,
       "obsidian-kanban:创建新看板": false,
