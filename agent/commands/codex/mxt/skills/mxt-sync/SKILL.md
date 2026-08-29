@@ -1,6 +1,6 @@
 ---
 name: mxt-sync
-description: Use when the user asks Codex to sync the current project with "$mxt-sync"; performs full git commit, pull, conflict-aware merge to develop/master, and push.
+description: Use when the user asks Codex to run the sync MXT workflow; enforces scoped inputs, evidence-backed execution, and closed-loop handoff.
 ---
 
 # /mxt:sync
@@ -26,6 +26,16 @@ The user invoked this command with: $ARGUMENTS
 This command takes no arguments. Execute the sync flow directly.
 
 **Hard rules**: Confirm workspace state before execution. Conflict resolution required on merge conflict (do not abort on text conflicts — resolve them). Compile or lint failure → abort before push. Push failure → abort. Worktree check mandatory. Dry-run before intervention.
+
+## Closed-Loop Contract
+
+`mxt-sync` closes Git synchronization through state inspection → integration/commit → verification → push.
+
+- **Pre-flight inventory.** Record branch, upstream, dirty files, unresolved conflicts, ahead/behind counts, stashes, and worktrees before writing.
+- **No destructive integration.** Do not overwrite local or remote work. Preserve unrelated dirty files, resolve conflicts explicitly, and stop if safe resolution is impossible.
+- **Verify before push.** Build, lint, and test/compile checks required by project rules must pass with recorded commands and exit codes. Do not push after a failed gate.
+- **Post-push self-check.** Confirm the final branch, clean/preserved workspace state, and pushed commit/branch. Report anomalies instead of hiding them.
+- **Failure rollback boundary.** Do not automatically revert user changes. If integration or verification fails, leave the repository in a safe explainable state and stop with recovery instructions.
 
 ## Preflight
 

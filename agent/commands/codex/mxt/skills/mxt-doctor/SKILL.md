@@ -1,6 +1,6 @@
 ---
 name: mxt-doctor
-description: Use when the user asks Codex to verify and align anti-drift baseline metadata in .r2mo/doctor/<profile>/; the skill analyzes project characteristics and current state, runs mxt doctor --gen??? for fresh comparison, then intelligently remediates .r2mo/doctor/ configs to match the project's actual structure — fixing misclassifications, removing redundancies, adding missing signals, and aligning profile scope.
+description: Use when the user asks Codex to run the doctor MXT workflow; enforces scoped inputs, evidence-backed execution, and closed-loop handoff.
 ---
 
 # /mxt:doctor
@@ -14,6 +14,17 @@ Binding execution contract for all MXT commands across Claude Code, Codex, and O
 - **Disk source of truth.** Re-read files from disk before decisions.
 - **Fresh evidence.** Read `.r2mo/doctor/<profile>/` from disk at each step. Do not assume content.
 - **No side effects on source.** This skill only modifies `.r2mo/doctor/` metadata. It never touches source code, deploy scripts, env files, or git state.
+
+## Closed-Loop Contract
+
+`mxt-doctor` closes baseline generation → intelligent remediation → verification convergence.
+
+- **Before/after evidence.** Save or record the committed baseline before running generation; compare it before editing.
+- **Every edit must have a reason.** For each `.r2mo/doctor/<profile>/` change, record the profile, file, entry, mismatch evidence, and correction.
+- **No unexplained deletions.** Never remove an entry merely because a generator omits it; distinguish legitimate structural drift from generator misclassification.
+- **Verification is mandatory.** After remediation, rerun `mxt doctor --profile <profile>` and record the final PASS/FAIL/WARN/SKIP counts. `Dry` mode must clearly report that verification was not applied.
+- **Convergence rule.** Stop after a maximum of three remediation rounds. If FAIL/WARN counts do not decrease for two consecutive rounds, stop and report `Doctor baseline did not converge`.
+- **Boundary.** Only `.r2mo/doctor/` metadata may be edited. Source code, deploy scripts, environment files, and Git state remain untouched.
 
 ## Purpose
 

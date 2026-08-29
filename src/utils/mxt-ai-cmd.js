@@ -528,7 +528,7 @@ const installClaudePlugin = async (platform, homeDir) => {
         plugins: [
             {
                 name: 'mxt',
-                description: 'R2MO task workflow slash commands: /mxt:plan, /mxt:run, /mxt:end, /mxt:goon, /mxt:debug, /mxt:sync, /mxt:start, /mxt:loop.',
+                description: 'R2MO closed-loop task workflow slash commands: /mxt:plan, /mxt:run, /mxt:end, /mxt:goon, /mxt:debug, /mxt:sync, /mxt:start, /mxt:loop, /mxt:doctor.',
                 version: '1.0.0',
                 source: './',
                 author: {
@@ -576,8 +576,8 @@ const installClaudePlugin = async (platform, homeDir) => {
         id: platform.id,
         name: platform.name,
         sourceDir: platform.sourceDir,
-        targetDir: `${userCommands.targetDir}; ${targetDir}`,
-        copied: cacheCopied + marketplaceCopied + userCommands.copied,
+        targetDir,
+        copied: cacheCopied + marketplaceCopied,
         warnings
     };
 };

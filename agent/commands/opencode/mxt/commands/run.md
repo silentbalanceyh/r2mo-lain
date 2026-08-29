@@ -37,6 +37,16 @@ The user invoked this command with: $ARGUMENTS
 
 **Hard rules**: Parse failure → abort. Directives override auto-judgment. Quality gate must pass before writing Done+Changes to `<TASK_PATH>`. Path conflict → abort. No reads/writes outside isolation lock.
 
+## Closed-Loop Contract
+
+`mxt-run` is the Development stage of the task loop and must hand off reviewable evidence.
+
+- **Changed-file inventory.** Record every source, test, config, and task record file touched by this stage. Do not omit generated or fixture files when they affect verification.
+- **Requirement traceability.** Each implementation step must map to an explicit task requirement or current goon item.
+- **Quality gates before Done.** Run the smallest sufficient compile/lint/test/runtime checks for the changed boundary. Record command, expected result, actual result, and exit code. If a gate is unavailable, record `skipped (N/A)` with reason.
+- **No self-acceptance.** RUN may set status Done after gates pass, but acceptance requires the independent END review. Do not claim final closure or review completion.
+- **Write-back integrity.** Update only the locked task file, in place. Changes must describe files, commands, results, and scope rationale sufficiently for a fresh reviewer.
+
 ## Workflow
 
 1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).

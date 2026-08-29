@@ -37,6 +37,17 @@ The user invoked this command with: $ARGUMENTS
 
 **Hard rules**: Parse failure → abort. Directives override auto-judgment. Changes write to task, not goon. Quality gate must pass before clearing goon + writing Changes. Path conflict → abort. Force reload goon from disk — no caching.
 
+## Closed-Loop Contract
+
+`mxt-goon` is the development remediation stage that consumes only the current goon queue.
+
+- **Fresh input.** Re-read goon from disk. It is the sole remediation input; do not import chat history, previous rounds, or implementation intent.
+- **Fix only listed items.** Each correction must map to a current `## Remediation Item N — <title>`. Never use a review item as permission for unrelated refactoring.
+- **Evidence before clearing.** For each item, record the correction and the targeted verification command/result. Do not mark it complete from intent or code reading alone.
+- **Scope-preserving write-back.** Clear completed items and re-emit only unresolved items in the exact header format; renumber sequentially from 1. Append closure evidence to task Changes, never to goon.
+- **Verification boundary.** Re-run affected runtime tests, targeted tests, and necessary quality gates. Do not repeat unrelated green gates.
+- **Loop completion.** Zero items closes the current queue; otherwise the next independent `mxt-end NNN` decides whether items are resolved.
+
 ## Workflow
 
 1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).

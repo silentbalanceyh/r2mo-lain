@@ -1,6 +1,6 @@
 ---
 name: mxt-plan
-description: Use when the user asks Codex to plan an R2MO task by number, such as "$mxt-plan 001" or "mxt-plan 001"; reads .r2mo/task/task-xxx.md and writes or updates only the Plan section.
+description: Use when the user asks Codex to run the plan MXT workflow; enforces scoped inputs, evidence-backed execution, and closed-loop handoff.
 ---
 
 # /mxt:plan
@@ -33,6 +33,16 @@ The user invoked this command with: $ARGUMENTS
 3. Declare parsed results, e.g. `📌 Task: 005 | Directives: Team, Worktree`. If no directives, declare task number only.
 
 **Hard rules**: Parse failure → abort. Plan writes only `## Plan`. Path conflict → abort. No reads/writes outside isolation lock.
+
+## Closed-Loop Contract
+
+`mxt-plan` creates the execution contract that later RUN/END/GOON phases can verify.
+
+- **Requirement extraction.** List every explicit requirement, affected file/module boundary, and user constraint before proposing steps.
+- **Verification planning.** Each requirement must map to a concrete verification method, expected result, and smallest affected boundary. Full/workspace gates require explicit user authorization.
+- **Handoff safety.** Plan must state likely changed files, execution order, risks, and handoff notes so a fresh Development session can execute without conversation memory.
+- **No implementation.** Do not modify source, task status, Changes, or goon. The only output is an in-place update to `## Plan`.
+- **Reviewability.** END must be able to trace each plan step back to a task requirement; steps with no requirement link are out of scope.
 
 ## Workflow
 

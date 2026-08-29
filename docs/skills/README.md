@@ -4,9 +4,9 @@
 
 `mxt-*` Skills 是 `mxt ai-cmd` 安装的 AI 闭环能力集合。它们和 Claude Code / OpenCode 的 `/mxt:*` 命令保持同一套语义：
 
-- `plan → run → end → goon` 是核心任务闭环。
-- `loop` 是自动闭环入口。
-- `debug` / `sync` / `start` 是辅助能力。
+- `plan → run → end → goon` 是核心任务闭环，`loop` 是强制双会话的自动闭环入口。
+- `debug` / `doctor` / `sync` / `start` 分别负责诊断、基线收敛、Git 同步和运行环境闭环。
+- 所有技能共享统一闭环契约：磁盘状态、真实证据、可追踪范围、显式失败与安全交接。
 - 平台差异只体现在调用形式和安装位置，文档不再拆成 Claude / Codex / OpenCode 三套入口页。
 
 ## 安装位置

@@ -554,13 +554,15 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'marketplaces', 'mxt-skills', '.claude-plugin', 'plugin.json')), true);
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'marketplaces', 'mxt-skills', 'commands', 'plan.md')), true);
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'marketplaces', 'mxt-skills', 'commands', 'run.md')), true);
-        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:plan.md')), true);
-        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:run.md')), true);
-        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:end.md')), true);
-        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:goon.md')), true);
-        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:debug.md')), true);
-        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:sync.md')), true);
-        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:start.md')), true);
+        // User-level ~/.claude/commands/mxt:*.md is intentionally not written.
+        // The enabled plugin cache is the single command source.
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:plan.md')), false);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:run.md')), false);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:end.md')), false);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:goon.md')), false);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:debug.md')), false);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:sync.md')), false);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:start.md')), false);
         const claudePlugin = await _readJson(homeDir, path.join('.claude', 'plugins', 'marketplaces', 'mxt-skills', '.claude-plugin', 'plugin.json'));
         assert.deepStrictEqual(claudePlugin.commands, [
             './commands/plan.md',
@@ -569,7 +571,9 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
             './commands/goon.md',
             './commands/debug.md',
             './commands/sync.md',
-            './commands/start.md'
+            './commands/start.md',
+            './commands/loop.md',
+            './commands/doctor.md'
         ]);
         const claudeSettings = await _readJson(homeDir, path.join('.claude', 'settings.json'));
         assert.strictEqual(Object.prototype.hasOwnProperty.call(claudeSettings.env || {}, 'CLAUDE_CODE_SIMPLE'), false);
@@ -615,20 +619,20 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
         const mxtPlanSkill = await _read(homeDir, path.join('.codex', 'marketplaces', 'mxt-skills', 'plugins', 'mxt', 'skills', 'mxt-plan', 'SKILL.md'));
         assert.match(mxtPlanSkill, /name: mxt-plan/);
         assert.match(mxtPlanSkill, /## Plan/);
-        assert.match(mxtPlanSkill, /任务：为 `<TASK_PATH>` 生成执行计划/);
-        assert.match(mxtPlanSkill, /前置校验/);
-        assert.match(mxtPlanSkill, /边界约束/);
+        assert.match(mxtPlanSkill, /Generate an execution plan for `<TASK_PATH>`/);
+        assert.match(mxtPlanSkill, /Pre-check/);
+        assert.match(mxtPlanSkill, /Boundary/);
         const mxtRunSkill = await _read(homeDir, path.join('.codex', 'marketplaces', 'mxt-skills', 'plugins', 'mxt', 'skills', 'mxt-run', 'SKILL.md'));
         assert.match(mxtRunSkill, /name: mxt-run/);
-        assert.match(mxtRunSkill, /请使用 \$mxt-run 001 格式执行/);
-        assert.match(mxtRunSkill, /任务：执行 `<TASK_PATH>` 中定义的开发任务/);
-        assert.match(mxtRunSkill, /调度策略/);
+        assert.match(mxtRunSkill, /Read `\.r2mo\/task\/task-NNN\.md` for the given number/);
+        assert.match(mxtRunSkill, /Execute the development task defined in `<TASK_PATH>`/);
+        assert.match(mxtRunSkill, /Scheduling/);
         const mxtEndSkill = await _read(homeDir, path.join('.codex', 'marketplaces', 'mxt-skills', 'plugins', 'mxt', 'skills', 'mxt-end', 'SKILL.md'));
-        assert.match(mxtEndSkill, /任务：验收 `<TASK_PATH>`，并生成 `<GOON_PATH>` 整改队列/);
-        assert.match(mxtEndSkill, /goon 标题/);
+        assert.match(mxtEndSkill, /verify task completion, and write current remediation items to/);
+        assert.match(mxtEndSkill, /Remediation Item Format/);
         const mxtGoonSkill = await _read(homeDir, path.join('.codex', 'marketplaces', 'mxt-skills', 'plugins', 'mxt', 'skills', 'mxt-goon', 'SKILL.md'));
-        assert.match(mxtGoonSkill, /任务：根据 `<GOON_PATH>` 完成整改，并回写 `<TASK_PATH>` 闭环记录/);
-        assert.match(mxtGoonSkill, /Changes 写回/);
+        assert.match(mxtGoonSkill, /Complete remediation per `<GOON_PATH>` and write closure to `<TASK_PATH>`/);
+        assert.match(mxtGoonSkill, /Changes write-back/);
         const codexConfig = await _read(homeDir, path.join('.codex', 'config.toml'));
         assert.match(codexConfig, /\[plugins\."mxt@mxt-skills"\]/);
         assert.match(codexConfig, /\[marketplaces\.mxt-skills\]/);
@@ -646,26 +650,25 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
         assert.ok(opencodeConfig.command['mxt:end']);
         assert.ok(opencodeConfig.command['mxt:goon']);
         assert.match(opencodeConfig.command['mxt:plan'].template, /## Plan/);
-        assert.match(opencodeConfig.command['mxt:plan'].template, /立即询问用户提供最新任务号/);
-        assert.match(opencodeConfig.command['mxt:plan'].template, /任务：为 `<TASK_PATH>` 生成执行计划/);
-        assert.match(opencodeConfig.command['mxt:plan'].template, /边界约束/);
-        assert.match(opencodeConfig.command['mxt:run'].template, /三位数字编号/);
-        assert.match(opencodeConfig.command['mxt:run'].template, /先在聊天窗口中原样打印本次将执行的提示词/);
-        assert.match(opencodeConfig.command['mxt:run'].template, /立即询问用户提供最新任务号/);
-        assert.match(opencodeConfig.command['mxt:run'].template, /\.r2mo\/task\/task-\$编号\.md/);
-        assert.match(opencodeConfig.command['mxt:run'].template, /任务：执行 `<TASK_PATH>` 中定义的开发任务/);
-        assert.match(opencodeConfig.command['mxt:run'].template, /调度策略/);
-        assert.match(opencodeConfig.command['mxt:end'].template, /\.r2mo\/task\/goon-\$编号\.md/);
-        assert.match(opencodeConfig.command['mxt:end'].template, /写入前必须清空 `<GOON_PATH>` 原始内容/);
-        assert.match(opencodeConfig.command['mxt:end'].template, /任务：验收 `<TASK_PATH>`，并生成 `<GOON_PATH>` 整改队列/);
-        assert.match(opencodeConfig.command['mxt:end'].template, /goon 标题/);
-        assert.match(opencodeConfig.command['mxt:goon'].template, /\.r2mo\/task\/goon-\$编号\.md/);
-        assert.match(opencodeConfig.command['mxt:goon'].template, /整改完成后必须先清空 `<GOON_PATH>` 原始内容/);
-        assert.match(opencodeConfig.command['mxt:goon'].template, /任务：根据 `<GOON_PATH>` 完成整改，并回写 `<TASK_PATH>` 闭环记录/);
-        assert.match(opencodeConfig.command['mxt:goon'].template, /Changes 写回/);
+        assert.match(opencodeConfig.command['mxt:plan'].template, /ask the user for the correct task number/);
+        assert.match(opencodeConfig.command['mxt:plan'].template, /Generate an execution plan for `<TASK_PATH>`/);
+        assert.match(opencodeConfig.command['mxt:plan'].template, /Boundary/);
+        assert.match(opencodeConfig.command['mxt:run'].template, /three-digit task number/);
+        assert.match(opencodeConfig.command['mxt:run'].template, /Print the final execution prompt/);
+        assert.match(opencodeConfig.command['mxt:run'].template, /ask user for correct number/);
+        assert.match(opencodeConfig.command['mxt:run'].template, /\.r2mo\/task\/task-NNN\.md/);
+        assert.match(opencodeConfig.command['mxt:run'].template, /Execute the development task defined in `<TASK_PATH>`/);
+        assert.match(opencodeConfig.command['mxt:run'].template, /Scheduling/);
+        assert.match(opencodeConfig.command['mxt:end'].template, /\.r2mo\/task\/goon-NNN\.md/);
+        assert.match(opencodeConfig.command['mxt:end'].template, /Goon: clear-then-write/);
+        assert.match(opencodeConfig.command['mxt:end'].template, /verify task completion, and write current remediation items/);
+        assert.match(opencodeConfig.command['mxt:end'].template, /Remediation Item Format/);
+        assert.match(opencodeConfig.command['mxt:goon'].template, /\.r2mo\/task\/goon-NNN\.md/);
+        assert.match(opencodeConfig.command['mxt:goon'].template, /clear `<GOON_PATH>` original content/);
+        assert.match(opencodeConfig.command['mxt:goon'].template, /Complete remediation per `<GOON_PATH>` and write closure to `<TASK_PATH>`/);
+        assert.match(opencodeConfig.command['mxt:goon'].template, /Changes write-back/);
         const installedHarnessFiles = [
             path.join('.claude', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', 'commands', 'run.md'),
-            path.join('.claude', 'commands', 'mxt:run.md'),
             path.join('.codex', 'plugins', 'mxt', 'commands', 'run.md'),
             path.join('.codex', 'plugins', 'mxt', 'skills', 'mxt-run', 'SKILL.md'),
             path.join('.codex', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', 'skills', 'mxt-run', 'SKILL.md'),
@@ -676,13 +679,14 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
             const content = await _read(homeDir, file);
             assert.match(content, /## Harness/);
             assert.match(content, /English-first/);
-            assert.match(content, /Task isolation lock/);
-            assert.match(content, /Fresh evidence before completion claims/);
+            assert.match(content, /Isolation lock/);
+            assert.match(content, /Fresh evidence/);
         }
+        assert.ok(opencodeConfig.command['mxt:doctor']);
         assert.match(opencodeConfig.command['mxt:run'].template, /## Harness/);
         assert.match(opencodeConfig.command['mxt:run'].template, /English-first/);
-        assert.match(opencodeConfig.command['mxt:run'].template, /Task isolation lock/);
-        assert.match(opencodeConfig.command['mxt:run'].template, /Fresh evidence before completion claims/);
+        assert.match(opencodeConfig.command['mxt:run'].template, /Isolation lock/);
+        assert.match(opencodeConfig.command['mxt:run'].template, /Fresh evidence/);
     });
 };
 
@@ -737,7 +741,7 @@ const testAiCmdReinstallRefreshesPlatforms = async () => {
 
         assert.deepStrictEqual(reinstalled.map(item => item.id), ['claude', 'codex', 'opencode']);
         assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', 'commands', 'run.md')), true);
-        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:run.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'commands', 'mxt:run.md')), false);
         assert.strictEqual(await _exists(homeDir, path.join('.codex', 'prompts', 'mxt-plan.md')), true);
         assert.strictEqual(await _exists(homeDir, path.join('.codex', 'prompts', 'mxt-run.md')), true);
         assert.strictEqual(await _exists(homeDir, path.join('.codex', 'marketplaces', 'mxt-skills', 'plugins', 'mxt', 'skills', 'mxt-plan', 'SKILL.md')), true);
@@ -804,9 +808,89 @@ const testDebugCommandsRequireGoonDebugReport = async () => {
         const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
         assert.match(content, /DEBUG Report/);
         assert.match(content, /GOON_PATH/);
-        assert.match(content, /goon-\$编号\.md|goon-<编号>\.md/);
-        assert.match(content, /整改项/);
+        assert.match(content, /goon-NNN\.md/);
+        assert.match(content, /Remediation Items/);
     }
+};
+
+const testAiCmdAllSkillsEnforceClosedLoopContracts = async () => {
+    const names = ['debug', 'doctor', 'end', 'goon', 'loop', 'plan', 'run', 'start', 'sync'];
+    const files = [
+        ...names.flatMap((name) => [
+            `agent/commands/claude/mxt/commands/${name}.md`,
+            `agent/commands/opencode/mxt/commands/${name}.md`,
+            `agent/commands/codex/mxt/commands/${name}.md`,
+            `agent/commands/codex/mxt/skills/mxt-${name}/SKILL.md`
+        ])
+    ];
+
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /## Closed-Loop Contract/);
+        assert.match(content, /disk state|disk-only|Disk|disk/i);
+        assert.match(content, /evidence|Verification|verification|health/i);
+        assert.match(content, /boundary|scope|Boundary|Profile/i);
+        assert.match(content, /stop|Stop|blocked|Blocked|abort|failure/i);
+    }
+
+    for (const name of names) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', `docs/skills/mxt-${name}.md`), 'utf8');
+        assert.match(content, /## 闭环契约/);
+        assert.match(content, /磁盘状态/);
+        assert.match(content, /真实证据/);
+    }
+};
+
+const testAiCmdAllSkillsUseSharedPromptBodies = async () => {
+    const names = ['debug', 'doctor', 'end', 'goon', 'loop', 'plan', 'run', 'start', 'sync'];
+    for (const name of names) {
+        const command = await fs.readFile(path.resolve(__dirname, '..', `agent/commands/codex/mxt/commands/${name}.md`), 'utf8');
+        const skill = await fs.readFile(path.resolve(__dirname, '..', `agent/commands/codex/mxt/skills/mxt-${name}/SKILL.md`), 'utf8');
+
+        if (name === 'doctor') {
+            assert.match(command, /Follow the full workflow in `skills\/mxt-doctor\/SKILL.md`/);
+            assert.match(skill, /## Purpose/);
+            assert.match(skill, /Configuration file formats/);
+        } else {
+            assert.strictEqual(
+                skill.slice(skill.indexOf('\n---\n', 4) + 5),
+                command.slice(command.indexOf('\n---\n', 4) + 5),
+                `Codex skill body does not match command body: ${name}`
+            );
+        }
+
+        for (const platform of ['claude', 'opencode']) {
+            const platformCommand = await fs.readFile(
+                path.resolve(__dirname, '..', `agent/commands/${platform}/mxt/commands/${name}.md`),
+                'utf8'
+            );
+            assert.strictEqual(platformCommand, command, `${platform}/${name}.md drifted from Codex source`);
+        }
+    }
+};
+
+const testAiCmdRegistersDoctorAcrossAllPlatforms = async () => {
+    const claude = JSON.parse(await fs.readFile(path.resolve(__dirname, '..', 'agent/commands/claude/mxt/.claude-plugin/plugin.json'), 'utf8'));
+    assert.ok(claude.commands.includes('./commands/doctor.md'));
+    assert.match(claude.description, /doctor/);
+
+    const aiCmd = require('./utils/mxt-ai-cmd');
+    await _withTempDir(async (homeDir) => {
+        const installed = await aiCmd.installPlatforms(['claude', 'codex', 'opencode'], { homeDir });
+        assert.deepStrictEqual(installed.map(item => item.id), ['claude', 'codex', 'opencode']);
+
+        assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', 'commands', 'doctor.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.codex', 'plugins', 'mxt', 'commands', 'doctor.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.codex', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', 'commands', 'doctor.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.codex', 'marketplaces', 'mxt-skills', 'plugins', 'mxt', 'commands', 'doctor.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.codex', 'prompts', 'mxt-doctor.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.codex', 'plugins', 'mxt', 'skills', 'mxt-doctor', 'SKILL.md')), true);
+        assert.strictEqual(await _exists(homeDir, path.join('.codex', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', 'skills', 'mxt-doctor', 'SKILL.md')), true);
+
+        const opencodeConfig = JSON.parse(await _read(homeDir, path.join('.config', 'opencode', 'opencode.json')));
+        assert.ok(opencodeConfig.command['mxt:doctor']);
+        assert.match(opencodeConfig.command['mxt:doctor'].template, /## Closed-Loop Contract/);
+    });
 };
 
 const testLoopCommandsUseScopedVerificationAndReuse = async () => {
@@ -818,12 +902,65 @@ const testLoopCommandsUseScopedVerificationAndReuse = async () => {
     ];
     for (const file of files) {
         const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
-        assert.match(content, /代码指纹.*未变化.*复用|代码指纹与 RUN 相同，复用/s);
-        assert.match(content, /真实运行环境、进程归属、监听端口和业务健康路径/);
-        assert.match(content, /无问题.*立即结束/s);
-        assert.match(content, /RUN 只发现一次适用规则/);
-        assert.match(content, /默认禁止全 workspace、K8S、BUGS、Chat、热启动稳定性/);
-        assert.match(content, /只重跑受影响的运行验证/);
+        assert.match(content, /RUN discovers applicable rules once/);
+        assert.match(content, /Real runtime environment, process ownership, listening ports, and business health paths/);
+        assert.match(content, /No real P0\/P1 issue.*loop closed immediately/s);
+        assert.match(content, /Discover and select relevant rules by task scope in one pass/);
+        assert.match(content, /Full-workspace, K8S, BUGS, Chat, hot-start stability, and `agent-gate\.sh all` are forbidden by default/);
+        assert.match(content, /Re-run only affected runtime verification/);
+    }
+};
+
+const testLoopCommandsRequireIsolatedDevelopmentAndReviewSessions = async () => {
+    const files = [
+        'agent/commands/claude/mxt/commands/loop.md',
+        'agent/commands/opencode/mxt/commands/loop.md',
+        'agent/commands/codex/mxt/commands/loop.md',
+        'agent/commands/codex/mxt/skills/mxt-loop/SKILL.md'
+    ];
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /必须开启两个独立会话/);
+        assert.match(content, /Development session[\s\S]*Review session/);
+        assert.match(content, /不得共享上下文/);
+        assert.match(content, /禁止在同一会话内自我审查/);
+        assert.match(content, /每次通信只允许白名单工件/);
+    }
+};
+
+const testLoopReviewerUsesAdversarialChangeAnalysis = async () => {
+    const files = [
+        'agent/commands/claude/mxt/commands/loop.md',
+        'agent/commands/opencode/mxt/commands/loop.md',
+        'agent/commands/codex/mxt/commands/loop.md',
+        'agent/commands/codex/mxt/skills/mxt-loop/SKILL.md'
+    ];
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /adversarial reviewer/i);
+        assert.match(content, /Assume the implementation is incomplete/);
+        assert.match(content, /changed-file inventory[\s\S]*scope leak/);
+        assert.match(content, /spec-to-diff traceability/);
+        assert.match(content, /real remediation items/);
+        assert.match(content, /reject cosmetic findings/);
+    }
+};
+
+const testLoopRemediationItemsMustBeActionableAcrossRounds = async () => {
+    const files = [
+        'agent/commands/claude/mxt/commands/loop.md',
+        'agent/commands/opencode/mxt/commands/loop.md',
+        'agent/commands/codex/mxt/commands/loop.md',
+        'agent/commands/codex/mxt/skills/mxt-loop/SKILL.md'
+    ];
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /Failure evidence/);
+        assert.match(content, /Required correction/);
+        assert.match(content, /Verification command/);
+        assert.match(content, /只保留未解决项/);
+        assert.match(content, /必须由当前 diff 引入或暴露/);
+        assert.match(content, /END_REVIEW 新发现/);
     }
 };
 
@@ -836,10 +973,10 @@ const testGoonCommandsForceFreshDiskLoad = async () => {
     ];
     for (const file of files) {
         const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
-        assert.match(content, /强制重新加载/);
-        assert.match(content, /禁止使用上下文缓存/);
-        assert.match(content, /goon-xxx\.md/);
-        assert.match(content, /唯一整改输入/);
+        assert.match(content, /Force reload/);
+        assert.match(content, /Do not use cache, history, or previous summaries/);
+        assert.match(content, /goon-NNN\.md/);
+        assert.match(content, /sole remediation input/);
     }
 };
 
@@ -852,10 +989,10 @@ const testEndCommandsConstrainAcceptanceDepth = async () => {
     ];
     for (const file of files) {
         const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
-        assert.match(content, /收敛验收/);
-        assert.match(content, /禁止深挖/);
-        assert.match(content, /不得扩散整改项/);
-        assert.match(content, /到点停止/);
+        assert.match(content, /Convergence, not divergence/);
+        assert.match(content, /Do not dig into out-of-scope implementation details/);
+        assert.match(content, /do not write it as an item/);
+        assert.match(content, /write the conclusion immediately/);
     }
 };
 
@@ -873,9 +1010,9 @@ const testAiCmdPromptsUseEnglishFirstHarness = async () => {
         const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
         assert.match(content, /## Harness/);
         assert.match(content, /English-first/);
-        assert.match(content, /Use Chinese only when quoting existing repository content/);
-        assert.match(content, /Task isolation lock/);
-        assert.match(content, /Fresh evidence before completion claims/);
+        assert.match(content, /Use Chinese only when quoting existing repo content/);
+        assert.match(content, /Isolation lock/);
+        assert.match(content, /Fresh evidence/);
         assert.match(content, /Do not trust conversation memory/);
     }
 };
@@ -896,7 +1033,13 @@ const main = async () => {
     await testAiCmdOpenCodePreservesJsonStringCommentMarkers();
     await testAiCmdClaudeInstallWritesHostPluginState();
     await testDebugCommandsRequireGoonDebugReport();
+    await testAiCmdAllSkillsEnforceClosedLoopContracts();
+    await testAiCmdAllSkillsUseSharedPromptBodies();
+    await testAiCmdRegistersDoctorAcrossAllPlatforms();
     await testLoopCommandsUseScopedVerificationAndReuse();
+    await testLoopCommandsRequireIsolatedDevelopmentAndReviewSessions();
+    await testLoopReviewerUsesAdversarialChangeAnalysis();
+    await testLoopRemediationItemsMustBeActionableAcrossRounds();
     await testGoonCommandsForceFreshDiskLoad();
     await testEndCommandsConstrainAcceptanceDepth();
     await testAiCmdPromptsUseEnglishFirstHarness();

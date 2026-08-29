@@ -40,6 +40,16 @@ Two outputs per debug run:
 1. **Goon (remediation handoff)** — `<GOON_PATH>` = `.r2mo/task/goon-NNN.md`: current remediation items so `/mxt:goon <number>` can execute the fix directly.
 2. **Bug archive (appended output)** — `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md`: a full record of **Problem**, **Diagnostics**, and **Solution**. The `<yyyy-MM-dd>` directory is created if absent; one directory per calendar day. Use the current date (timezone-aware) for the directory, and current time for the filename. Derive `<slug>` from the bug description (lowercase, hyphen-separated, max 40 chars).
 
+## Closed-Loop Contract
+
+`mxt-debug` closes the bug-to-remediation handoff, not the full task loop.
+
+- **Diagnosis must be reproducible or evidence-backed.** Record the trigger, observed result, expected result, relevant files, and command/output evidence. Do not infer a root cause from a summary alone.
+- **Remediation must be actionable.** If a task number is linked, write each remediation item in the exact `## Remediation Item N — <short title>` format with failure evidence, required correction, verification command, and scope reason. If no task number is linked, keep the checkbox items equally concrete.
+- **Handoff must continue the loop.** Linked tasks proceed to `mxt-goon NNN`; independent bugs retain the bug archive and can be linked to a task later.
+- **Boundary.** Do not modify production source while diagnosing unless the user explicitly authorizes a fix. The debug output is diagnosis and remediation handoff, not an implementation report.
+- **Closure evidence.** A bug is closed only after the stated verification method passes and the fix result is recorded. A diagnosis alone is not closure.
+
 ## Workflow
 
 1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).

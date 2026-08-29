@@ -13,7 +13,7 @@ const USAGE_CLAUDE = [
     '/mxt:goon 001  整改后闭环验证',
     '/mxt:debug     BUG 排查',
     '/mxt:sync      Git 全量同步',
-    '/mxt:loop 001  三 Agent Team 任务闭环',
+    '/mxt:loop 001  双会话任务闭环',
     '/mxt:start     拉起开发环境'
 ];
 const USAGE_CODEX = [
@@ -23,7 +23,7 @@ const USAGE_CODEX = [
     '$mxt-goon 001  整改后闭环验证',
     '$mxt-debug     BUG 排查',
     '$mxt-sync      Git 全量同步',
-    '$mxt-loop 001  三 Agent 任务闭环',
+    '$mxt-loop 001  双会话任务闭环',
     '$mxt-start     拉起开发环境'
 ];
 

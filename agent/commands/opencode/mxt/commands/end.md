@@ -132,6 +132,18 @@ Before writing the goon, run these checks (print which were used and their resul
 
 If a check is N/A for this task, record it as "skipped (N/A)" with reason — do not leave it silent.
 
+## Closed-Loop Contract
+
+`mxt-end` is the independent review gate that converts real failures into the current remediation queue.
+
+- **Adversarial stance.** Treat the implementation and its self-reported Changes as untrusted claims. Assume the task is incomplete until disk state, diff, task requirements, and fresh command evidence agree.
+- **Changed-file inventory.** Build the inventory from the task scope and current git/diff state, then check every changed file for scope leak, accidental deletion, dead code, test bypass, stale claims, and omitted files.
+- **Spec-to-diff traceability.** Map each explicit task requirement to concrete file/path evidence. Map each Changes claim to the actual changed content.
+- **Command evidence.** Accept verification only with command, changed boundary, expected result, actual result, and exit code. A passing command outside the changed boundary is not sufficient.
+- **Actionable items only.** Every P0/P1 item must contain failure evidence, required correction, verification command, and scope reason. Reject style opinions, speculative risks, unrelated pre-existing issues, and unmeasurable suggestions.
+- **Convergence.** Merge duplicate evidence into one item. The first END pass must deliver all current blockers in the selected scope; re-verification checks only existing goon items and P0/P1 regressions introduced by their fixes.
+- **No items.** Rewrite goon as empty/no-pending-items immediately. Do not keep history, summaries, or cosmetic observations.
+
 ## Workflow
 
 1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).

@@ -1,6 +1,6 @@
 ---
 name: mxt-goon
-description: Use when the user asks Codex to continue/remediate an R2MO goon file by number, such as "$mxt-goon 001" or "mxt-goon 001"; reads .r2mo/task/goon-xxx.md, clears completed remediation items, and appends closure Changes to .r2mo/task/task-xxx.md.
+description: Use when the user asks Codex to run the goon MXT workflow; enforces scoped inputs, evidence-backed execution, and closed-loop handoff.
 ---
 
 # /mxt:goon
@@ -36,6 +36,17 @@ The user invoked this command with: $ARGUMENTS
 5. **Worktree spec**: Name prefix `task-NNN`. Store in `.r2mo/worktrees/` under current project. Example: `git worktree add .r2mo/worktrees/task-005 -b task-005`.
 
 **Hard rules**: Parse failure → abort. Directives override auto-judgment. Changes write to task, not goon. Quality gate must pass before clearing goon + writing Changes. Path conflict → abort. Force reload goon from disk — no caching.
+
+## Closed-Loop Contract
+
+`mxt-goon` is the development remediation stage that consumes only the current goon queue.
+
+- **Fresh input.** Re-read goon from disk. It is the sole remediation input; do not import chat history, previous rounds, or implementation intent.
+- **Fix only listed items.** Each correction must map to a current `## Remediation Item N — <title>`. Never use a review item as permission for unrelated refactoring.
+- **Evidence before clearing.** For each item, record the correction and the targeted verification command/result. Do not mark it complete from intent or code reading alone.
+- **Scope-preserving write-back.** Clear completed items and re-emit only unresolved items in the exact header format; renumber sequentially from 1. Append closure evidence to task Changes, never to goon.
+- **Verification boundary.** Re-run affected runtime tests, targeted tests, and necessary quality gates. Do not repeat unrelated green gates.
+- **Loop completion.** Zero items closes the current queue; otherwise the next independent `mxt-end NNN` decides whether items are resolved.
 
 ## Workflow
 

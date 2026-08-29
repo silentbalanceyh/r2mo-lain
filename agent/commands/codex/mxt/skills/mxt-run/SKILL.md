@@ -1,6 +1,6 @@
 ---
 name: mxt-run
-description: Use when the user asks Codex to run an R2MO task by number, such as "$mxt-run 001" or "mxt-run 001"; reads .r2mo/task/task-xxx.md and writes back Changes. Quality gate (compile 0 warnings, lint 0 warnings, all gates pass) is mandatory before writing Done+Changes.
+description: Use when the user asks Codex to run the run MXT workflow; enforces scoped inputs, evidence-backed execution, and closed-loop handoff.
 ---
 
 # /mxt:run
@@ -36,6 +36,16 @@ The user invoked this command with: $ARGUMENTS
 5. **Worktree spec**: Name prefix `task-NNN` (e.g. `task-005`). Store in `.r2mo/worktrees/` under the current project (not global). Example: `git worktree add .r2mo/worktrees/task-005 -b task-005`.
 
 **Hard rules**: Parse failure → abort. Directives override auto-judgment. Quality gate must pass before writing Done+Changes to `<TASK_PATH>`. Path conflict → abort. No reads/writes outside isolation lock.
+
+## Closed-Loop Contract
+
+`mxt-run` is the Development stage of the task loop and must hand off reviewable evidence.
+
+- **Changed-file inventory.** Record every source, test, config, and task record file touched by this stage. Do not omit generated or fixture files when they affect verification.
+- **Requirement traceability.** Each implementation step must map to an explicit task requirement or current goon item.
+- **Quality gates before Done.** Run the smallest sufficient compile/lint/test/runtime checks for the changed boundary. Record command, expected result, actual result, and exit code. If a gate is unavailable, record `skipped (N/A)` with reason.
+- **No self-acceptance.** RUN may set status Done after gates pass, but acceptance requires the independent END review. Do not claim final closure or review completion.
+- **Write-back integrity.** Update only the locked task file, in place. Changes must describe files, commands, results, and scope rationale sufficiently for a fresh reviewer.
 
 ## Workflow
 

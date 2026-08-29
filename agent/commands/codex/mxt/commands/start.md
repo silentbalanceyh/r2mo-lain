@@ -28,6 +28,16 @@ This command takes no arguments. Execute the environment startup flow directly.
 
 **Hard rules**: Backend first → frontend parallel. Already running → stop, rebuild, restart. Network verification mandatory after startup. Verification failure → report error. MDC startup/shutdown rules take priority over default inference. Idempotent: stop must succeed before continuing.
 
+## Closed-Loop Contract
+
+`mxt-start` closes environment startup through rule discovery → controlled restart → health verification.
+
+- **Rule-first execution.** Commands, ports, health endpoints, dependency order, and stop behavior must come from project MDC when present; default inference must be explicitly labeled.
+- **Controlled restart.** Stop and re-check existing processes before build/start. A failed stop is a blocker, not a silent force-kill-and-hope path.
+- **Health verification.** Backend must return a successful health response before frontend startup. Record service, command, address, HTTP result, and rule source.
+- **Failure means not started.** Build, stop, or backend health failure stops the flow and reports the exact evidence. Do not report startup success based only on a spawned process.
+- **Cleanup guarantee.** On failure, stop processes started by this run when safe and report what remains running.
+
 ## Preflight
 
 1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).

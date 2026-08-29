@@ -1,6 +1,6 @@
 ---
 name: mxt-end
-description: Use when the user asks Codex to verify an R2MO task by number, such as "$mxt-end 001" or "mxt-end 001"; reads .r2mo/task/task-xxx.md and writes only current remediation items to .r2mo/task/goon-xxx.md.
+description: Use when the user asks Codex to run the end MXT workflow; enforces scoped inputs, evidence-backed execution, and closed-loop handoff.
 ---
 
 # /mxt:end
@@ -27,7 +27,7 @@ The user invoked this command with: $ARGUMENTS
 
 1. `$ARGUMENTS` starts with a three-digit number (regex `^[0-9]{3}`), e.g. `001`.
 2. Additional tokens are **directives** (space-separated, case-insensitive):
-   - `Deep` — enable deep verification: read each changed file in full and compare line-by-line against task requirements
+   - `Deep` — enable deep verification: compare each changed file against task requirements
    - `Strict` — strict mode: raise sensitivity within the current task boundary; still only P0/P1 items, never upgrade to P2/P3
 3. Declare parsed results, e.g. `📌 Task: 005 | Directives: Deep`. If no directives, declare task number only.
 
@@ -87,7 +87,7 @@ Every Changes entry must pass all three layers. Failure at any layer is a P0/P1 
   - **Stub/placeholder**: function exists but body is empty, returns hardcoded value, or has `TODO`/`FIXME`/`not implemented` — **P0 FAIL**.
   - **Wrong logic**: function exists, signature matches, but the implementation logic does not satisfy the requirement — **P0 FAIL**.
   - **Partial implementation**: only part of the requirement is addressed, other parts are missing — **P1 FAIL**.
-  - **Misnamed identifier**: the change exists but under a different name/pattern than what the task specified (e.g., task says `validateToken` but code has `checkToken`) — **P1 FAIL** (only if the task explicitly names it).
+  - **Misnamed identifier**: the change exists but under a different name/pattern than what the task specified — **P1 FAIL** (only if the task explicitly names it).
   - **Wrong location**: file exists in the wrong directory/module than what the task specified — **P1 FAIL** (only if the task explicitly specifies location).
 - If content matches → PASS, move to Layer 3.
 
@@ -131,6 +131,18 @@ Before writing the goon, run these checks (print which were used and their resul
 5. **Regression sniff**: Only if the fix touched shared code, check direct callers. Do not launch a repo-wide regression hunt.
 
 If a check is N/A for this task, record it as "skipped (N/A)" with reason — do not leave it silent.
+
+## Closed-Loop Contract
+
+`mxt-end` is the independent review gate that converts real failures into the current remediation queue.
+
+- **Adversarial stance.** Treat the implementation and its self-reported Changes as untrusted claims. Assume the task is incomplete until disk state, diff, task requirements, and fresh command evidence agree.
+- **Changed-file inventory.** Build the inventory from the task scope and current git/diff state, then check every changed file for scope leak, accidental deletion, dead code, test bypass, stale claims, and omitted files.
+- **Spec-to-diff traceability.** Map each explicit task requirement to concrete file/path evidence. Map each Changes claim to the actual changed content.
+- **Command evidence.** Accept verification only with command, changed boundary, expected result, actual result, and exit code. A passing command outside the changed boundary is not sufficient.
+- **Actionable items only.** Every P0/P1 item must contain failure evidence, required correction, verification command, and scope reason. Reject style opinions, speculative risks, unrelated pre-existing issues, and unmeasurable suggestions.
+- **Convergence.** Merge duplicate evidence into one item. The first END pass must deliver all current blockers in the selected scope; re-verification checks only existing goon items and P0/P1 regressions introduced by their fixes.
+- **No items.** Rewrite goon as empty/no-pending-items immediately. Do not keep history, summaries, or cosmetic observations.
 
 ## Workflow
 
