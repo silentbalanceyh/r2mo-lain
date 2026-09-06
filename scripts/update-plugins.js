@@ -174,10 +174,10 @@ function downloadFile(url, dest, timeoutMs) {
     });
 }
 
-// ─── 从重定向获取版本号和下载地址 ─────────────────────────
+// ─── 从重定向获取 release tag ─────────────────────────────
 /**
  * 通过 HEAD 请求 releases/latest/download/manifest.json，
- * 从 302 重定向的 Location 中提取 tag，然后下载 manifest.json 内容。
+ * 从 302 重定向的 Location 中提取 release tag。
  *
  * @param {string} repo 仓库 "owner/repo"
  * @param {string} mirrorPrefix 镜像前缀
@@ -192,19 +192,23 @@ function fetchLatestVersion(repo, mirrorPrefix) {
                 const finalUrl = res.headers.location;
                 // 从 URL 提取 tag: .../releases/download/TAG/manifest.json
                 const match = finalUrl.match(/\/releases\/download\/([^/]+)\//);
-                resolve({ tag: match ? match[1] : null, error: null });
+                resolve({
+                    tag: match ? match[1] : null,
+                    version: match ? match[1].replace(/^v/, '') : null,
+                    error: null
+                });
             } else if (res.statusCode === 404) {
-                resolve({ tag: null, error: '仓库无 release (404)' });
+                resolve({ tag: null, version: null, error: '仓库无 release (404)' });
             } else {
                 // 消费 body 防止连接泄漏
                 res.resume();
-                resolve({ tag: null, error: 'HTTP ' + res.statusCode });
+                resolve({ tag: null, version: null, error: 'HTTP ' + res.statusCode });
             }
         });
         req.on('error', function (e) {
-            resolve({ tag: null, error: e.message });
+            resolve({ tag: null, version: null, error: e.message });
         });
-        req.setTimeout(60000, function () { req.destroy(new Error('timeout')); });
+        req.setTimeout(30000, function () { req.destroy(new Error('timeout')); });
     });
 }
 
@@ -308,20 +312,23 @@ function latestVersionFromStats(pluginStats) {
     return versions.length > 0 ? versions[versions.length - 1] : null;
 }
 
-async function fetchRepoManifest(repo) {
-    // Obsidian 官方规则：打开插件详情/检查更新时从插件 GitHub repo 拉 manifest.json，
-    // repo manifest.json 里的 version 才是“最新版”。不能用 GitHub releases/latest tag 猜。
-    return fetchJson('https://raw.githubusercontent.com/' + repo + '/HEAD/manifest.json');
+async function fetchRepoManifest(repo, ref = 'HEAD') {
+    return fetchJson('https://raw.githubusercontent.com/' + repo + '/' + ref + '/manifest.json');
 }
 
-async function fetchCompatibleVersion(repo, latestVersion, obsidianVersion) {
+async function fetchCompatibleVersion(repo, latestVersion, obsidianVersion, ref = 'HEAD') {
+    if (!obsidianVersion) {
+        return latestVersion;
+    }
+
     try {
-        const versions = await fetchJson('https://raw.githubusercontent.com/' + repo + '/HEAD/versions.json');
+        const versions = await fetchJson('https://raw.githubusercontent.com/' + repo + '/' + ref + '/versions.json');
         const entries = Object.entries(versions || {})
             .filter(function ([pluginVersion]) { return isVersionLike(pluginVersion); });
         const candidates = entries
-            .filter(function ([, minAppVersion]) {
-                return !obsidianVersion || compareVersions(obsidianVersion, minAppVersion) >= 0;
+            .filter(function ([pluginVersion, minAppVersion]) {
+                return compareVersions(pluginVersion, latestVersion) <= 0
+                    && compareVersions(obsidianVersion, minAppVersion) >= 0;
             })
             .map(function ([pluginVersion]) { return pluginVersion.replace(/^v/, ''); })
             .sort(compareVersions);
@@ -467,37 +474,61 @@ const explicitObsidianVersion = (obsidianVersionFlagIdx !== -1 && argv[obsidianV
 
         waiting('正在检查 ' + pluginId + ' (' + repo + ')...');
 
+        const latestRelease = await fetchLatestVersion(repo, mirrorPrefix);
+        let latestVersion = latestRelease.version;
         let latestManifest;
-        try {
-            latestManifest = await fetchRepoManifest(repo);
-        } catch (e) {
-            error('✗ ' + pluginId + ': 无法读取官方 manifest.json: ' + e.message);
-            results.push({ pluginId: pluginId, current: currentVersion, latest: '?', status: 'fail' });
-            failed++;
-            if (i < plugins.length - 1) await sleep(500);
-            continue;
+
+        if (!latestVersion) {
+            try {
+                latestManifest = await fetchRepoManifest(repo);
+                latestVersion = latestManifest.version ? String(latestManifest.version).replace(/^v/, '') : null;
+            } catch (e) {
+                error('✗ ' + pluginId + ': 无法读取官方 manifest.json: ' + e.message);
+                results.push({ pluginId: pluginId, current: currentVersion, latest: '?', status: 'fail' });
+                failed++;
+                if (i < plugins.length - 1) await sleep(500);
+                continue;
+            }
         }
 
-        let latestVersion = latestVersionFromStats(officialStats[pluginId])
-            || (latestManifest.version ? String(latestManifest.version).replace(/^v/, '') : '?');
-        latestVersion = await fetchCompatibleVersion(repo, latestVersion, obsidianVersion);
+        if (!latestVersion) {
+            latestVersion = latestVersionFromStats(officialStats[pluginId]) || '?';
+        }
 
-        if (latestVersion === currentVersion) {
-            info('✓ ' + pluginId + ': ' + currentVersion + ' (已是最新)');
-            results.push({ pluginId: pluginId, current: currentVersion, latest: latestVersion, status: 'latest' });
+        try {
+            if (!latestManifest) {
+                latestManifest = await fetchRepoManifest(repo, latestRelease.tag || 'HEAD');
+            }
+        } catch (e) {
+            latestManifest = null;
+        }
+
+        latestVersion = await fetchCompatibleVersion(repo, latestVersion, obsidianVersion, latestRelease.tag || 'HEAD');
+
+        const versionCompare = compareVersions(currentVersion, latestVersion);
+
+        if (versionCompare >= 0) {
+            if (versionCompare > 0) {
+                info('✓ ' + pluginId + ': ' + currentVersion + ' (当前版本高于 release，跳过)');
+                results.push({ pluginId: pluginId, current: currentVersion, latest: latestVersion, status: 'newer' });
+            } else {
+                info('✓ ' + pluginId + ': ' + currentVersion + ' (已是最新)');
+                results.push({ pluginId: pluginId, current: currentVersion, latest: latestVersion, status: 'latest' });
+            }
             skipped++;
         } else if (latestVersion === '?') {
             warn('⚠ ' + pluginId + ': 无法确定最新版本号，跳过');
             results.push({ pluginId: pluginId, current: currentVersion, latest: '?', status: 'fail' });
             failed++;
         } else {
-            console.log('  当前版本: ' + currentVersion + '  →  最新版本: ' + latestVersion);
+            info('当前版本: ' + currentVersion + '  →  最新版本: ' + latestVersion);
 
             if (checkOnly) {
                 warn('→ --check 模式，跳过下载');
                 results.push({ pluginId: pluginId, current: currentVersion, latest: latestVersion, status: 'check-only' });
             } else {
-                const baseDownloadUrl = buildUrl(mirrorPrefix, 'https://github.com/' + repo + '/releases/download/' + latestVersion);
+                const downloadTag = latestRelease.tag || latestVersion;
+                const baseDownloadUrl = buildUrl(mirrorPrefix, 'https://github.com/' + repo + '/releases/download/' + downloadTag);
 
                 let downloadOk = true;
                 for (const file of ASSET_FILES) {
