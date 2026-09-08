@@ -13,8 +13,8 @@ import uuid
 from datetime import datetime, timezone
 
 SCHEMA_VERSION = 1
-SNAPSHOT_FILENAME = 'snapshot.json'
-ANALYSIS_FILENAME = 'analysis.json'
+SNAPSHOT_FILENAME = 'snapshot-{profile}.json'
+ANALYSIS_FILENAME = 'analysis-{profile}.json'
 
 
 def collect_git_context(cwd='.'):
@@ -90,7 +90,7 @@ def find_latest_snapshot(cwd='.', profile='loc', exclude_path=None):
         return None
     candidates = []
     for run_dir in os.listdir(root):
-        candidate = os.path.join(root, run_dir, SNAPSHOT_FILENAME)
+        candidate = os.path.join(root, run_dir, SNAPSHOT_FILENAME.format(profile=profile))
         if not os.path.isfile(candidate):
             continue
         if exclude_path and os.path.abspath(candidate) == os.path.abspath(exclude_path):
@@ -149,10 +149,7 @@ def analyze_snapshots(previous, current):
     failed = current.get('summary', {}).get('FAIL', 0) > 0
 
     changed_files = current_git.get('changed_files', [])
-    baseline_only_git_change = all(
-        file == '.r2mo/doctor' or file.startswith('.r2mo/doctor/')
-        for file in changed_files
-    )
+    baseline_only_git_change = all(_is_expected_doctor_artifact(file) for file in changed_files)
 
     changes = []
     if baseline_changed:
@@ -186,6 +183,15 @@ def analyze_snapshots(previous, current):
         'changes': changes,
     }
 
+
+def _is_expected_doctor_artifact(filepath):
+    """Return True for doctor-owned baseline and verification artifacts."""
+    return (
+        filepath == '.r2mo/doctor' or
+        filepath.startswith('.r2mo/doctor/') or
+        filepath == '.r2mo/verify/doctor' or
+        filepath.startswith('.r2mo/verify/doctor/')
+    )
 
 def analysis_verdict(analysis):
     if any(c['classification'] == 'ABNORMAL_DRIFT' for c in analysis.get('changes', [])):

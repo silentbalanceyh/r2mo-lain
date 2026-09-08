@@ -310,6 +310,13 @@ def signal_content_hash(tracked_files):
     """Hash config-type files. Returns [(file_path, sha256_hex), ...]."""
     result = []
     for tf in tracked_files:
+        # Root lock files are always dependency-resolution controls and
+        # must not be removed by project-type-aware noise heuristics.
+        if _is_lock_file(tf) and '/' not in tf:
+            sha = _sha256_file(tf)
+            if sha:
+                result.append((tf, sha))
+            continue
         if _is_config_file(tf) and not _is_excluded(tf):
             sha = _sha256_file(tf)
             if sha:
@@ -327,8 +334,9 @@ def _is_excluded(filepath):
     # Noise directories (IDE state, task mgmt, build artifacts, etc.)
     if _is_noise(filepath):
         return True
-    # Lock files at any nesting level
-    if _is_lock_file(filepath):
+    # Lock files are content-locked only at repository root. Nested lock
+    # files are usually vendored/generated and remain excluded.
+    if _is_lock_file(filepath) and '/' in filepath:
         return True
     for pattern in CONFIG_HASH_EXCLUDES:
         if fnmatch.fnmatch(filepath, pattern):

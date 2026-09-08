@@ -1046,6 +1046,9 @@ const testLoopCommandsRequireIsolatedDevelopmentAndReviewSessions = async () => 
         assert.match(content, /不得共享上下文/);
         assert.match(content, /禁止在同一会话内自我审查/);
         assert.match(content, /每次通信只允许白名单工件/);
+        assert.match(content, /Same-host requirement/);
+        assert.match(content, /same AI host\/tool/);
+        assert.match(content, /must not delegate review to Claude, OpenCode, or another AI tool/);
     }
 };
 

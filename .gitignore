@@ -64,10 +64,10 @@ typings/
 .markeditor
 .configs
 backup
-package-lock.json
 apps/
 .r2mo/repo
 .r2mo/mcpserver
+.r2mo/verify/doctor/
 .trae/documents
 .obsidian/workspace.json
 .omc/

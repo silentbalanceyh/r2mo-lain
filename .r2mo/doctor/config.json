@@ -1,0 +1,7 @@
+{
+  "default_profile": "k8s",
+  "env_sources": [],
+  "expected_branch": "master",
+  "language": "javascript",
+  "project_type": "javascript"
+}

@@ -15,6 +15,8 @@ from mxt_doctor_snapshot import (
     analyze_snapshots, analysis_verdict, baseline_fingerprint, build_snapshot,
     collect_git_context, find_latest_snapshot, load_json, write_json_atomic,
 )
+from mxt_doctor_generate import _detect_project_type
+from mxt_doctor_signals import signal_content_hash, signal_file_list
 
 
 class MxtDoctorSnapshotTests(unittest.TestCase):
@@ -64,9 +66,9 @@ class MxtDoctorSnapshotTests(unittest.TestCase):
             first = verify / '20260101-000000'
             first.mkdir(parents=True)
             data = {'schema_version': 1, 'profile': 'loc'}
-            write_json_atomic(first / 'snapshot.json', data)
+            write_json_atomic(first / 'snapshot-loc.json', data)
             found = find_latest_snapshot(root, 'loc')
-            self.assertEqual(Path(found), first / 'snapshot.json')
+            self.assertEqual(Path(found), first / 'snapshot-loc.json')
             self.assertEqual(load_json(found), data)
 
     def test_analyze_expected_baseline_change(self):
@@ -92,6 +94,101 @@ class MxtDoctorSnapshotTests(unittest.TestCase):
         self.assertEqual(analysis['changes'][0]['classification'], 'UNCLASSIFIED')
         self.assertEqual(analysis_verdict(analysis), 'NEEDS_REVIEW')
 
+    def test_detect_project_type_prefers_package_manifest(self):
+        tracked_files = [
+            'package.json',
+            'src/index.js',
+            'src/python/helper.py',
+        ]
+        self.assertEqual(_detect_project_type(tracked_files), 'javascript')
+
+    def test_content_hash_includes_package_lock_file(self):
+        with tempfile.TemporaryDirectory() as root:
+            package_lock = Path(root, 'package-lock.json')
+            content = '{"lockfileVersion":3,"packages":{}}\n'
+            package_lock.write_text(content, encoding='utf-8')
+            previous_cwd = os.getcwd()
+            os.chdir(root)
+            try:
+                signals = signal_content_hash(['package-lock.json'])
+            finally:
+                os.chdir(previous_cwd)
+            self.assertEqual([path for path, _ in signals], ['package-lock.json'])
+            expected = hashlib.sha256(content.encode('utf-8')).hexdigest()
+            self.assertEqual(signals[0][1], expected)
+
+    def test_content_hash_includes_all_root_lock_file_types(self):
+        lock_contents = {
+            'package-lock.json': '{}\n',
+            'npm-shrinkwrap.json': '{}\n',
+            'pnpm-lock.yaml': '# lock\n',
+            'yarn.lock': '# lock\n',
+            'go.sum': 'example.com/pkg v1.0.0\n',
+            'Cargo.lock': '[metadata]\n',
+            'uv.lock': '[metadata]\n',
+            'poetry.lock': '[[package]]\n',
+        }
+        with tempfile.TemporaryDirectory() as root:
+            for name, content in lock_contents.items():
+                Path(root, name).write_text(content, encoding='utf-8')
+            previous_cwd = os.getcwd()
+            os.chdir(root)
+            try:
+                signals = signal_content_hash(sorted(lock_contents))
+            finally:
+                os.chdir(previous_cwd)
+            self.assertEqual([path for path, _ in signals], sorted(lock_contents))
+            expected = [
+                (name, hashlib.sha256(content.encode('utf-8')).hexdigest())
+                for name, content in sorted(lock_contents.items())
+            ]
+            self.assertEqual(signals, expected)
+
+    def test_content_hash_ignores_nested_and_generated_lock_files(self):
+        with tempfile.TemporaryDirectory() as root:
+            Path(root, 'tools').mkdir()
+            Path(root, 'tools', 'package-lock.json').write_text('{}\n', encoding='utf-8')
+            Path(root, 'node_modules', 'dep').mkdir(parents=True)
+            Path(root, 'node_modules', 'dep', 'yarn.lock').write_text('{}\n', encoding='utf-8')
+            signals = signal_content_hash([
+                'tools/package-lock.json',
+                'node_modules/dep/yarn.lock',
+            ])
+            self.assertEqual(signals, [])
+
+    def test_file_list_excludes_root_lock_file(self):
+        with tempfile.TemporaryDirectory() as root:
+            Path(root, 'package-lock.json').write_text('{}\n', encoding='utf-8')
+            self.assertEqual(signal_file_list(['package-lock.json'], 'loc'), [])
+
+    def test_scan_preserves_separate_snapshots_for_each_profile(self):
+        with tempfile.TemporaryDirectory() as root:
+            self._git(root, 'init', '--initial-branch=master')
+            self._write(root, 'README.md', 'hello\n')
+            self._write(root, 'package.json', '{"dependencies":{"left-pad":"1.0.0"}}\n')
+            self._git(root, 'add', '.')
+            env = self._git_env()
+            self._git(root, 'commit', '-m', 'init', env=env)
+            from mxt_doctor_generate import generate
+            from mxt_doctor_scan import scan
+            for profile in ('loc', 'k8s'):
+                self.assertTrue(generate(cwd=root, profile=profile))
+                self.assertTrue(scan(cwd=root, profile=profile))
+            snapshots = sorted(Path(root, '.r2mo', 'verify', 'doctor').glob('*/snapshot-*.json'))
+            self.assertEqual([path.name for path in snapshots], ['snapshot-k8s.json', 'snapshot-loc.json'])
+            profiles = [load_json(path)['profile'] for path in snapshots]
+            self.assertEqual(profiles, ['k8s', 'loc'])
+
+    def test_analyze_expected_baseline_and_verify_report_changes(self):
+        previous = self._snapshot('a', counts={'FAIL': 0})
+        current = self._snapshot(
+            'b', counts={'FAIL': 0},
+            git={'dirty': True, 'changed_files': ['.r2mo/doctor/loc/file-hash.conf', '.r2mo/verify/doctor/run/report.md']},
+        )
+        analysis = analyze_snapshots(previous, current)
+        self.assertTrue(all(change['classification'] == 'NORMAL_EXPECTED' for change in analysis['changes']))
+        self.assertEqual(analysis_verdict(analysis), 'PASS_WITH_EXPECTED_CHANGES')
+
     def test_build_snapshot_contains_required_metadata(self):
         snapshot = build_snapshot(
             cwd='.', profile='loc', counts={'PASS': 1, 'FAIL': 0, 'WARN': 0, 'SKIP': 0},
@@ -116,6 +213,16 @@ class MxtDoctorSnapshotTests(unittest.TestCase):
             'git': git or {'dirty': False, 'changed_files': []}, 'summary': counts,
         }
 
+    @staticmethod
+    def _git_env():
+        return {
+            **os.environ,
+            'GIT_AUTHOR_NAME': 'test',
+            'GIT_AUTHOR_EMAIL': 'test@example.com',
+            'GIT_COMMITTER_NAME': 'test',
+            'GIT_COMMITTER_EMAIL': 'test@example.com',
+        }
+
 
     def test_scan_writes_snapshot_and_analysis(self):
         with tempfile.TemporaryDirectory() as root:
@@ -129,14 +236,12 @@ class MxtDoctorSnapshotTests(unittest.TestCase):
             from mxt_doctor_scan import scan
             self.assertTrue(generate(cwd=root, profile='loc'))
             self.assertTrue(scan(cwd=root, profile='loc'))
-            reports = list(Path(root, '.r2mo', 'verify', 'doctor').glob('*/analysis.json'))
+            reports = list(Path(root, '.r2mo', 'verify', 'doctor').glob('*/analysis-*.json'))
             self.assertEqual(len(reports), 1)
             analysis = json.loads(reports[0].read_text(encoding='utf-8'))
             self.assertIn(analysis['verdict'], ('PASS', 'PASS_WITH_EXPECTED_CHANGES'))
-            self.assertTrue((reports[0].parent / 'snapshot.json').is_file())
+            self.assertTrue((reports[0].parent / 'snapshot-loc.json').is_file())
 
-if __name__ == '__main__':
-    unittest.main()
 
     def test_scan_renders_drift_analysis_in_markdown(self):
         with tempfile.TemporaryDirectory() as root:
@@ -154,3 +259,7 @@ if __name__ == '__main__':
             content = markdown_files[0].read_text(encoding='utf-8')
             self.assertIn('## Drift Analysis', content)
             self.assertIn('Verdict:', content)
+
+
+if __name__ == '__main__':
+    unittest.main()

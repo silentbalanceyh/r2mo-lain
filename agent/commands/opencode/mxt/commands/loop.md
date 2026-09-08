@@ -47,6 +47,8 @@ Goal owns host persistence, not a duplicate task state. task-NNN.md and goon-NNN
 
 必须开启两个独立会话：Development session（RUN/GOON）与 Review session（END/END_REVIEW）。
 
+**Same-host requirement.** Both sessions must run in the same AI host/tool that invoked `mxt-loop`. For example, a Codex `$mxt-loop` invocation must use two Codex sessions (or the host's genuinely isolated Codex subagent mechanism); it must not delegate review to Claude, OpenCode, or another AI tool. Cross-tool delegation changes rule loading, tool APIs, skill resolution, and write semantics, so it invalidates isolation and review equivalence.
+
 1. **Development session owns implementation.**
    - It may load task rules, read locked files, edit the task diff, run scoped verification, and produce the required artifacts below.
    - It must not act as the reviewer, grade its own implementation, or write acceptance conclusions into goon.

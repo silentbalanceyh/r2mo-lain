@@ -184,11 +184,14 @@ CONFIG_HASH_GLOBS = (
     # Stylelint
     '.stylelintrc', '.stylelintrc.json', '.stylelintrc.js', '.stylelintrc.cjs',
     'stylelint.config.js', 'stylelint.config.cjs',
+    # Root-level lock files lock resolved dependency versions. Nested and
+    # vendored lock files remain excluded by signal_content_hash().
+    'package-lock.json', 'npm-shrinkwrap.json', 'pnpm-lock.yaml',
+    'yarn.lock', 'go.sum', 'Cargo.lock', 'uv.lock', 'poetry.lock',
 )
 
 # exclusion globs for content-hash
 CONFIG_HASH_EXCLUDES = (
-    'package-lock.json', 'go.sum', 'yarn.lock', 'pnpm-lock.yaml',
     '*.min.js', '*.min.css', '*.map',
     'dist/*', 'build/*', 'node_modules/*',
     # Dep manifests are tracked in meta-deps, not file-hash

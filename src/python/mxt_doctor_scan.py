@@ -114,14 +114,14 @@ def scan(cwd='.', profile=None):
 
     md = report.to_markdown(timestamp, section_data)
     report_path = write_report(cwd, project_name, profile, md)
-    snapshot_path = os.path.join(os.path.dirname(report_path), SNAPSHOT_FILENAME)
+    snapshot_path = os.path.join(os.path.dirname(report_path), SNAPSHOT_FILENAME.format(profile=profile))
     write_json_atomic(snapshot_path, snapshot)
 
     previous_path = find_latest_snapshot(cwd, profile, exclude_path=snapshot_path)
     previous_snapshot = load_json(previous_path) if previous_path else None
     analysis = analyze_snapshots(previous_snapshot, snapshot)
     analysis['verdict'] = analysis_verdict(analysis)
-    analysis_path = os.path.join(os.path.dirname(report_path), ANALYSIS_FILENAME)
+    analysis_path = os.path.join(os.path.dirname(report_path), ANALYSIS_FILENAME.format(profile=profile))
     write_json_atomic(analysis_path, analysis)
 
     report.analysis = analysis

@@ -13,7 +13,7 @@
 - **Development session**：执行 RUN/GOON，只负责实现与整改。
 - **Review session**：执行 END/END_REVIEW，只负责对抗式审查与写 goon。
 
-两个会话不得共享上下文，禁止在同一会话内自我审查。会话之间每次通信只允许白名单工件：task/goon 文件、规则路径、变更文件清单、diff、验证命令与结果。
+两个会话不得共享上下文，禁止在同一会话内自我审查。两个会话必须运行在同一个宿主 AI 工具中：Codex 触发 `$mxt-loop` 时只能用两个 Codex 会话或 Codex 原生的真正隔离子代理，不得把审查交给 Claude/OpenCode 等其他工具。会话之间每次通信只允许白名单工件：task/goon 文件、规则路径、变更文件清单、diff、验证命令与结果。
 
 ## Host Runtime Contract
 

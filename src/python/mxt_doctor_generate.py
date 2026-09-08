@@ -329,6 +329,10 @@ def _detect_project_type(tracked_files):
         return 'rust'
     if any(f.endswith('.java') for f in tracked_files):
         return 'java'
+    # A root package.json identifies a Node project even when the repository
+    # also contains Python helper scripts. The manifest is the runtime owner.
+    if 'package.json' in tracked_files:
+        return 'javascript'
     if any(f.endswith('.py') for f in tracked_files):
         return 'python'
     if any(f.endswith('.ets') for f in tracked_files):

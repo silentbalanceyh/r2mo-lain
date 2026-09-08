@@ -29,17 +29,18 @@
 - **9 个检查维度**：file-list、file-hash、file-oob、meta-env、meta-deps、meta-tokens、meta-ports、code-interfaces、code-idempotency
 - **生态标签**：依赖版本检查按生态分组打印 `[go]`/`[npm]`/`[cargo]`/`[maven]`/`[gradle]`/`[python]`
 - **边角配置文件**：`.gitignore`、`.dockerignore`、`.npmrc`、`.eslintrc`、`tsconfig*.json` 等在 `--gen???` 时自动写入 `file-hash.conf` 并做内容锁定（sha256）
+- **锁定版本**：根目录 `package-lock.json`、`npm-shrinkwrap.json`、`pnpm-lock.yaml`、`yarn.lock`、`go.sum`、`Cargo.lock`、`uv.lock`、`poetry.lock` 自动写入 `file-hash.conf` 并做整体 SHA-256 锁定；嵌套/第三方 lockfile 保持排除
 - **子项目委托**：当项目含 `.gitmodules` 时，父项目自动跳过子模块路径，子项目独立扫描
 - **噪声过滤**：`.claude/`、`.r2mo/`、`.obsidian/`、`node_modules/`、`dist/`、`target/` 等隐藏目录和构建产物自动排除
 - **报告输出**：扫描结果写入 `.r2mo/verify/doctor/<timestamp>/<project>-<profile>.md`
-- **漂移审计**：每次扫描同时生成 `snapshot.json` 与 `analysis.json`，用于区分正常演进、异常漂移和待确认变更
+- **漂移审计**：每次扫描同时生成 `snapshot-<profile>.json` 与 `analysis-<profile>.json`，用于区分正常演进、异常漂移和待确认变更
 - 可先运行 `mxt help -c doctor` 查看 CLI 内置帮助。
 
 ## 漂移审计
 
-`snapshot.json` 记录扫描时间、profile、PASS/FAIL/WARN/SKIP 汇总、基线文件指纹、Git HEAD/branch/dirty/changed_files。它是可 review 的文本工件，不包含配置明文或 secret 值。
+`snapshot-<profile>.json` 记录扫描时间、profile、PASS/FAIL/WARN/SKIP 汇总、基线文件指纹、Git HEAD/branch/dirty/changed_files。它是可 review 的文本工件，不包含配置明文或 secret 值。
 
-`analysis.json` 对比上一次合法快照并输出最终结论：
+`analysis-<profile>.json` 对比上一次合法快照并输出最终结论：
 
 - `PASS`：无基线或工作区变化
 - `PASS_WITH_EXPECTED_CHANGES`：基线变化且扫描无 FAIL

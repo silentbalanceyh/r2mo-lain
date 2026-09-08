@@ -56,7 +56,7 @@ This ensures AI can freely write and modify source code, add routes, evolve sche
 2. **Runs `mxt doctor --profile <profile>`** to get current scan status (PASS/FAIL/WARN/SKIP)
 3. **Analyzes project characteristics** — reads source files, env files, deploy scripts, config files to understand the project's actual structure and conventions
 4. **Diffs committed baseline vs fresh generate** — identifies what changed and why
-5. **Reads the structured audit artifacts** — `snapshot.json` and `analysis.json`; validates `NORMAL_EXPECTED` / `ABNORMAL_DRIFT` / `UNCLASSIFIED` against project evidence
+5. **Reads the structured audit artifacts** — `snapshot-<profile>.json` and `analysis-<profile>.json`; validates `NORMAL_EXPECTED` / `ABNORMAL_DRIFT` / `UNCLASSIFIED` against project evidence
 6. **Remediates `.r2mo/doctor/<profile>/*.conf` files directly** — fixes misclassifications, removes redundancies, adds missing `@optional` / `!forbidden` markers, adjusts env template/real/secrets classification
 7. **Re-runs `mxt doctor --profile <profile>`** after remediation to verify scan and drift-analysis convergence
 8. **Iterates** until scan shows 0 FAIL or remaining FAILs are all real drifts (not metadata issues)
@@ -354,7 +354,8 @@ Specific rules:
 #### 4e. file-hash.conf — redundancy elimination
 
 - If a file appears in both `file-list.conf` and `file-hash.conf`, evaluate: is file-hash providing additional value (content-level drift detection) beyond file-list (existence-level + git-tracked)? If not, remove from file-hash.
-- Remove lock files (`package-lock.json`, `go.sum`, `yarn.lock`, `pnpm-lock.yaml`) if they slipped through
+- Preserve root-level lock files (`package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock`, `go.sum`, `Cargo.lock`, `uv.lock`, `poetry.lock`) in `file-hash.conf`; they lock resolved dependency versions
+- Remove nested/vendored lock files if they slipped through
 - Remove generated artifacts (`dist/`, `build/`, `node_modules/`) if they slipped through
 - Remove cache files (`.kube/cache/*`) if they slipped through
 
@@ -456,7 +457,7 @@ The skill uses these intelligence rules when analyzing and remediating:
 
 4. **Token strictness**: when the same key has different modes across files, most strict wins (fixed > prefix_hex > hex > prefix_alnum > allow_empty > placeholder > env_ref). This prevents a `Z_DB_PASSWORD=""` in one file from downgrading the mode from `fixed` to `allow_empty` when another file has the real value.
 
-5. **Redundancy heuristic**: if a file is in both `file-list.conf` (existence check) AND `file-hash.conf` (content hash), the content check subsumes the existence check. But this is not necessarily wrong — file-list also checks git-tracked status. So redundancy is a WARN, not an ERROR. Only remove from file-hash if the file is a lock file, cache file, or generated artifact.
+5. **Redundancy heuristic**: if a file is in both `file-list.conf` (existence check) AND `file-hash.conf` (content hash), the content check subsumes the existence check. But this is not necessarily wrong — file-list also checks git-tracked status. So redundancy is a WARN, not an ERROR. Only remove from file-hash if the file is a nested lock file, cache file, or generated artifact. Root lock files must remain content-locked.
 
 6. **SKIP diagnosis**: when a dimension is SKIP, always investigate WHY. Run `git ls-files | grep <pattern>` to check if the files exist but the glob did not match. If files exist but were missed, the glob pattern in the script needs updating — report this as a script gap. If the files genuinely do not exist (e.g., no `.tf` files in a frontend project), SKIP is correct and no action is needed.
 
@@ -475,7 +476,7 @@ The skill uses these intelligence rules when analyzing and remediating:
 
     Doctor checks **source-level resources only**: pre-compile config, source code, env files, deploy scripts. If any noise or build artifact appears in `file-list.conf` or `file-hash.conf`, it is a script gap — remove them and report that `NOISE_DIR_PREFIXES`, `BUILD_ARTIFACT_DIRS`, or `NOISE_DOT_FILES` in `mxt_doctor_constants.py` may need updating.
 
-10. **Lock file exclusion at any depth**: Lock files (`package-lock.json`, `go.sum`, `yarn.lock`, `pnpm-lock.yaml`) are excluded at any nesting level, not just the root. If a nested lock file appears in `file-hash.conf`, it is a bug — the `_is_lock_file()` helper checks basename, not full path.
+10. **Root lock inclusion / nested lock exclusion**: Root-level lock files (`package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock`, `go.sum`, `Cargo.lock`, `uv.lock`, `poetry.lock`) are content-locked in `file-hash.conf`. Nested/vendored lock files remain excluded. Do not delete a root lock entry during calibration; it is the resolved-version anti-drift control.
 
 11. **Env file discovery rules**: The script discovers env files using `ENV_GLOBS` patterns: `.env*`, `*.env`, `*.env.*`, `*secrets*env*`, `*.properties`. However, not all `*.properties` files are env files:
     - **Excluded as framework config**: `gradle.properties`, `gradle-wrapper.properties`, `spy.properties`, `application.properties`, `application.yml`, `log4j*.properties`, `MYSQL.properties`, `viewer.properties`, `locale.properties`
