@@ -23,6 +23,15 @@
 - `.r2mo/task/goon-NNN.md`：清除已完成整改项，保留未完成项。
 - `.r2mo/task/task-NNN.md`：追加本轮整改 Changes。
 
+## Fresh Input Contract
+
+- 每一轮整改前重新从磁盘读取 `goon-NNN.md`。
+- 刚读取的 goon 是唯一整改输入。
+- 禁止上一轮 goon 内容、会话摘要和缓存决策。
+- 写回后只允许保留当前未解决项。
+- 每项整改必须记录修复文件、修复方式、目标 Verification command 和 Actual result / exit code。
+- 已解决项的闭环证据写入 task `## Changes`；未解决项重新输出且不复制历史说明。
+
 ## 闭环契约
 
 - 所有 `mxt-*` 命令都以磁盘状态和真实证据为闭环依据，不以对话记忆或自述结论作为完成依据。

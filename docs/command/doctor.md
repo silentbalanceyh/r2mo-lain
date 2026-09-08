@@ -32,7 +32,21 @@
 - **子项目委托**：当项目含 `.gitmodules` 时，父项目自动跳过子模块路径，子项目独立扫描
 - **噪声过滤**：`.claude/`、`.r2mo/`、`.obsidian/`、`node_modules/`、`dist/`、`target/` 等隐藏目录和构建产物自动排除
 - **报告输出**：扫描结果写入 `.r2mo/verify/doctor/<timestamp>/<project>-<profile>.md`
+- **漂移审计**：每次扫描同时生成 `snapshot.json` 与 `analysis.json`，用于区分正常演进、异常漂移和待确认变更
 - 可先运行 `mxt help -c doctor` 查看 CLI 内置帮助。
+
+## 漂移审计
+
+`snapshot.json` 记录扫描时间、profile、PASS/FAIL/WARN/SKIP 汇总、基线文件指纹、Git HEAD/branch/dirty/changed_files。它是可 review 的文本工件，不包含配置明文或 secret 值。
+
+`analysis.json` 对比上一次合法快照并输出最终结论：
+
+- `PASS`：无基线或工作区变化
+- `PASS_WITH_EXPECTED_CHANGES`：基线变化且扫描无 FAIL
+- `FAIL_DRIFT`：存在异常漂移信号
+- `NEEDS_REVIEW`：存在无法自动归因的工作区变化
+
+分类包括 `NORMAL_EXPECTED`、`ABNORMAL_DRIFT`、`UNCLASSIFIED`。Markdown 报告末尾的 `## Drift Analysis` 提供人类可读摘要。
 
 ## 命令执行记录
 

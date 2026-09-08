@@ -20,9 +20,14 @@ const CODEX_COMMANDS = COMMAND_BASENAMES;
 const openCodeConfigDir = (homeDir) => {
     const base = homeDir || os.homedir();
     if (process.platform === 'win32') {
-        const appData = (base === os.homedir() && process.env.APPDATA)
-            ? process.env.APPDATA
-            : path.join(base, 'AppData', 'Roaming');
+        // Respect Windows APPDATA only when it belongs to the effective user home.
+        // Explicit homeDir overrides it for tests, portable installs, and redirected homes.
+        const processAppData = process.env.APPDATA;
+        const defaultAppData = path.join(base, 'AppData', 'Roaming');
+        const appData = (!homeDir && processAppData
+            && path.resolve(processAppData) === path.resolve(defaultAppData))
+            ? processAppData
+            : defaultAppData;
         return path.join(appData, 'opencode');
     }
     return path.join(base, '.config', 'opencode');
@@ -72,10 +77,50 @@ const resolvePlatforms = (ids) => {
     const platformMap = new Map(PLATFORMS.map((platform) => [platform.id, platform]));
     const unknown = selectedIds.filter((id) => !platformMap.has(id));
     if (unknown.length > 0) {
-        throw new Error(`不支持的平台: ${unknown.join(', ')}`);
+        const error = new Error(`不支持的平台: ${unknown.join(', ')}`);
+        error.code = 'MXT_INVALID_PLATFORM';
+        error.platformIds = unknown;
+        throw error;
     }
     return selectedIds.map((id) => platformMap.get(id));
 };
+const isKnownFileOperationError = (error) => [
+    'ENOENT', 'EACCES', 'EPERM', 'EBUSY', 'ENOTDIR', 'ENOTEMPTY', 'EMFILE', 'ENFILE'
+].includes(error && error.code);
+
+const platformOperationHint = (errorCode) => {
+    if (errorCode === 'EPERM' || errorCode === 'EBUSY') {
+        return '目标文件可能被正在运行的 AI 工具占用。请退出 Claude Code / Codex / OpenCode 后重试；Windows 可先等待数秒。';
+    }
+    if (errorCode === 'EACCES') {
+        return '当前用户没有目标目录写权限。请确认 HOME / APPDATA 指向当前用户配置目录，并以当前用户身份运行 mxt。';
+    }
+    if (errorCode === 'ENOENT' || errorCode === 'ENOTDIR') {
+        return '目标路径不存在或类型不正确。请确认目标磁盘已挂载，且配置目录没有被文件或符号链接占用。';
+    }
+    if (errorCode === 'EMFILE' || errorCode === 'ENFILE') {
+        return '进程打开文件数达到系统限制。请关闭其他占用文件句柄的程序后重试。';
+    }
+    return '请检查目标路径、磁盘空间和当前用户权限。';
+};
+
+const withPlatformError = async (operation, platform, homeDir, targetPath, fn) => {
+    try {
+        return await fn();
+    } catch (error) {
+        if (!isKnownFileOperationError(error)) throw error;
+        const target = typeof targetPath === 'function' ? targetPath(homeDir) : targetPath;
+        error.message = [
+            `${operation} ${platform.name} 配置失败 | home=${homeDir} | target=${target}`,
+            `原因: ${error.code} ${error.message}`,
+            `建议: ${platformOperationHint(error.code)}`
+        ].join('\n');
+        error.platformId = platform.id;
+        error.targetPath = target;
+        throw error;
+    }
+};
+
 
 const copyDir = async (sourceDir, targetDir) => {
     const entries = await fs.readdir(sourceDir, { withFileTypes: true });
@@ -172,12 +217,16 @@ const removeTomlBlock = (content, header) => {
 };
 
 const commandExists = (command) => {
-    const lookup = process.platform === 'win32' ? 'where' : 'which';
-    const result = spawnSync(lookup, [command], {
-        stdio: 'ignore',
-        shell: process.platform === 'win32'
-    });
-    return result.status === 0;
+    const isWindows = process.platform === 'win32';
+    const lookup = isWindows ? 'where.exe' : 'which';
+    try {
+        const result = spawnSync(lookup, [command], {
+            stdio: 'ignore',
+        });
+        return !result.error && result.status === 0;
+    } catch {
+        return false;
+    }
 };
 
 const runOptionalCommand = (command, args, options = {}) => {
@@ -185,17 +234,25 @@ const runOptionalCommand = (command, args, options = {}) => {
         return false;
     }
 
-    const result = spawnSync(command, args, {
-        encoding: 'utf8',
-        stdio: 'pipe',
-        shell: process.platform === 'win32'
-    });
-    if (result.status !== 0) {
+    let result = null;
+    try {
+        result = spawnSync(command, args, {
+            encoding: 'utf8',
+            stdio: 'pipe',
+        });
+    } catch {
+        return false;
+    }
+    if (!result || result.error || result.status !== 0) {
         if (options.ignoreFailure) {
             return false;
         }
-        const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim();
-        throw new Error(`${command} ${args.join(' ')} 执行失败${output ? `: ${output}` : ''}`);
+        const output = [result && result.stdout, result && result.stderr]
+            .filter(Boolean)
+            .join('\n')
+            .trim();
+        const failure = result && result.error ? result.error.message : `exit ${result ? result.status : 'unknown'}`;
+        throw new Error(`${command} ${args.join(' ')} 执行失败 (${failure})${output ? `: ${output}` : ''}`);
     }
     return true;
 };
@@ -747,15 +804,15 @@ const installPlatforms = async (ids, options = {}) => {
     const results = [];
     for (const platform of platforms) {
         if (platform.installer === 'claudeCache') {
-            results.push(await installClaudePlugin(platform, homeDir));
+            results.push(await withPlatformError('安装', platform, homeDir, platform.targetDir, () => installClaudePlugin(platform, homeDir)));
             continue;
         }
         if (platform.installer === 'codexPlugin') {
-            results.push(await installCodexPlugin(platform, homeDir));
+            results.push(await withPlatformError('安装', platform, homeDir, platform.targetDir, () => installCodexPlugin(platform, homeDir)));
             continue;
         }
         if (platform.installer === 'opencodeConfig') {
-            results.push(await installOpenCodeCommands(platform, homeDir));
+            results.push(await withPlatformError('安装', platform, homeDir, platform.targetDir, () => installOpenCodeCommands(platform, homeDir)));
             continue;
         }
         const targetDir = platform.targetDir(homeDir);
@@ -781,15 +838,15 @@ const uninstallPlatforms = async (ids, options = {}) => {
     const results = [];
     for (const platform of platforms) {
         if (platform.installer === 'claudeCache') {
-            results.push(await uninstallClaudePlugin(platform, homeDir));
+            results.push(await withPlatformError('卸载', platform, homeDir, platform.targetDir, () => uninstallClaudePlugin(platform, homeDir)));
             continue;
         }
         if (platform.installer === 'codexPlugin') {
-            results.push(await uninstallCodexPlugin(platform, homeDir));
+            results.push(await withPlatformError('卸载', platform, homeDir, platform.targetDir, () => uninstallCodexPlugin(platform, homeDir)));
             continue;
         }
         if (platform.installer === 'opencodeConfig') {
-            results.push(await uninstallOpenCodeCommands(platform, homeDir));
+            results.push(await withPlatformError('卸载', platform, homeDir, platform.targetDir, () => uninstallOpenCodeCommands(platform, homeDir)));
             continue;
         }
         const targetDir = platform.targetDir(homeDir);

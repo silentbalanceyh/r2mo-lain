@@ -144,6 +144,17 @@ If a check is N/A for this task, record it as "skipped (N/A)" with reason — do
 - **Convergence.** Merge duplicate evidence into one item. The first END pass must deliver all current blockers in the selected scope; re-verification checks only existing goon items and P0/P1 regressions introduced by their fixes.
 - **No items.** Rewrite goon as empty/no-pending-items immediately. Do not keep history, summaries, or cosmetic observations.
 
+## Fresh Context Contract
+
+- Before review, re-read `task-NNN.md` from disk.
+- read `goon-NNN.md` from disk if it exists.
+- Build the changed-file inventory directly from `git diff` and `git status`; do not inherit a previously prepared inventory.
+- Do not use previous END, GOON, or loop summaries.
+- Do not use cached analysis, cached diff, or cached verification results.
+- Print fresh-read evidence before review: task/goon read timestamps or command provenance and the current changed-file inventory source.
+
+`mxt-end` only writes `goon-NNN.md`; it never modifies task `## Changes`.
+
 ## Workflow
 
 1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).

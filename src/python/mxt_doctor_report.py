@@ -14,6 +14,7 @@ class Report:
         self.warn_count = 0
         self.skip_count = 0
         self._current_lines = []
+        self.analysis = None
 
     def ok(self, msg):
         self.pass_count += 1
@@ -42,7 +43,7 @@ class Report:
     def section_end(self):
         return list(self._current_lines)
 
-    def to_markdown(self, timestamp, section_data):
+    def to_markdown(self, timestamp, section_data, analysis=None):
         """section_data: list of (section_name, [md_lines])."""
         lines = []
         lines.append(f'# Doctor Report — {self.project} / {self.profile}')
@@ -64,6 +65,17 @@ class Report:
             for sl in sec_lines:
                 lines.append(sl)
             lines.append('```')
+            lines.append('')
+        if analysis:
+            lines.append('## Drift Analysis')
+            lines.append('')
+            lines.append(f'Verdict: {analysis["verdict"]}')
+            lines.append(f'Previous run: {analysis.get("previous_run_id") or "(first run)"}')
+            lines.append(f'Baseline changed: {analysis.get("baseline_changed", False)}')
+            lines.append(f'Git changed: {analysis.get("git_changed", False)}')
+            lines.append('')
+            for change in analysis.get('changes', []):
+                lines.append(f'- {change.get("classification")}: {change.get("subject")} ({change.get("type")}) — {change.get("reason")}')
             lines.append('')
         return '\n'.join(lines)
 

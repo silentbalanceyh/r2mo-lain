@@ -8,6 +8,11 @@ from mxt_doctor_signals import (
     get_tracked_files, collect_all_signals, detect_injected_vars,
 )
 from mxt_doctor_report import write_report
+from mxt_doctor_snapshot import (
+    ANALYSIS_FILENAME, SNAPSHOT_FILENAME, analysis_verdict, analyze_snapshots,
+    baseline_fingerprint, build_snapshot, collect_git_context, find_latest_snapshot,
+    load_json, write_json_atomic,
+)
 from mxt_doctor_parsers import parse_env_file, discover_env_files
 from mxt_doctor_extractors import extract_ports, derive_token_patterns, extract_interfaces
 
@@ -39,6 +44,8 @@ def scan(cwd='.', profile=None):
         return False
 
     project_name = os.path.basename(os.path.abspath(cwd))
+    git_context = collect_git_context(cwd)
+    fingerprint = baseline_fingerprint(cwd, profile)
     tracked_files = get_tracked_files(cwd)
     current_signals = collect_all_signals(tracked_files, config, profile)
     injected = detect_injected_vars(current_signals.get('meta-env', {}))
@@ -99,9 +106,32 @@ def scan(cwd='.', profile=None):
 
     from datetime import datetime
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    md = report.to_markdown(timestamp, section_data)
-    write_report(cwd, project_name, profile, md)
+    counts = {
+        'PASS': report.pass_count, 'FAIL': report.fail_count,
+        'WARN': report.warn_count, 'SKIP': report.skip_count,
+    }
+    snapshot = build_snapshot(cwd=cwd, profile=profile, counts=counts, baseline=fingerprint, git=git_context)
 
+    md = report.to_markdown(timestamp, section_data)
+    report_path = write_report(cwd, project_name, profile, md)
+    snapshot_path = os.path.join(os.path.dirname(report_path), SNAPSHOT_FILENAME)
+    write_json_atomic(snapshot_path, snapshot)
+
+    previous_path = find_latest_snapshot(cwd, profile, exclude_path=snapshot_path)
+    previous_snapshot = load_json(previous_path) if previous_path else None
+    analysis = analyze_snapshots(previous_snapshot, snapshot)
+    analysis['verdict'] = analysis_verdict(analysis)
+    analysis_path = os.path.join(os.path.dirname(report_path), ANALYSIS_FILENAME)
+    write_json_atomic(analysis_path, analysis)
+
+    report.analysis = analysis
+    md = report.to_markdown(timestamp, section_data, analysis)
+    with open(report_path, 'w', encoding='utf-8') as f:
+        f.write(md)
+
+    print(f'  Snapshot: {snapshot_path}')
+    print(f'  Analysis: {analysis_path}')
+    print(f'  Drift verdict: {analysis["verdict"]}')
     print(f'\n  PASS={report.pass_count}  FAIL={report.fail_count}  WARN={report.warn_count}  SKIP={report.skip_count}')
     return report.fail_count == 0
 

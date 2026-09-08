@@ -15,6 +15,18 @@
 
 两个会话不得共享上下文，禁止在同一会话内自我审查。会话之间每次通信只允许白名单工件：task/goon 文件、规则路径、变更文件清单、diff、验证命令与结果。
 
+## Host Runtime Contract
+
+- 先识别当前宿主；Codex 必须通过 `create_goal(objective, optional token_budget)` 成功开启 Goal，并在每个阶段用 `get_goal()` 校验、完成时用 `update_goal(status)` 标记 `complete`，真正受阻时标记 `blocked`。
+- Goal 生命周期为 `active → complete / blocked`；`create_goal` 失败必须停止，不允许静默降级。
+- Goal objective 必须绑定 `.r2mo/task/task-NNN.md`，并包含任务编号、任务目标和完成条件。
+- Claude Code 必须调用 `/loop` 作为长任务包装。
+- OpenCode 没有原生 Goal API，必须使用 Development/Review 独立会话，并依赖 task/goon 文件驱动。
+- Goal 只承担宿主长线运行，不复制任务状态；task/goon 仍是磁盘事实源，禁止 `loop-NNN.json`。
+- 完成条件：task 完成、END 审查通过、goon 整改项数量为 0。
+- 阻塞条件：连续两轮整改项数量不下降，或存在外部依赖阻塞。
+- 每个阶段前重新从磁盘读取 task/goon，不使用上一轮 END/GOON/loop 摘要或缓存决策。
+
 ## 适用场景
 
 - 任务边界清晰，希望自动推进完整闭环。

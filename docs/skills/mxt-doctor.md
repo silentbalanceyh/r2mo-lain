@@ -50,9 +50,10 @@ LLM 可以读取项目、理解意图，并**直接编辑 `.r2mo/doctor/<profile
 1. **项目分析**：`git ls-files`、项目类型识别、环境变量约定、配置文件约定、部署链路识别
 2. **生成与扫描**：保存已提交基线，执行 `mxt doctor --gen<profile>` + `mxt doctor --profile <profile>`
 3. **差异分析**：对比已提交基线与新生成结果，分类差异（预期漂移 / 脚本缺口 / 分类错误 / 缺失信号 / 过期条目）
-4. **智能矫正**：直接编辑 `.r2mo/doctor/<profile>/*.conf` 文件
-5. **重扫验证**：再次执行 `mxt doctor --profile <profile>`，确认收敛（最多 3 轮迭代）
-6. **输出报告**：矫正前后对比、修复项清单、收敛状态
+4. **快照归因**：读取 `snapshot.json` 与 `analysis.json`，复核漂移分类
+5. **智能矫正**：直接编辑 `.r2mo/doctor/<profile>/*.conf` 文件
+6. **重扫验证**：再次执行 `mxt doctor --profile <profile>`，确认扫描与漂移结论收敛（最多 3 轮迭代）
+7. **输出报告**：矫正前后对比、修复项清单、漂移归因、收敛状态
 
 ## 9 个检查维度
 
@@ -90,6 +91,8 @@ LLM 可以按需升级或降级单个条目的锁定模式，支持项目持续�
 
 - `.r2mo/doctor/<profile>/*.conf` 文件（矫正后的基线配置）
 - `.r2mo/doctor/config.json`（元数据）
+- `.r2mo/verify/doctor/<run>/snapshot.json`（结构化审计快照）
+- `.r2mo/verify/doctor/<run>/analysis.json`（漂移归因结果）
 - 标准化矫正报告（打印到终端）
 
 ## 闭环契约

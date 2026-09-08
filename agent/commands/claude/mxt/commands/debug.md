@@ -35,10 +35,11 @@ The user invoked this command with: $ARGUMENTS
 
 ## Output Targets
 
-Two outputs per debug run:
+Three outputs per debug run:
 
 1. **Goon (remediation handoff)** — `<GOON_PATH>` = `.r2mo/task/goon-NNN.md`: current remediation items so `/mxt:goon <number>` can execute the fix directly.
 2. **Bug archive (appended output)** — `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md`: a full record of **Problem**, **Diagnostics**, and **Solution**. The `<yyyy-MM-dd>` directory is created if absent; one directory per calendar day. Use the current date (timezone-aware) for the directory, and current time for the filename. Derive `<slug>` from the bug description (lowercase, hyphen-separated, max 40 chars).
+3. **Issue inventory** — `.r2mo/bugs/<yyyy-MM-dd>/index.md`: the current day's issue list. Create it if absent.
 
 ## Closed-Loop Contract
 
@@ -49,6 +50,23 @@ Two outputs per debug run:
 - **Handoff must continue the loop.** Linked tasks proceed to `mxt-goon NNN`; independent bugs retain the bug archive and can be linked to a task later.
 - **Boundary.** Do not modify production source while diagnosing unless the user explicitly authorizes a fix. The debug output is diagnosis and remediation handoff, not an implementation report.
 - **Closure evidence.** A bug is closed only after the stated verification method passes and the fix result is recorded. A diagnosis alone is not closure.
+
+## Issue Inventory Contract
+
+Every diagnosis must append or update one bug entry in `.r2mo/bugs/<yyyy-MM-dd>/index.md`. A diagnosis without an inventory entry is incomplete.
+
+- Create the daily `index.md` if absent.
+- Each inventory row uses the exact format:
+
+```md
+- [status] BUG-<HHmmss>-<slug> | severity | title | related-task | report
+```
+
+- `status` is `Open`, `Investigating`, `Fixed`, or `Closed`.
+- If the root cause is unknown, status may be `Open` or `Investigating`.
+- Duplicate bugs must update the existing entry and report path rather than adding a second row.
+- Always read `index.md` from disk and append/update it after writing the individual report.
+- Inventory is an issue list, not a cache; it does not replace fresh diagnosis or task/goon state.
 
 ## Workflow
 
@@ -66,7 +84,8 @@ Two outputs per debug run:
 6. **Worktree isolation**: If `Worktree` directive detected, execute investigation in a Worktree under `.r2mo/worktrees/`.
 7. Generate a `DEBUG Report` and write to `<GOON_PATH>` so `/mxt:goon <number>` can execute remediation directly.
 8. **Bug archive (appended output)**: Generate a `Bug Report` and write to `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md` recording Problem, Diagnostics, and Solution. Create the dated directory if it does not exist. Do not overwrite existing bug files in the same directory — append a sequence suffix if a name collision occurs.
-9. Before writing each output, declare `📌 Write-back check:` with the target path and confirm it matches the intended destination.
+9. **Issue inventory (mandatory)**: Create or update `.r2mo/bugs/<yyyy-MM-dd>/index.md`. Every diagnosis appends or updates one row in the exact issue-list format above. If the same bug already exists, update its status and keep the original report link. This output is required; diagnosis-only output is incomplete.
+10. Before writing each output, declare `📌 Write-back check:` with the target path and confirm it matches the intended destination.
 
 ## DEBUG Report
 
@@ -159,4 +178,4 @@ related-task: <NNN or none>
 
 ## Verification
 
-Report: investigation conclusion, whether superpowers diagnosis was invoked, root cause found, fix suggestions, confirmation that the `DEBUG Report` was written to `<GOON_PATH>`, and confirmation that the `Bug Report` was archived to `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md`.
+Report: investigation conclusion, whether superpowers diagnosis was invoked, root cause found, fix suggestions, confirmation that the `DEBUG Report` was written to `<GOON_PATH>`, and confirmation that the `Bug Report` was archived to `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md`, and confirmation that the issue inventory row was written to `.r2mo/bugs/<yyyy-MM-dd>/index.md`.

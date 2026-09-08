@@ -42,9 +42,10 @@ Follow the full workflow in `skills/mxt-doctor/SKILL.md`. Core loop:
 1. Analyze project characteristics (git ls-files, project type, env conventions, deploy chain)
 2. Save committed baseline, then run `mxt doctor --gen<profile>` + `mxt doctor --profile <profile>`
 3. Diff committed vs fresh baseline, categorize discrepancies
-4. **Directly remediate `.r2mo/doctor/<profile>/*.conf` files** based on findings (all 9 dimensions: file-list, file-hash, file-oob, meta-env, meta-deps, meta-tokens, meta-ports, code-interfaces, code-idempotency)
-5. Re-scan to verify convergence (iterate up to 3 rounds)
-6. Output remediation report
+4. Read the generated `snapshot.json` and `analysis.json`, then validate the drift classification
+5. **Directly remediate `.r2mo/doctor/<profile>/*.conf` files** based on findings (all 9 dimensions: file-list, file-hash, file-oob, meta-env, meta-deps, meta-tokens, meta-ports, code-interfaces, code-idempotency)
+6. Re-scan to verify scan and drift-analysis convergence (iterate up to 3 rounds)
+7. Output remediation report
 
 ## What this skill CAN do
 

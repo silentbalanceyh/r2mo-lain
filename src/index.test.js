@@ -796,6 +796,127 @@ const testAiCmdClaudeInstallWritesHostPluginState = async () => {
     });
 };
 
+const testAiCmdValidatesCrossPlatformInstallTargets = async () => {
+    const aiCmd = require('./utils/mxt-ai-cmd');
+
+    await _withTempDir(async (homeDir) => {
+        const originalPlatform = process.platform;
+        const originalAppdata = process.env.APPDATA;
+        const originalHomedir = os.homedir;
+        Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+        os.homedir = () => homeDir;
+        process.env.APPDATA = path.join(homeDir, 'AppData', 'Roaming');
+        try {
+            const installed = await aiCmd.installPlatforms('all', { homeDir });
+
+            assert.deepStrictEqual(installed.map((item) => item.id), ['claude', 'codex', 'opencode']);
+            assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', 'commands', 'loop.md')), true);
+            assert.strictEqual(await _exists(homeDir, path.join('.claude', 'plugins', 'marketplaces', 'mxt-skills', 'commands', 'loop.md')), true);
+            assert.strictEqual(await _exists(homeDir, path.join('.codex', 'plugins', 'mxt', 'commands', 'loop.md')), true);
+            assert.strictEqual(await _exists(homeDir, path.join('.codex', 'plugins', 'mxt', 'skills', 'mxt-loop', 'SKILL.md')), true);
+            assert.strictEqual(await _exists(homeDir, path.join('.codex', 'plugins', 'cache', 'mxt-skills', 'mxt', '1.0.0', 'commands', 'loop.md')), true);
+            assert.strictEqual(await _exists(homeDir, path.join('.codex', 'marketplaces', 'mxt-skills', 'plugins', 'mxt', 'skills', 'mxt-loop', 'SKILL.md')), true);
+            assert.strictEqual(await _exists(homeDir, path.join('.codex', 'prompts', 'mxt-loop.md')), true);
+
+            const configPath = path.join(homeDir, 'AppData', 'Roaming', 'opencode', 'opencode.json');
+            const config = JSON.parse(await fs.readFile(configPath, 'utf8'));
+            assert.ok(config.command['mxt:loop']);
+            assert.ok(config.command['mxt:end']);
+            assert.ok(config.command['mxt:goon']);
+            assert.ok(config.command['mxt:debug']);
+            assert.match(config.command['mxt:loop'].template, /## Host Runtime Contract/);
+        } finally {
+            Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+            os.homedir = originalHomedir;
+            if (originalAppdata === undefined) delete process.env.APPDATA;
+            else process.env.APPDATA = originalAppdata;
+        }
+    });
+};
+
+const testAiCmdInstallReportsActionablePlatformErrors = async () => {
+    const aiCmd = require('./utils/mxt-ai-cmd');
+
+    await _withTempDir(async (homeDir) => {
+        await assert.rejects(
+            () => aiCmd.installPlatforms('unknown-platform', { homeDir }),
+            (error) => {
+                assert.strictEqual(error.code, 'MXT_INVALID_PLATFORM');
+                assert.match(error.message, /不支持的平台: unknown-platform/);
+                assert.deepStrictEqual(error.platformIds, ['unknown-platform']);
+                return true;
+            }
+        );
+
+        const platform = aiCmd.listPlatforms().find((item) => item.id === 'claude');
+        const blocked = path.join(homeDir, '.claude', 'plugins', 'cache');
+        await fs.mkdir(path.dirname(blocked), { recursive: true });
+        await fs.writeFile(blocked, 'blocked-by-file', 'utf8');
+
+        await assert.rejects(
+            () => aiCmd.installPlatforms(['claude'], { homeDir }),
+            (error) => {
+                assert.strictEqual(error.code, 'ENOTDIR');
+                assert.match(error.message, /安装 Claude Code 配置失败/);
+                assert.match(error.message, /target=.*mxt-skills/);
+                assert.match(error.message, /建议:/);
+                assert.strictEqual(error.platformId, 'claude');
+                return true;
+            }
+        );
+    });
+};
+
+const testHelpExecutorHandlesMetadataFailureSafely = async () => {
+    const helpFile = path.resolve(__dirname, 'executor', 'executeHelp.js');
+    const originalLoad = Module._load;
+    const originalExit = process.exit;
+    const originalLog = console.log;
+    const originalError = console.error;
+    const outputs = [];
+
+    Module._load = function (request, parent, isMain) {
+        if (request === '../epic') {
+            return {
+                parseArgument: () => ({}),
+                parseMetadata: () => { throw new Error('metadata read failed'); },
+                error: (message) => outputs.push(`error:${message}`)
+            };
+        }
+        return originalLoad.call(this, request, parent, isMain);
+    };
+    process.exit = (code) => {
+        throw new Error(`EXIT:${code}`);
+    };
+    console.log = (value) => outputs.push(String(value));
+    console.error = (value) => outputs.push(String(value));
+
+    try {
+        delete require.cache[helpFile];
+        const executeHelp = require(helpFile);
+        executeHelp();
+        throw new Error('help executor should exit');
+    } catch (error) {
+        assert.match(error.message, /^EXIT:1$/);
+        assert.deepStrictEqual(outputs, ['error:metadata read failed']);
+    } finally {
+        delete require.cache[helpFile];
+        Module._load = originalLoad;
+        process.exit = originalExit;
+        console.log = originalLog;
+        console.error = originalError;
+    }
+};
+
+const testAiCmdUsesWindowsSafeCommandExecution = async () => {
+    const source = await fs.readFile(path.resolve(__dirname, 'utils/mxt-ai-cmd.js'), 'utf8');
+    const spawnCalls = [...source.matchAll(/spawnSync\(([^;]+)\);/gs)].length;
+    assert.ok(spawnCalls > 0);
+    assert.strictEqual(/shell\s*:\s*true/.test(source), false);
+    assert.strictEqual(/shell\s*:/.test(source), false);
+    assert.strictEqual(source.includes("const lookup = isWindows ? 'where.exe' : 'which'"), true);
+};
+
 const testDebugCommandsRequireGoonDebugReport = async () => {
     const files = [
         path.join('agent', 'commands', 'claude', 'mxt', 'commands', 'debug.md'),
@@ -996,6 +1117,98 @@ const testEndCommandsConstrainAcceptanceDepth = async () => {
     }
 };
 
+const testLoopCommandsRequireHostAwareLongRunningContract = async () => {
+    const files = [
+        'agent/commands/claude/mxt/commands/loop.md',
+        'agent/commands/opencode/mxt/commands/loop.md',
+        'agent/commands/codex/mxt/commands/loop.md',
+        'agent/commands/codex/mxt/skills/mxt-loop/SKILL.md'
+    ];
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /## Host Runtime Contract/);
+        assert.match(content, /Detect the current host first/);
+        assert.match(content, /create_goal\(objective, optional token_budget\)/);
+        assert.match(content, /get_goal\(\)/);
+        assert.match(content, /update_goal\(status\)/);
+        assert.match(content, /Goal lifecycle: active → complete \/ blocked/);
+        assert.match(content, /If `create_goal` fails, stop/);
+        assert.match(content, /Do not silently downgrade/);
+        assert.match(content, /invoke `\/loop`/);
+        assert.match(content, /OpenCode has no native Goal API/);
+        assert.match(content, /Development\/Review independent sessions/);
+        assert.match(content, /task-NNN\.md and goon-NNN\.md remain disk state/);
+        assert.match(content, /No `loop-NNN\.json`/);
+        assert.match(content, /Goal complete condition/);
+        assert.match(content, /goon remediation item count is zero/);
+        assert.match(content, /Goal blocked condition/);
+        assert.match(content, /two consecutive rounds without an item-count decrease/);
+        assert.match(content, /external dependency blocker/);
+        assert.match(content, /Re-read task\/goon from disk before every phase/);
+        assert.match(content, /Do not use previous END, GOON, loop summaries, or cached decisions/);
+    }
+};
+
+const testEndCommandsRequireFreshContext = async () => {
+    const files = [
+        'agent/commands/claude/mxt/commands/end.md',
+        'agent/commands/opencode/mxt/commands/end.md',
+        'agent/commands/codex/mxt/commands/end.md',
+        'agent/commands/codex/mxt/skills/mxt-end/SKILL.md'
+    ];
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /## Fresh Context Contract/);
+        assert.match(content, /re-read `task-NNN\.md` from disk/);
+        assert.match(content, /read `goon-NNN\.md` from disk if it exists/);
+        assert.match(content, /Build the changed-file inventory directly from `git diff` and `git status`/);
+        assert.match(content, /previous END, GOON, or loop summaries/);
+        assert.match(content, /cached analysis, cached diff, or cached verification results/);
+        assert.match(content, /Print fresh-read evidence before review/);
+        assert.match(content, /3-Layer Verification Protocol/);
+    }
+};
+
+const testGoonCommandsRequireFreshSoleInput = async () => {
+    const files = [
+        'agent/commands/claude/mxt/commands/goon.md',
+        'agent/commands/opencode/mxt/commands/goon.md',
+        'agent/commands/codex/mxt/commands/goon.md',
+        'agent/commands/codex/mxt/skills/mxt-goon/SKILL.md'
+    ];
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /## Fresh Input Contract/);
+        assert.match(content, /Re-read `goon-NNN\.md` from disk before every remediation round/);
+        assert.match(content, /freshly read goon is the sole remediation input/);
+        assert.match(content, /Previous goon content, conversation summaries, and cached decisions are forbidden/);
+        assert.match(content, /Only current unresolved items may remain/);
+        assert.match(content, /Verification command/);
+        assert.match(content, /Actual result \/ exit code/);
+    }
+};
+
+const testDebugCommandsRequireIssueInventory = async () => {
+    const files = [
+        'agent/commands/claude/mxt/commands/debug.md',
+        'agent/commands/opencode/mxt/commands/debug.md',
+        'agent/commands/codex/mxt/commands/debug.md',
+        'agent/commands/codex/mxt/skills/mxt-debug/SKILL.md'
+    ];
+    for (const file of files) {
+        const content = await fs.readFile(path.resolve(__dirname, '..', file), 'utf8');
+        assert.match(content, /\.r2mo\/bugs\/<yyyy-MM-dd>\/index\.md/);
+        assert.match(content, /Issue Inventory Contract/);
+        assert.match(content, /Every diagnosis must append or update one bug entry/);
+        assert.match(content, /A diagnosis without an inventory entry is incomplete/);
+        assert.match(content, /- \[status\] BUG-<HHmmss>-<slug> \| severity \| title \| related-task \| report/);
+        assert.match(content, /status may be `Open` or `Investigating`/);
+        assert.match(content, /Duplicate bugs must update the existing entry/);
+        assert.match(content, /read `index\.md` from disk and append/);
+        assert.match(content, /Inventory is an issue list, not a cache/);
+    }
+};
+
 const testAiCmdPromptsUseEnglishFirstHarness = async () => {
     const files = [
         ...['claude', 'codex', 'opencode'].flatMap((platform) => (
@@ -1032,6 +1245,10 @@ const main = async () => {
     await testAiCmdReinstallRefreshesPlatforms();
     await testAiCmdOpenCodePreservesJsonStringCommentMarkers();
     await testAiCmdClaudeInstallWritesHostPluginState();
+    await testAiCmdValidatesCrossPlatformInstallTargets();
+    await testAiCmdInstallReportsActionablePlatformErrors();
+    await testHelpExecutorHandlesMetadataFailureSafely();
+    await testAiCmdUsesWindowsSafeCommandExecution();
     await testDebugCommandsRequireGoonDebugReport();
     await testAiCmdAllSkillsEnforceClosedLoopContracts();
     await testAiCmdAllSkillsUseSharedPromptBodies();
@@ -1042,6 +1259,10 @@ const main = async () => {
     await testLoopRemediationItemsMustBeActionableAcrossRounds();
     await testGoonCommandsForceFreshDiskLoad();
     await testEndCommandsConstrainAcceptanceDepth();
+    await testLoopCommandsRequireHostAwareLongRunningContract();
+    await testEndCommandsRequireFreshContext();
+    await testGoonCommandsRequireFreshSoleInput();
+    await testDebugCommandsRequireIssueInventory();
     await testAiCmdPromptsUseEnglishFirstHarness();
     console.log('task tests passed');
 };

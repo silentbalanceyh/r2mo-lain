@@ -22,6 +22,17 @@
 
 - `.r2mo/task/goon-NNN.md`：如果绑定任务，写入整改交接。
 - `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md`：归档问题、证据、方案。
+- `.r2mo/bugs/<yyyy-MM-dd>/index.md`：当日问题清单，诊断必须新增或更新一行。
+
+## Issue Inventory Contract
+
+- 每次诊断必须在 `.r2mo/bugs/<yyyy-MM-dd>/index.md` 中新增或更新一条 bug 记录。
+- 没有 inventory 记录的诊断结果不完整。
+- 每行必须使用格式：`- [status] BUG-<HHmmss>-<slug> | severity | title | related-task | report`。
+- status 可为 `Open`、`Investigating`、`Fixed` 或 `Closed`；根因未知时可保持 `Open` 或 `Investigating`。
+- 重复 bug 必须更新既有条目和报告路径，不能重复插入一行。
+- 每次都从磁盘读取 `index.md` 并追加/更新；清单是问题索引，不是缓存。
+- 单个 Bug Report 仍必须包含验证方法。
 
 ## 闭环契约
 

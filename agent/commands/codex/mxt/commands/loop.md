@@ -21,6 +21,28 @@ Binding execution contract for all MXT commands across Claude Code, Codex, and O
 
 Execute `RUN → VERIFY → END → [GOON → VERIFY → END_REVIEW]` — only enter the remediation loop when review produces items. Argument: `$ARGUMENTS`.
 
+## Host Runtime Contract
+
+Detect the current host first. Long-running behavior must use the host's native mechanism instead of silently falling back to a short conversation.
+
+- **Codex**: Enable a Goal before executing the task loop.
+  1. Call `create_goal(objective, optional token_budget)`. If `create_goal` fails, stop and report the failure. Do not silently downgrade to a normal loop.
+  2. The objective must bind to `.r2mo/task/task-NNN.md` and include the task number, task goal, and completion criteria.
+  3. Call `get_goal()` before each phase transition to verify the Goal remains active.
+  4. On completion, call `update_goal(status)` with `complete`.
+  5. On a genuine impasse, call `update_goal(status)` with `blocked`.
+  6. Goal lifecycle: active → complete / blocked. Do not create duplicate Goals for one task.
+
+- **Claude Code**: invoke `/loop` as the long-running wrapper. Maintain the task/goon disk artifacts as the source of truth inside that loop.
+
+- **OpenCode**: OpenCode has no native Goal API. Use Development/Review independent sessions, and derive long-running behavior from the task/goon files.
+
+Goal owns host persistence, not a duplicate task state. task-NNN.md and goon-NNN.md remain disk state. Do not create `loop-NNN.json` or another Goal-side state file.
+
+- **Goal complete condition**: task completed, END review passed, and goon remediation item count is zero.
+- **Goal blocked condition**: two consecutive rounds without an item-count decrease, or an external dependency blocker.
+- **No cache**: Re-read task/goon from disk before every phase. Do not use previous END, GOON, loop summaries, or cached decisions.
+
 ## Session Isolation Contract
 
 必须开启两个独立会话：Development session（RUN/GOON）与 Review session（END/END_REVIEW）。

@@ -56,9 +56,10 @@ This ensures AI can freely write and modify source code, add routes, evolve sche
 2. **Runs `mxt doctor --profile <profile>`** to get current scan status (PASS/FAIL/WARN/SKIP)
 3. **Analyzes project characteristics** — reads source files, env files, deploy scripts, config files to understand the project's actual structure and conventions
 4. **Diffs committed baseline vs fresh generate** — identifies what changed and why
-5. **Remediates `.r2mo/doctor/<profile>/*.conf` files directly** — fixes misclassifications, removes redundancies, adds missing `@optional` / `!forbidden` markers, adjusts env template/real/secrets classification
-6. **Re-runs `mxt doctor --profile <profile>`** after remediation to verify convergence
-7. **Iterates** until scan shows 0 FAIL or remaining FAILs are all real drifts (not metadata issues)
+5. **Reads the structured audit artifacts** — `snapshot.json` and `analysis.json`; validates `NORMAL_EXPECTED` / `ABNORMAL_DRIFT` / `UNCLASSIFIED` against project evidence
+6. **Remediates `.r2mo/doctor/<profile>/*.conf` files directly** — fixes misclassifications, removes redundancies, adds missing `@optional` / `!forbidden` markers, adjusts env template/real/secrets classification
+7. **Re-runs `mxt doctor --profile <profile>`** after remediation to verify scan and drift-analysis convergence
+8. **Iterates** until scan shows 0 FAIL or remaining FAILs are all real drifts (not metadata issues)
 
 ## Arguments
 

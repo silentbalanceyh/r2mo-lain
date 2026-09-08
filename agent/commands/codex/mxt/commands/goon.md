@@ -48,6 +48,15 @@ The user invoked this command with: $ARGUMENTS
 - **Verification boundary.** Re-run affected runtime tests, targeted tests, and necessary quality gates. Do not repeat unrelated green gates.
 - **Loop completion.** Zero items closes the current queue; otherwise the next independent `mxt-end NNN` decides whether items are resolved.
 
+## Fresh Input Contract
+
+- Re-read `goon-NNN.md` from disk before every remediation round.
+- The freshly read goon is the sole remediation input.
+- Previous goon content, conversation summaries, and cached decisions are forbidden.
+- Only current unresolved items may remain after write-back.
+- Each remediation item must record fixed files, fix approach, targeted Verification command, and Actual result / exit code.
+- Resolved item closure evidence moves to task `## Changes`; unresolved items are re-emitted without historical explanations.
+
 ## Workflow
 
 1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).

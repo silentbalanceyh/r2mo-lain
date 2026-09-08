@@ -19,6 +19,14 @@
 | Codex | `$mxt-*` | `agent/commands/codex/mxt` | `~/.codex/plugins/mxt`、`~/.codex/plugins/cache/mxt-skills/mxt/1.0.0`、`~/.codex/marketplaces/mxt-skills` |
 | OpenCode | `/mxt:*` | `agent/commands/opencode/mxt` | `~/.config/opencode/opencode.json`（Windows 为 `%APPDATA%\opencode\opencode.json`） |
 
+## 跨平台安装规则
+
+- macOS / Linux：Claude Code 和 Codex 使用 `$HOME/.claude` / `$HOME/.codex`；OpenCode 使用 `$HOME/.config/opencode/opencode.json`。
+- Windows：Claude Code 和 Codex 使用 `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex`；OpenCode 使用 `%USERPROFILE%\AppData\Roaming\opencode\opencode.json`。
+- Windows 仅当 `APPDATA` 属于当前有效用户主目录时才采用；否则按用户主目录推导，避免重定向环境写入错误位置。
+- 每个平台先清理旧安装，再写入新的命令、Skill、marketplace 和配置状态。
+- 未知平台、目标路径冲突、权限不足、Windows 文件占用、路径类型错误等都会返回可行动的错误信息，而不是裸异常。
+
 ## 配置信息
 
 | 平台 | 配置文件 | 写入内容 | 验证方式 |

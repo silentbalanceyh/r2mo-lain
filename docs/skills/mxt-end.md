@@ -23,6 +23,16 @@
 - `.r2mo/task/goon-NNN.md`。
 - 不会修改 task 的 Changes。无整改项时写成空/无待办状态。
 
+## Fresh Context Contract
+
+- 验收前必须从磁盘重新读取 `task-NNN.md`。
+- 如果存在 `goon-NNN.md`，也必须从磁盘读取。
+- 直接用 `git diff` 和 `git status` 构建变更文件清单，不继承旧清单。
+- 不使用上一次 END、GOON 或 loop 摘要。
+- 不使用缓存分析、缓存 diff 或缓存验证结果。
+- 审查前输出 fresh-read 证据：task/goon 读取来源或命令来源，以及当前变更清单来源。
+- `mxt-end` 只写 `goon-NNN.md`，不修改 task 的 `## Changes`。
+
 ## 内容匹配验证（强制 — 不可跳过）
 
 最常见的验证失败是只检查 Changes 条目**是否存在**（文件被改过、函数被加了），而不验证变更的**实际内容**是否**匹配任务需求**。存在 ≠ 正确。

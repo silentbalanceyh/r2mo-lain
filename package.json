@@ -1,12 +1,24 @@
 {
     "name": "r2mo-ai",
-    "version": "1.0.118",
+    "version": "1.0.119",
     "description": "Rachel MXT ( OpenSpec )",
     "main": "src/mxt.js",
     "bin": {
         "mxt": "src/mxt.js",
         "lain": "src/lain.js"
     },
+    "files": [
+        "src/**/*",
+        "!src/index.test.js",
+        "agent/commands",
+        "docs",
+        "skills",
+        "scripts",
+        "install.sh",
+        "install.bat",
+        "README.md",
+        "LICENSE"
+    ],
     "scripts": {
         "test": "node src/index.test.js",
         "validate:commands": "node scripts/validate-commands.js",
