@@ -52,13 +52,13 @@ mxt help
 npm uninstall -g r2mo-ai
 ```
 
-> Windows 提示：安装或卸载 `mxt ai-cmd` 前请关闭 Claude Code / Codex / OpenCode，避免文件锁定导致 `EPERM` 或 `EBUSY`。
+> Windows 提示：安装或卸载 `mxt ai-cmd` 前请关闭 Claude Code / Codex / OpenCode / Pi Agent，避免文件锁定导致 `EPERM` 或 `EBUSY`。
 
 ---
 
 ## 核心功能
 
-`r2mo-ai` 是 `SDD - Spec Driven Development` 命令行工具，命令名为 `mxt`。它面向 R2MO / MXT 工作流，提供项目初始化、规范文档、OpenAPI 提取、代码生成辅助、Obsidian 文档打开，以及 Claude Code / Codex / OpenCode 的 AI 命令安装与闭环执行提示词。
+`r2mo-ai` 是 `SDD - Spec Driven Development` 命令行工具，命令名为 `mxt`。它面向 R2MO / MXT 工作流，提供项目初始化、规范文档、OpenAPI 提取、代码生成辅助、Obsidian 文档打开，以及 Claude Code / Codex / OpenCode / Pi Agent 的 AI 命令安装与闭环执行提示词。
 
 本教程按 `task-001` 的结构拆分：README 只保留入口教程、保留图和闭环图、保留索引；`docs/command/` 汇总 `mxt xxx` commands；`docs/skills/` 汇总 `mxt-*` Skills；具体命令和 Skill 细节只放到子文档。
 
@@ -106,11 +106,22 @@ flowchart TD
 
 ### 发布
 
+发布拆成两个阶段，两个脚本都**不接受任何参数**：直接运行，全部动作自动完成；传任何参数都会报错退出。
+
 ```bash
-./publish.sh "release: update docs"
+./npm-login.sh    # 1) 鉴权：已登录只报告，未登录则起 npm 自己的登录流程
+./npm-publish.sh  # 2) 自动定版本 → 发布到 npm 官方源 → 追加 git 全量提交并推送
 ```
 
-脚本会执行版本号更新、npm 发布、git 提交和推送。发布前请确认已登录 npm、拥有包权限，并且工作区只包含本次发布内容。
+- **浏览器那一步始终由你完成**：脚本不代开窗口、不代点确认。npm 需要什么（登录页 URL、一次性验证码、2FA 授权）就打印出来，然后等你操作；你完成之后脚本自己校验结果。
+- **鉴权先于任何写入**：登录没成功，工作树和 registry 零副作用。
+- 版本策略自动判断：当前版本还没发布过就按原样发布（首次发布），已经发布过就自动 patch +1。`npm-publish.sh` 自己会先调用 `npm-login.sh`，所以单独跑第 2 步也安全。
+- 发布成功后（仅当本次全部包都成功）以 `chore(release): r2mo-ai <版本>` 全量提交当前仓库（`git add -A`，版本升级一并进提交）并推送到上游。发布失败则不提交，改完再跑同一条命令即可。
+- 两个脚本都会检测内网镜像：命中镜像就把 `registry.npmjs.org` 走公共 DNS 隧道打到官方源；登录前还会核对「registry 会把哪个登录页交给浏览器」，如果答案是 npmmirror 自己的会话页就直接中止，绝不把浏览器送过去。
+- `package.json` 已用 `publishConfig.registry` 钉死官方源，即使裸跑 `npm publish` 也不会落到镜像。
+- 无终端的环境（CI）自动读取 `$NPM_TOKEN`；有终端的交互运行永远走登录页，不会误用环境里的旧 token。
+
+旧的一体式 `publish.sh` 已退役：版本 + 发布 + git 提交推送三件事，现在由上面两个阶段完成。
 
 ## 参考链接
 

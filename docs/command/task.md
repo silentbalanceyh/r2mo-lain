@@ -2,7 +2,7 @@
 
 ## 用途
 
-按项目根/.r2mo 下的 task/thread 对齐 task 槽位；thread 缺失时默认 20，满队列时交互选择转历史任务
+按项目根/.r2mo 下的 task/thread 对齐 task 槽位；thread 缺失时默认 30，满队列时交互选择转历史任务
 
 ## 参数
 
@@ -21,7 +21,7 @@ $ cd "$WORK_DIR"
 $ node "$REPO/src/mxt.js" help -c task
 [MXT AI] SDD / Spec Driven Development ...
 
-按项目根/.r2mo 下的 task/thread 对齐 task 槽位；thread 缺失时默认 20，满队列时交互选择转历史任务
+按项目根/.r2mo 下的 task/thread 对齐 task 槽位；thread 缺失时默认 30，满队列时交互选择转历史任务
 
 Usage:
 mxt task [options]

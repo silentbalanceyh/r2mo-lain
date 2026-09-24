@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const Ec = require('../epic');
 const Args = require('../utils/mxt-args');
+const TaskDb = require('../utils/mxt-task-db');
 
 const _getProjectName = async (basePath) => {
     try {
@@ -46,18 +47,30 @@ const SPEC_DIRS = [
     [".r2mo/requirements/modules/", "模块需求，下挂 modules/{id}/proposal.md"],
     [".r2mo/pages/", "页面需求与设计，下挂 pages/{id}/proposal.md、spec.md、*.html"],
     [".r2mo/design/", "全局设计规范（spec.md、模版 spec-page.md）"],
+    [".r2mo/planning/", "SWE LifeCycle · 规划"],
+    [".r2mo/development/", "SWE LifeCycle · 开发"],
+    [".r2mo/testing/", "SWE LifeCycle · 测试"],
+    [".r2mo/maintenance/", "SWE LifeCycle · 维护"],
     [".r2mo/domain/", "数据模型 · Protobuf 3（*.proto）"],
     [".r2mo/api/", "API 规范根目录"],
     [".r2mo/api/components/schemas/", "数据模型 · OpenAPI"],
-    [".r2mo/api/operations/", "接口规范 · OpenAPI（{uri}/*.md）"]
+    [".r2mo/api/operations/", "接口规范 · OpenAPI（{uri}/*.md）"],
+    [".r2mo/workflow/", "SWE LifeCycle · 工作流"],
+    [".r2mo/task/", "SWE Work Item 任务"]
 ];
 
 /** @returns {Array<[string,string]>} 实际创建的目录列表 [path, desc] */
 const _ioDirectory = async (baseDir) => {
     const created = [];
     for (const [folder, desc] of SPEC_DIRS) {
-        Ec.waiting(`创建目录: ${folder}  → ${desc}`);
         const directory = path.resolve(baseDir, folder);
+        const directoryExists = await fs.access(directory).then(() => true).catch(() => false);
+        if (directoryExists) {
+            Ec.waiting(`目录已存在，保留: ${folder}`);
+            continue;
+        }
+
+        Ec.waiting(`创建目录: ${folder}  → ${desc}`);
         try {
             await fs.mkdir(directory, { recursive: true });
             created.push([folder, desc]);
@@ -116,7 +129,10 @@ const _copyTemplates = async (targetDir) => {
                                 continue;
                             }
                         }
-                        // 除 project.md、design/spec.md 外，其他路径直接覆盖（模版优先）
+                        if (fileExists) {
+                            Ec.waiting(`  跳过（已存在）: ${relPath}`);
+                            continue;
+                        }
 
                         const content = await fs.readFile(sourceFile, 'utf8');
                         await fs.writeFile(targetFile, content, 'utf8');
@@ -228,15 +244,18 @@ module.exports = (options) => {
                 }
 
                 const createdDirs = await _ioDirectory(targetDir);
-                return { targetDir, createdDirs };
+                const taskDatabase = await TaskDb.ensureTaskDatabase(targetDir);
+                return { targetDir, createdDirs, taskDatabase };
             })
             .then(async (result) => {
                 if (previewOnly) return;
-                const { targetDir, createdDirs } = result;
+                const { targetDir, createdDirs, taskDatabase } = result;
                 const copiedFiles = await _copyTemplates(targetDir);
 
                 Ec.info('✅ R2MO 规范目录初始化完成！');
                 _printCreatedResult(targetDir, createdDirs, copiedFiles);
+                Ec.waiting(`任务数据库: ${path.relative(targetDir, taskDatabase.databasePath)}`);
+                Ec.waiting(`项目标记文件: ${path.relative(targetDir, taskDatabase.notePath)}`);
                 process.exit(0);
             })
             .catch((error) => {

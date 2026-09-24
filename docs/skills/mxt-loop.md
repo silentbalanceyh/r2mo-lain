@@ -18,7 +18,8 @@
 ## Host Runtime Contract
 
 - 先识别当前宿主；Codex 必须通过 `create_goal(objective, optional token_budget)` 成功开启 Goal，并在每个阶段用 `get_goal()` 校验、完成时用 `update_goal(status)` 标记 `complete`，真正受阻时标记 `blocked`。
-- Goal 生命周期为 `active → complete / blocked`；`create_goal` 失败必须停止，不允许静默降级。
+- Pi Agent 没有 `create_goal` 工具，必须用 pi-subagents 的 goal mission：`subagent({ action: "mission.create", mission: { title, objective, goal: true, budget: { tokens: N } } })`，每个阶段用 `mission.show` / `mission.list` 校验并读取 `state.nextReadyAction`，完成时 `mission.close`，受阻时 `mission.update` 加 `{ goal: { paused: true } }`；mission 创建失败必须停止，不允许静默降级。
+- Goal / mission 生命周期为 `active → complete / blocked`（Pi 为 `active → paused / budget-exhausted / closed`）；创建失败必须停止，不允许静默降级。
 - Goal objective 必须绑定 `.r2mo/task/task-NNN.md`，并包含任务编号、任务目标和完成条件。
 - Claude Code 必须调用 `/loop` 作为长任务包装。
 - OpenCode 没有原生 Goal API，必须使用 Development/Review 独立会话，并依赖 task/goon 文件驱动。

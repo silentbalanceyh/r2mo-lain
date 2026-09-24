@@ -1,0 +1,51 @@
+{
+  "name": "r2mopi-markdownrender",
+  "version": "0.1.0",
+  "description": "Markdown report rendering for the Pi coding agent: heading levels, report icons, status-symbol colors, skill links, and a gold Working spinner.",
+  "keywords": [
+    "pi-package",
+    "r2mopi",
+    "pi",
+    "pi-coding-agent",
+    "markdown",
+    "theme",
+    "report",
+    "extension"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "lang.yu",
+    "email": "silentbalanceyh@126.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitee.com/silentbalanceyh/r2mo-lain.git",
+    "directory": "plugins/pi/r2mopi-markdownrender"
+  },
+  "homepage": "https://gitee.com/silentbalanceyh/r2mo-lain/tree/master/plugins/pi/r2mopi-markdownrender",
+  "files": [
+    "extensions",
+    "themes",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/markdown-render.ts"
+    ],
+    "themes": [
+      "./themes/mxt.json"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  }
+}

@@ -1,12 +1,12 @@
 {
   "executor": "executeAiCmd",
-  "description": "安装 mxt AI 命令到 Claude Code / Codex / OpenCode；Codex 安装为 plugin skills",
+  "description": "安装 mxt AI 命令到 Claude Code / Codex / OpenCode / Pi Agent；Codex 安装为 plugin skills，Pi Agent 安装为全局 skills、/mxt-* 短命令与 Pi 专属 /goal 目标命令",
   "command": "ai-cmd",
   "options": [
     {
       "name": "uninstall",
       "alias": "u",
-      "description": "全量卸载 Claude Code / Codex / OpenCode 中的 mxt 命令"
+      "description": "全量卸载 Claude Code / Codex / OpenCode / Pi Agent 中的 mxt 命令"
     }
   ]
 }

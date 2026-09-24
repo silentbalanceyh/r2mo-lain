@@ -15,7 +15,7 @@
 `mxt` 命令本身通过 CLI 安装在系统 PATH 中；命令文档与实现则对应下列源头：
 
 | 位置 | 内容 | 说明 |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | `src/commander/*.json` | 命令声明 | 命令名、描述、选项定义 |
 | `src/executor/execute*.js` | 命令执行器 | 实际命令处理逻辑 |
 | `docs/command/*.md` | 命令专用文档 | 每个子命令一页，带执行记录块 |
@@ -54,11 +54,11 @@
 
 ### SDD 开发
 
-- [mxt ai-cmd](ai-cmd.md) — 安装 mxt AI 命令到 Claude Code / Codex / OpenCode；Codex 安装为 plugin skills
+- [mxt ai-cmd](ai-cmd.md) — 安装 mxt AI 命令到 Claude Code / Codex / OpenCode / Pi Agent；Codex 安装为 plugin skills，Pi Agent 安装为全局 skills、/mxt-* 短命令与 Pi 专属 /goal 目标命令
 - [mxt ask](ask.md) — 从模板目录中选择提示词并复制到剪切板
 - [mxt plan](plan.md) — 从项目根或 .r2mo 目录下的 task/ 中选择任务，生成 Plan 阶段提示词到剪贴板
 - [mxt run](run.md) — 从项目根/.r2mo 下的 task 中选择任务，打印内容并确认后生成提示词到剪贴板
-- [mxt task](task.md) — 按项目根/.r2mo 下的 task/thread 对齐 task 槽位；thread 缺失时默认 20，满队列时交互选择转历史任务
+- [mxt task](task.md) — 按项目根/.r2mo 下的 task/thread 对齐 task 槽位；thread 缺失时默认 30，满队列时交互选择转历史任务
 
 ## 命令专用章节说明
 
@@ -79,7 +79,7 @@ mxt <command>
 All commands:
 
     admin        根据项目需求文档生成前端页面结构
-    ai-cmd       安装 mxt AI 命令到 Claude Code / Codex / OpenCode；Codex 安装为 plugin skills
+    ai-cmd       安装 mxt AI 命令到 Claude Code / Codex / OpenCode / Pi Agent；Codex 安装为 plugin skills，Pi Agent 安装为全局 skills、/mxt-* 短命令与 Pi 专属 /goal 目标命令
     app          创建 R2MO/Spring 或 ZERO/Vertx 应用
     apply        从远程仓库安装技能到当前项目（默认）；-i 将当前项目 skills/ 反馈到 Z_LAIN_SKILL/skills
     ask          从模板目录中选择提示词并复制到剪切板

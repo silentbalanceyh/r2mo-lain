@@ -33,6 +33,14 @@ Detect the current host first. Long-running behavior must use the host's native 
   5. On a genuine impasse, call `update_goal(status)` with `blocked`.
   6. Goal lifecycle: active → complete / blocked. Do not create duplicate Goals for one task.
 
+- **Pi Agent**: Pi has no `create_goal` tool. Open a pi-subagents goal mission instead; it drives continuation with per-turn notices.
+  1. Create it in one call: `subagent({ action: "mission.create", mission: { title, objective, goal: true, budget: { tokens: <positive integer> } } })`. If mission creation fails, stop and report the failure. Do not silently downgrade to a normal loop.
+  2. The `objective` must bind to `.r2mo/task/task-NNN.md` and include the task number, task goal, and completion criteria.
+  3. Call `mission.show` (or `mission.list`) before each phase transition to verify the mission is still active and to read `state.nextReadyAction`.
+  4. On completion, call `mission.close` with a terminal status and summary.
+  5. On a genuine impasse, pause with `mission.update` and `{ goal: { paused: true } }`, then report the blocker.
+  6. Mission lifecycle: active → paused / budget-exhausted / closed. Do not open duplicate missions for one task.
+
 - **Claude Code**: invoke `/loop` as the long-running wrapper. Maintain the task/goon disk artifacts as the source of truth inside that loop.
 
 - **OpenCode**: OpenCode has no native Goal API. Use Development/Review independent sessions, and derive long-running behavior from the task/goon files.
@@ -80,6 +88,7 @@ The loop is closed only by mechanical goon convergence, not by conversation agre
 ## File Model
 
 Only two files per task:
+
 - `.r2mo/task/task-NNN.md` — task body, `## Plan` section, and `## Changes` section.
 - `.r2mo/task/goon-NNN.md` — current remediation items only. Cleared when no items remain.
 
