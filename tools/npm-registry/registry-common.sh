@@ -7,7 +7,7 @@
 # The caller keeps `set -euo pipefail` on, may preset REGISTRY / TOKEN_ENV / PUBLIC_DNS /
 # ALLOW_MIRROR, and sources the publish engine next.
 #
-# Three problems this library solves, all of them observed on real corporate networks:
+# Four problems this library solves, all of them observed on real corporate networks:
 #
 #   1. registry.npmjs.org resolves to an internal npm mirror, so `npm login` and
 #      `npm publish` silently talk to that mirror (it even serves its own
@@ -16,6 +16,12 @@
 #      public registry.
 #   3. credentials must never land in the shared config file, and a rejected token
 #      must abort before anything is written.
+#   4. npm's packument cache can be older than the registry. With `prefer-offline` set
+#      (this machine exports npm_config_prefer_offline=true), `npm view
+#      <name>@<version>` answers 404 for a version that is published, the version plan
+#      calls it a first release, and the publish is refused with E409 — identically on
+#      every rerun, so the release can never finish. A version decision must not come
+#      from a cache.
 
 NPM_SHARED_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -39,6 +45,7 @@ REGISTRY_PROBE=""
 MIRRORED=0
 PROXY_PID=""
 PROXY_PORT=""
+NPM_CACHE_DIR=""
 AUTH_FILE=""
 AUTH_ARGS=()
 TOKEN_PRESENT=0
@@ -163,20 +170,40 @@ npm_registry_guard() {
 #   other:<host>  the page belongs to somebody else: a mirror answering with its own
 #                 session, which is how a browser login ends up on npmmirror
 #   none          the endpoint is not offered (npm falls back to user name / password)
-#   error         the endpoint could not be reached at all
+#   error         the endpoint could not be reached, or answered npm's own client only —
+#                 this probe is not npm, and the official registry answers a bare request
+#                 with 401. Nothing can be said about the page in that case either.
 #
 # The request travels the same tunnel npm does whenever the proxy is up.
 npm_registry_identity() {
-    local body
-    body="$(curl -sS --max-time 10 -X POST "$REGISTRY/-/v1/login" \
-        -H 'content-type: application/json' -H 'accept: application/json' \
-        -d '{}' 2>/dev/null | head -c 4000 || true)"
-    if [ -z "$body" ]; then
+    local probe status
+    probe="$(mktemp "${TMPDIR:-/tmp}/npm-login-probe.XXXXXX")"
+    # ${REGISTRY%/}: a trailing slash would make the path `//-/v1/login`, which the
+    # registry answers with a 404 — the probe would then read "no login page offered"
+    # while the mirror at that hostname hands out its own session at the path npm uses.
+    status="$(curl -sS --max-time 10 -o "$probe" -w '%{http_code}' -X POST \
+        "${REGISTRY%/}/-/v1/login" -H 'content-type: application/json' \
+        -H 'accept: application/json' -d '{}' 2>/dev/null || true)"
+
+    case "$status" in
+    401 | 403)
+        # The endpoint exists and belongs to the registry, but it answers npm's own client
+        # only. Reporting "none" here would tell the person running the release that npm
+        # would not use a browser when it does.
+        rm -f "$probe"
+        printf 'error'
+        return 0
+        ;;
+    esac
+
+    if [ ! -s "$probe" ]; then
+        rm -f "$probe"
         printf 'error'
         return 0
     fi
+
     # shellcheck disable=SC2016  # JS template literals below, not shell expansion
-    printf '%s' "$body" | node -e '
+    node -e '
 let raw = "";
 process.stdin.on("data", (chunk) => { raw += chunk; });
 process.stdin.on("end", () => {
@@ -204,7 +231,8 @@ process.stdin.on("end", () => {
     const registry = new URL(process.argv[1]).hostname;
     console.log(brand(page) === brand(registry) ? `same:${page}` : `other:${page}`);
 });
-' "$REGISTRY"
+' "$REGISTRY" <"$probe"
+    rm -f "$probe"
 }
 
 # Refuse to start a browser flow that would not land on the registry itself. This is the
@@ -304,11 +332,34 @@ npm_cleanup() {
     fi
     [ -n "$AUTH_FILE" ] && rm -f "$AUTH_FILE"
     [ -n "${PUBLISH_LOG:-}" ] && rm -f "$PUBLISH_LOG"
+    if [ -n "$NPM_CACHE_DIR" ]; then
+        rm -rf "$NPM_CACHE_DIR"
+        NPM_CACHE_DIR=""
+    fi
     return 0
 }
 
 npm_trap_cleanup() {
     trap 'npm_cleanup' EXIT
+}
+
+# A release decision must never come from a cache (problem 4 above).
+#
+# One run therefore works in a cache of its own: a packument it has not seen goes to the
+# registry, which is what a version decision needs, while `prefer-offline` stays exactly as
+# the user configured it. The cache is removed again when the run ends.
+npm_isolate_cache() {
+    if [ "${NPM_CACHE_ISOLATED:-0}" = "1" ]; then
+        # The publish engine runs npm-login.sh: the child inherits this cache and must not
+        # remove it, so it only reports.
+        ok "    npm cache is the private one of the calling script"
+        return 0
+    fi
+    NPM_CACHE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/npm-release-cache.XXXXXX")"
+    export npm_config_cache="$NPM_CACHE_DIR"
+    export NPM_CACHE_ISOLATED=1
+    info "npm cache"
+    printf '    private to this run, so a stale packument cannot decide the version\n'
 }
 
 # ------------------------------------------------------------------ credentials

@@ -37,9 +37,11 @@ the shared implementation in `tools/npm-registry/`, which the repository root us
   `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui` and `typebox` belong in
   `peerDependencies` with a `"*"` range. Pi supplies them.
 - **Publishing lives one level up**: `npm-login.sh` and `npm-publish.sh` in this directory
-  own the release for the whole family, take no arguments, and force
-  `--registry=https://registry.npmjs.org/`, so the npmmirror registry in the global npm
-  config never receives a publish. A package directory has no publish script of its own.
+  own the release for the whole family, take no arguments, and always target
+  `https://registry.npmjs.org/`. Forcing the hostname is not enough on a network that
+  intercepts it — there the global npm config's npmmirror is what answers — so both scripts
+  send that hostname through the public-DNS tunnel and reach the official registry. A
+  package directory has no publish script of its own.
 
 ## Local testing
 

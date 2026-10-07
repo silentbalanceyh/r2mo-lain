@@ -10,7 +10,8 @@
 #      sends that hostname through the public-DNS tunnel so every request that follows
 #      reaches the real registry
 #   2. decides the version: the current one as it stands while it is not on the registry
-#      yet (the first release of it), one patch bump once it is already published
+#      yet (the first release of it), one patch bump once it is already published — asked
+#      of the registry itself, never out of npm's cache
 #   3. authenticates first (phase 1, ./npm-login.sh) — nothing is written before that
 #      succeeds, so a failed login leaves the working tree and the registry untouched
 #   4. writes the version into package.json, and into package-lock.json

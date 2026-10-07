@@ -115,10 +115,10 @@ flowchart TD
 
 - **浏览器那一步始终由你完成**：脚本不代开窗口、不代点确认。npm 需要什么（登录页 URL、一次性验证码、2FA 授权）就打印出来，然后等你操作；你完成之后脚本自己校验结果。
 - **鉴权先于任何写入**：登录没成功，工作树和 registry 零副作用。
-- 版本策略自动判断：当前版本还没发布过就按原样发布（首次发布），已经发布过就自动 patch +1。`npm-publish.sh` 自己会先调用 `npm-login.sh`，所以单独跑第 2 步也安全。
+- 版本策略自动判断：当前版本还没发布过就按原样发布（首次发布），已经发布过就自动 patch +1。判定只认官方源的实时数据：本次运行使用独立的 npm 缓存目录，本地那份旧 packument 不会把「已发布」看成「没发布」（那会让每次重跑都撞 E409，永远发不出去）。`npm-publish.sh` 自己会先调用 `npm-login.sh`，所以单独跑第 2 步也安全。
 - 发布成功后（仅当本次全部包都成功）以 `chore(release): r2mo-ai <版本>` 全量提交当前仓库（`git add -A`，版本升级一并进提交）并推送到上游。发布失败则不提交，改完再跑同一条命令即可。
-- 两个脚本都会检测内网镜像：命中镜像就把 `registry.npmjs.org` 走公共 DNS 隧道打到官方源；登录前还会核对「registry 会把哪个登录页交给浏览器」，如果答案是 npmmirror 自己的会话页就直接中止，绝不把浏览器送过去。
-- `package.json` 已用 `publishConfig.registry` 钉死官方源，即使裸跑 `npm publish` 也不会落到镜像。
+- 两个脚本都会检测内网镜像：命中镜像就把 `registry.npmjs.org` 走公共 DNS 隧道打到官方源。登录前还会核对「registry 会把哪个登录页交给浏览器」：答案是 npmmirror 自己的会话页就直接中止，绝不把浏览器送过去；核对不出来时也只会如实说「无法核对」，不会谎报。
+- `package.json` 里的 `publishConfig.registry` 只钉住了 URL 上的主机名：本机 DNS（或 `/etc/hosts`）把 `registry.npmjs.org` 指到内网镜像时，裸跑 `npm publish` / `npm login` **依然会落到镜像** —— 连浏览器登录页都会变成 `registry.npmmirror.com` 的会话页。要真打到官方源，就用上面这两个脚本。
 - 无终端的环境（CI）自动读取 `$NPM_TOKEN`；有终端的交互运行永远走登录页，不会误用环境里的旧 token。
 
 旧的一体式 `publish.sh` 已退役：版本 + 发布 + git 提交推送三件事，现在由上面两个阶段完成。

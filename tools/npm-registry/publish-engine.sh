@@ -28,7 +28,9 @@
 #      hostname, sends it through the public-DNS tunnel so the real registry answers —
 #      before anything is queried, so no decision is ever taken against the mirror
 #   2. decides the version for the whole set: the highest of the local version and the
-#      registry's latest, raised by one patch when that version is already published
+#      registry's latest, raised by one patch when that version is already published. The
+#      registry is asked directly, in a private cache, so no cached packument of an earlier
+#      run can make a version that is already out look like a first release
 #   3. preflight, then phase 1 authentication (npm-login.sh) — before anything is written,
 #      so a failed login leaves the working tree and the registry untouched
 #   4. writes the version into every package.json, and into a lock file when one exists
@@ -69,6 +71,7 @@ declare -F npm_git_release >/dev/null 2>&1 && GIT_HOOK=1
 
 npm_resolve_registry
 npm_trap_cleanup
+npm_isolate_cache
 
 # The registry guard runs BEFORE any npm traffic: it probes the hostname, and when an
 # internal mirror answers for it, it brings up the public-DNS tunnel. Version queries below

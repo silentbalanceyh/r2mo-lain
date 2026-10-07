@@ -47,6 +47,7 @@ fi
 npm_resolve_registry
 npm_resolve_token_env
 npm_trap_cleanup
+npm_isolate_cache
 npm_start_proxy
 npm_registry_guard hard
 
