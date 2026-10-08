@@ -1,6 +1,6 @@
 {
   "executor": "executeTask",
-  "description": "按项目根/.r2mo 下的 task/thread 对齐 task 槽位；thread 缺失时默认 30，满队列时交互选择转历史任务",
+  "description": "按项目根/.r2mo 下的 task/thread 对齐标准 task 槽位；thread 缺失时默认 30，超过阈值的扩展任务默认保留并支持交互选择归档",
   "command": "task",
   "options": []
 }

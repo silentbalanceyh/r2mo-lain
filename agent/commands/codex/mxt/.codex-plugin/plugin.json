@@ -1,7 +1,7 @@
 {
   "name": "mxt",
   "version": "1.0.0",
-  "description": "R2MO task workflow skills: mxt-plan, mxt-run, mxt-end, mxt-goon, mxt-debug, mxt-sync, mxt-start, mxt-loop, mxt-doctor.",
+  "description": "R2MO task workflow skills: mxt-plan, mxt-run, mxt-end, mxt-goon, mxt-debug, mxt-sync, mxt-start, mxt-loop, mxt-doctor, mxt-task.",
   "author": {
     "name": "R2MO"
   },
@@ -32,7 +32,8 @@
       "Use $mxt-run 001 to execute an R2MO task",
       "Use $mxt-sync to sync git",
       "Use $mxt-start to start dev environment",
-      "Use $mxt-doctor to review anti-drift baseline metadata"
+      "Use $mxt-doctor to review anti-drift baseline metadata",
+      "Use $mxt-task to run an overflow task from a natural-language prompt"
     ],
     "screenshots": []
   }

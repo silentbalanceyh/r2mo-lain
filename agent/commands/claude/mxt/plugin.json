@@ -1,7 +1,7 @@
 {
   "name": "mxt",
   "version": "1.0.0",
-  "description": "R2MO closed-loop task workflow slash commands: /mxt:plan, /mxt:run, /mxt:end, /mxt:goon, /mxt:debug, /mxt:sync, /mxt:start, /mxt:loop, /mxt:doctor.",
+  "description": "R2MO closed-loop task workflow slash commands: /mxt:plan, /mxt:run, /mxt:end, /mxt:goon, /mxt:debug, /mxt:sync, /mxt:start, /mxt:loop, /mxt:doctor, /mxt:task.",
   "author": {
     "name": "R2MO"
   },
@@ -17,7 +17,8 @@
     "./commands/sync.md",
     "./commands/start.md",
     "./commands/loop.md",
-    "./commands/doctor.md"
+    "./commands/doctor.md",
+    "./commands/task.md"
   ],
   "keywords": [
     "mxt",

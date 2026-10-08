@@ -15,6 +15,8 @@ const USAGE_CLAUDE = [
     "/mxt:sync      Git 全量同步",
     "/mxt:loop 001  双会话任务闭环",
     "/mxt:start     拉起开发环境",
+    "/mxt:doctor loc 防漂移基线校验",
+    "/mxt:task <requirement> 扩展任务",
 ];
 const USAGE_CODEX = [
     "$mxt-plan 001  生成执行计划",
@@ -25,6 +27,8 @@ const USAGE_CODEX = [
     "$mxt-sync      Git 全量同步",
     "$mxt-loop 001  双会话任务闭环",
     "$mxt-start     拉起开发环境",
+    "$mxt-doctor loc 防漂移基线校验",
+    "$mxt-task <requirement> 扩展任务",
 ];
 // Pi Agent 以全局 skills 形式加载 mxt 闭环能力，同时生成 /mxt-* 短命令（等价 /skill:mxt-*）
 const USAGE_PI = [
@@ -37,8 +41,7 @@ const USAGE_PI = [
     "/mxt-loop 001   双会话任务闭环",
     "/mxt-start      拉起开发环境",
     "/mxt-doctor loc 防漂移基线校验",
-    "/goal <objective>  设定目标（Pi 专属，对齐 Codex /goal）",
-    "/goal --tokens 1.5m <objective>  带预算设定目标",
+    "/mxt-task <requirement> 扩展任务",
 ];
 
 const _buildUsageHeader = () => {
@@ -53,7 +56,7 @@ const _buildUsageHeader = () => {
     lines.push("  Pi Agent:".bold);
     USAGE_PI.forEach((cmd) => lines.push("    " + cmd.gray));
     lines.push(
-        "    /mxt-* 为短命令别名，始终等价于 /skill:mxt-*；/goal 为 Pi 专属目标管理（status / edit / pause / resume / clear|stop，可用 --tokens <budget> 限定预算，命令面对齐 @narumitw/pi-goal）"
+        "    /mxt-* 为短命令别名，始终等价于 /skill:mxt-*"
             .gray,
     );
     lines.push("");
@@ -123,7 +126,7 @@ module.exports = async (_options) => {
         Ec.info(
             isUninstall
                 ? "AI 命令卸载完成。"
-                : "AI 命令安装完成，Claude Code / OpenCode 使用 /mxt:plan、/mxt:run、/mxt:end、/mxt:goon、/mxt:sync、/mxt:start，Codex 使用 $mxt-plan、$mxt-run、$mxt-end、$mxt-goon、$mxt-sync、$mxt-start，Pi Agent 使用 /mxt-plan、/mxt-run、/mxt-end、/mxt-goon、/mxt-sync、/mxt-start（亦可用 /skill:mxt-*），并附带 Pi 专属的 /goal 目标管理命令（命令面对齐 Codex /goal 与 @narumitw/pi-goal：status / edit / pause / resume / clear|stop / --tokens，映射到 pi-subagents goal mission，仅写入 ~/.pi/agent/prompts；若已安装原生 @narumitw/pi-goal 则由其接管 /goal）。Claude Code 已打开的会话需退出后重新进入，Pi Agent 需执行 /reload 后生效。",
+                : "AI 命令安装完成。Claude Code / OpenCode 使用 /mxt:*；Codex 使用 /mplan、/mrun、/mend、/mgoon、/mdebug、/msync、/mstart、/mloop、/mdoctor、/mtask，任务语义提示别名为 $mxt-task；Pi Agent 使用 /mxt-*（亦可用 /skill:mxt-*）。Claude Code 已打开的会话需退出后重新进入，Pi Agent 需执行 /reload 后生效。",
         );
         process.exit(0);
     } catch (e) {

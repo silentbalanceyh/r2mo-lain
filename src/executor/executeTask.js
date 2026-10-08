@@ -166,24 +166,50 @@ const _archiveTask = async (taskDir, filename, content, cwd, withAudio) => {
 	return historyPath;
 };
 
-const _pruneOverflowTasks = async (taskDir, taskSlots, cwd) => {
+const _loadOverflowTasks = async (taskDir, taskSlots) => {
 	const entries = await fs
 		.readdir(taskDir, { withFileTypes: true })
 		.catch(() => []);
-	const taskFiles = entries
-		.filter((entry) => entry.isFile() && TASK_FILE_RE.test(entry.name))
-		.map((entry) => entry.name)
-		.sort();
+	return entries
+		.filter(
+			(entry) =>
+				entry.isFile() &&
+				TASK_FILE_RE.test(entry.name) &&
+				parseInt(entry.name.match(TASK_FILE_RE)[1], 10) > taskSlots,
+		)
+		.map((entry) => {
+			const slot = parseInt(entry.name.match(TASK_FILE_RE)[1], 10);
+			return {
+				slot,
+				name: entry.name,
+				fullPath: path.join(taskDir, entry.name),
+			};
+		})
+		.sort((left, right) => left.slot - right.slot);
+};
+
+const _selectOverflowTaskSlots = async (slots) => {
+	const { selectMultiple } = require("../utils/mxt-menu");
+	if (slots.length === 0) return { items: [] };
+	const menuItems = slots.map((item) => ({
+		name: item.name.replace(/\.md$/, ""),
+		description: "超出 thread 阈值，可选择归档",
+		slot: item.slot,
+	}));
+	return selectMultiple(
+		menuItems,
+		"选择要归档的超额任务（直接 Enter 跳过）",
+	);
+};
+
+const _archiveOverflowTasks = async (taskDir, slots, cwd) => {
 	let archived = 0;
 	let deleted = 0;
 	let audioPlayed = false;
 
-	for (const name of taskFiles) {
-		const match = name.match(TASK_FILE_RE);
-		if (!match) continue;
-		const slot = parseInt(match[1], 10);
-		if (slot <= taskSlots) continue;
-		const srcPath = path.join(taskDir, name);
+	for (const item of slots) {
+		const name = item.name;
+		const srcPath = item.fullPath;
 		let content;
 		try {
 			content = await fs.readFile(srcPath, "utf8");
@@ -319,7 +345,15 @@ module.exports = (options) => {
 			await fs.mkdir(taskDir, { recursive: true });
 			await TaskDb.ensureTaskDatabase(cwd);
 			const taskSlots = await _readSlotCount(taskDir);
-			const pruned = await _pruneOverflowTasks(taskDir, taskSlots, cwd);
+			const overflowSlots = await _loadOverflowTasks(taskDir, taskSlots);
+			const selectedOverflow = await _selectOverflowTaskSlots(overflowSlots);
+			const pruned = await _archiveOverflowTasks(
+				taskDir,
+				overflowSlots.filter((item) =>
+					(selectedOverflow.items || []).some((chosen) => chosen.slot === item.slot),
+				),
+				cwd,
+			);
 			const created = await _ensurePlaceholderTasks(taskDir, taskSlots, cwd);
 			if (created > 0) {
 				Ec.waiting(`已对齐到 ${taskSlots} 个 task 槽位`);

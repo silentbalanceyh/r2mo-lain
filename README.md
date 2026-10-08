@@ -73,7 +73,7 @@ npm uninstall -g r2mo-ai
 
 ### 闭环流程
 
-`mxt ai-cmd` 安装的 AI 命令形成 `plan → run → end → goon` 闭环，`loop` 是自动闭环入口，`sync` / `start` / `debug` 为辅助命令。每个子命令和每个 Codex Skill 都有独立文档，便于逐页阅读与记录执行块。
+`mxt ai-cmd` 安装的 AI 命令形成 `plan → run → end → goon` 闭环，`loop` 是自动闭环入口，`task` 是扩展任务即时入口，`sync` / `start` / `debug` 为辅助命令。每个子命令和每个 Codex Skill 都有独立文档，便于逐页阅读与记录执行块。
 
 ```mermaid
 flowchart TD

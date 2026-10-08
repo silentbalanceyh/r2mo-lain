@@ -54,11 +54,11 @@
 
 ### SDD 开发
 
-- [mxt ai-cmd](ai-cmd.md) — 安装 mxt AI 命令到 Claude Code / Codex / OpenCode / Pi Agent；Codex 安装为 plugin skills，Pi Agent 安装为全局 skills、/mxt-* 短命令与 Pi 专属 /goal 目标命令
+- [mxt ai-cmd](ai-cmd.md) — 安装 mxt AI 命令到 Claude Code / Codex / OpenCode / Pi Agent；Codex 安装为 plugin skills，Pi Agent 安装为全局 skills 与 /mxt-* 短命令
 - [mxt ask](ask.md) — 从模板目录中选择提示词并复制到剪切板
 - [mxt plan](plan.md) — 从项目根或 .r2mo 目录下的 task/ 中选择任务，生成 Plan 阶段提示词到剪贴板
 - [mxt run](run.md) — 从项目根/.r2mo 下的 task 中选择任务，打印内容并确认后生成提示词到剪贴板
-- [mxt task](task.md) — 按项目根/.r2mo 下的 task/thread 对齐 task 槽位；thread 缺失时默认 30，满队列时交互选择转历史任务
+- [mxt task](task.md) — 按项目根/.r2mo 下的 task/thread 对齐标准 task 槽位；thread 缺失时默认 30，超过阈值的扩展任务默认保留并支持交互选择归档
 
 ## 命令专用章节说明
 
@@ -79,7 +79,7 @@ mxt <command>
 All commands:
 
     admin        根据项目需求文档生成前端页面结构
-    ai-cmd       安装 mxt AI 命令到 Claude Code / Codex / OpenCode / Pi Agent；Codex 安装为 plugin skills，Pi Agent 安装为全局 skills、/mxt-* 短命令与 Pi 专属 /goal 目标命令
+    ai-cmd       安装 mxt AI 命令到 Claude Code / Codex / OpenCode / Pi Agent；Codex 安装为 plugin skills，Pi Agent 安装为全局 skills 与 /mxt-* 短命令
     app          创建 R2MO/Spring 或 ZERO/Vertx 应用
     apply        从远程仓库安装技能到当前项目（默认）；-i 将当前项目 skills/ 反馈到 Z_LAIN_SKILL/skills
     ask          从模板目录中选择提示词并复制到剪切板

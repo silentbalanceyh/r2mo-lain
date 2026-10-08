@@ -1,6 +1,6 @@
 {
   "executor": "executeAiCmd",
-  "description": "安装 mxt AI 命令到 Claude Code / Codex / OpenCode / Pi Agent；Codex 安装为 plugin skills，Pi Agent 安装为全局 skills、/mxt-* 短命令与 Pi 专属 /goal 目标命令",
+  "description": "安装 mxt AI 命令到 Claude Code / Codex / OpenCode / Pi Agent；Codex 安装为 plugin skills，Pi Agent 安装为全局 skills与 /mxt-* 短命令",
   "command": "ai-cmd",
   "options": [
     {

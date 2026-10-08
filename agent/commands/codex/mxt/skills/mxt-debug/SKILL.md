@@ -1,181 +1,158 @@
 ---
 name: mxt-debug
-description: Use when the user asks Codex to run the debug MXT workflow; enforces scoped inputs, evidence-backed execution, and closed-loop handoff.
+description: Use when the user asks Codex to run the debug MXT workflow; diagnose, immediately fix, and archive a Bug Report under .r2mo/bugs/.
 ---
 
 # /mxt:debug
 
-## Harness
+## HARNESS
 
-Binding execution contract for all MXT commands across Claude Code, Codex, and OpenCode.
+1. Load before any action; silently skip missing files:
+   AGENTS.md · CLAUDE.md · CODEX.md · .claude/rules/*.mdc · .codex/rules/*.mdc · .cursor/rules/*.mdc · .opencode/*.mdc · ~/.codex/rules/r2mo-task-workflow.md
+2. Output English-first; quote localized repo strings verbatim when needed.
+3. Disk is the only state carrier; re-read before every decision and write-back.
+4. Print `Lock: <paths>` before first read; only locked paths may be mutated.
+5. Run the smallest sufficient verification per change boundary; record skipped gates with reason.
+6. When this skill declares a required superpowers skill, invoke it via the Skill tool; fall back manually only on explicit `skill not found` error.
 
-- **English-first.** Write all output in English. Use Chinese only when quoting existing repo content (task titles, frontmatter values, status fields, localized error messages) or when the user explicitly asks.
-- **Rule loading.** Load `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `.claude/rules/*.mdc`, `.codex/rules/*.mdc`, `.cursor/rules/*.mdc`, `.opencode/*.mdc`, and `~/.codex/rules/r2mo-task-workflow.md` before task action. Missing files do not block.
-- **Argument contract.** Resolve the three-digit task number first. If absent, list `.r2mo/task/` candidates in the current directory only. Never resolve from parent/sibling/historical directories.
-- **Isolation lock.** Print locked path(s) before reading. Only read/write locked `task-*.md` and `goon-*.md` files.
-- **Disk source of truth.** Re-read locked files from disk before decisions and before write-back. Do not trust conversation memory, summaries, or cache.
-- **Prompt echo.** Print the final action prompt in a code block before editing or execution.
-- **Write-back guard.** Verify destination matches isolation lock before any write. Never duplicate `Plan` or `Changes`; update in place.
-- **Fresh evidence.** Run the smallest sufficient verification for the changed boundary before claiming success. Record skipped gates with reason.
-- **Cross-agent portability.** Keep prompts deterministic and safe for Claude Code, Codex skills, and OpenCode JSON templates.
 
-Launch a bug investigation flow: invoke superpowers systematic-debugging directly, or fall back to manual root-cause analysis only if the skill tool reports it as absent. Archive a Bug Report to `.r2mo/bugs/<yyyy-MM-dd>/` recording the problem, diagnostics, and solution.
+## ARGUMENTS
 
-The user invoked this command with: $ARGUMENTS
+`$ARGUMENTS` = `${description} [${P0|P1|P2|P3}] [Deep] [Worktree|WT]`
 
-## Arguments
+| Token | Effect |
+|---|---|
+| `Deep` | widen search: indirect deps, boundary conditions |
+| `Worktree` / `WT` | investigate in `.r2mo/worktrees/` |
 
-1. `$ARGUMENTS` is a bug description text, optionally containing a three-digit task number, with optional **directives** at the end (space-separated, case-insensitive):
-   - `Deep` — enable deep diagnosis, broaden investigation scope
-   - `Worktree` / `WT` — isolate investigation in a Worktree
-2. Parse from the end of `$ARGUMENTS` for known directive keywords; extract the first three-digit number from the remaining text; if no number, ask the user.
-3. Set `<GOON_PATH>` to `.r2mo/task/goon-NNN.md`. Remaining text is the bug description. Declare parsed results, e.g. `📌 Bug: memory leak | Task: 001 | Directives: Deep`.
+Strip directives from the end. Remaining text = description. Trailing three-digit number → `${GOON_PATH}` = `.r2mo/task/goon-${NUM}.md` (legacy bridge, Rule 8).
 
-**Hard rules**: Parse failure → abort. Superpowers: invoke directly (fallback only on explicit "skill not found" error). Worktree → `.r2mo/worktrees/`. Write-back guard: confirm both the goon target path and the bug archive path before writing.
+Severity: explicit token wins; else blocked-main-flow / data-loss / security → `P1`; workaround-breakage → `P2`; cosmetic → `P3`; recurring production → `P0`. Single level.
 
-## Output Targets
+Declare before action: `Bug: ${summary} | Severity: ${SEVERITY} | Legacy goon: ${none|NNN} | Directives: ${none|Deep|WT|Deep+WT}`
 
-Three outputs per debug run:
+## PATH
 
-1. **Goon (remediation handoff)** — `<GOON_PATH>` = `.r2mo/task/goon-NNN.md`: current remediation items so `/mxt:goon <number>` can execute the fix directly.
-2. **Bug archive (appended output)** — `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md`: a full record of **Problem**, **Diagnostics**, and **Solution**. The `<yyyy-MM-dd>` directory is created if absent; one directory per calendar day. Use the current date (timezone-aware) for the directory, and current time for the filename. Derive `<slug>` from the bug description (lowercase, hyphen-separated, max 40 chars).
-3. **Issue inventory** — `.r2mo/bugs/<yyyy-MM-dd>/index.md`: the current day's issue list. Create it if absent.
-
-## Closed-Loop Contract
-
-`mxt-debug` closes the bug-to-remediation handoff, not the full task loop.
-
-- **Diagnosis must be reproducible or evidence-backed.** Record the trigger, observed result, expected result, relevant files, and command/output evidence. Do not infer a root cause from a summary alone.
-- **Remediation must be actionable.** If a task number is linked, write each remediation item in the exact `## Remediation Item N — <short title>` format with failure evidence, required correction, verification command, and scope reason. If no task number is linked, keep the checkbox items equally concrete.
-- **Handoff must continue the loop.** Linked tasks proceed to `mxt-goon NNN`; independent bugs retain the bug archive and can be linked to a task later.
-- **Boundary.** Do not modify production source while diagnosing unless the user explicitly authorizes a fix. The debug output is diagnosis and remediation handoff, not an implementation report.
-- **Closure evidence.** A bug is closed only after the stated verification method passes and the fix result is recorded. A diagnosis alone is not closure.
-
-## Issue Inventory Contract
-
-Every diagnosis must append or update one bug entry in `.r2mo/bugs/<yyyy-MM-dd>/index.md`. A diagnosis without an inventory entry is incomplete.
-
-- Create the daily `index.md` if absent.
-- Each inventory row uses the exact format:
-
-```md
-- [status] BUG-<HHmmss>-<slug> | severity | title | related-task | report
+```text
+date     = today yyyy-MM-dd
+slug     = lowercase kebab, [a-z0-9-], max 60
+FILE     = ${date}-${SEVERITY}-${slug}.md
+DIR      = .r2mo/bugs/${date}
+BUG      = ${DIR}/${FILE}
+INDEX    = ${DIR}/index.md
 ```
 
-- `status` is `Open`, `Investigating`, `Fixed`, or `Closed`.
-- If the root cause is unknown, status may be `Open` or `Investigating`.
-- Duplicate bugs must update the existing entry and report path rather than adding a second row.
-- Always read `index.md` from disk and append/update it after writing the individual report.
-- Inventory is an issue list, not a cache; it does not replace fresh diagnosis or task/goon state.
+Create `DIR` when missing. Never write to other dates, sibling tasks, or unrelated goon.
 
-## Workflow
+## BUG FILE TEMPLATE
 
-1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).
-2. Declare investigation target: bug diagnosis, description is the parsed bug text.
-3. Assume `superpowers:systematic-debugging` is installed and invoke it directly via the Skill tool. Do not rely on context banners or model self-introspection — these are unreliable and cause false negatives.
-   - If the Skill tool returns an explicit "skill not found / not registered" error → execute fallback:
-     a. Collect error info: read files, logs, or stack traces mentioned in `$ARGUMENTS`.
-     b. Locate related files: search the repository for modules, functions, or config related to the error.
-     c. Analyze root cause: infer fundamental cause from code logic and error symptoms.
-     d. Provide fix suggestions: output diagnostic conclusions and specific fix directions.
-   - If the call succeeds → must follow its workflow. Do not skip or self-downgrade.
-4. Declare investigation path: `📌 Path: Superpowers[systematic-debugging]` or `📌 Path: Manual`.
-5. **Deep diagnosis**: If `Deep` directive detected, broaden scope: search more related files, check indirect dependencies, analyze boundary conditions.
-6. **Worktree isolation**: If `Worktree` directive detected, execute investigation in a Worktree under `.r2mo/worktrees/`.
-7. Generate a `DEBUG Report` and write to `<GOON_PATH>` so `/mxt:goon <number>` can execute remediation directly.
-8. **Bug archive (appended output)**: Generate a `Bug Report` and write to `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md` recording Problem, Diagnostics, and Solution. Create the dated directory if it does not exist. Do not overwrite existing bug files in the same directory — append a sequence suffix if a name collision occurs.
-9. **Issue inventory (mandatory)**: Create or update `.r2mo/bugs/<yyyy-MM-dd>/index.md`. Every diagnosis appends or updates one row in the exact issue-list format above. If the same bug already exists, update its status and keep the original report link. This output is required; diagnosis-only output is incomplete.
-10. Before writing each output, declare `📌 Write-back check:` with the target path and confirm it matches the intended destination.
-
-## DEBUG Report
-
-Write `<GOON_PATH>` with the following format:
+Instantiate verbatim, then fill per Workflow. Leave no `${…}` or `_pending_` in the saved file.
 
 ```md
 ---
-title: Remediation-DEBUG-NNN
-status: Pending
-author:
+title: ${FILE_STEM}
+date: ${date}
+severity: ${SEVERITY}
+status: open
+resolved:
+owner: ${module_or_subproject}
+module: ${affected_component_path}
+task_ref:
 ---
 
-# DEBUG Report
+# ${title}
 
-## Bug
+## Observed Bug
+${observed_vs_expected}
 
-- Description:
-- Trigger condition:
-- Impact scope:
+## Trigger Condition
+${steps_or_precondition}
 
-## Evidence
-
-- Reproduction steps:
-- Key logs/errors:
-- Related files:
+## Impact Scope
+${modules_endpoints_flows}
 
 ## Root Cause
+_pending_
 
-- Root cause:
-- Evidence chain:
+## Fix
+_pending_
 
-## Fix Direction
+## Files Changed
+_pending_
 
-- Fix direction:
-- Risk points:
-- Verification method:
-
-## Remediation Items
-
-- [ ] ...
-```
-
-## Bug Report
-
-Write `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md` with the following format:
-
-```md
----
-title: Bug-<slug>
-date: <yyyy-MM-dd HH:mm:ss>
-status: Reported
-author:
-related-task: <NNN or none>
----
-
-# Bug Report
-
-## Problem
-
-- Summary:
-- Trigger condition:
-- Impact scope:
-- Severity:
-
-## Diagnostics
-
-- Reproduction steps:
-- Key logs / errors / stack traces:
-- Related files:
-- Investigation path (Superpowers / Manual):
-- Evidence chain:
-
-## Solution
-
-- Root cause:
-- Fix direction:
-- Applied fix (if any):
-- Risk points:
-- Verification method:
-- Follow-up: `/mxt:goon <number>` for remediation
-```
-
-## Next Steps
-
-- Confirm bug then fix → verify after code changes
-- Remediate from DEBUG report → `/mxt:goon <number>`
-- Verify after fix → `/mxt:end <number>` (if linked to a task)
-- Complex fix needs planning → `/mxt:plan <number>`
-- Continue execution → `/mxt:run <number>`
+## Recurrence Prevention
+_pending_
 
 ## Verification
+_pending_
 
-Report: investigation conclusion, whether superpowers diagnosis was invoked, root cause found, fix suggestions, confirmation that the `DEBUG Report` was written to `<GOON_PATH>`, and confirmation that the `Bug Report` was archived to `.r2mo/bugs/<yyyy-MM-dd>/bug-<HHmmss>-<slug>.md`, and confirmation that the issue inventory row was written to `.r2mo/bugs/<yyyy-MM-dd>/index.md`.
+## Scope
+_pending_
+```
+
+Field invariants:
+
+- `title` = `${FILE_STEM}` exactly (leading date, then severity, then slug). No reorder.
+- `severity` ∈ {`P0`,`P1`,`P2`,`P3`}; matches filename.
+- `status` ∈ {`open`,`fixed`,`wontfix`,`duplicate`}.
+- `resolved` empty until `status: fixed`; then equals `${date}`.
+- `task_ref` written only when user supplied a task number (captured in `${GOON_PATH}`).
+
+Nine body sections are mandatory and ordered. Do not rename, merge, or drop any.
+
+## INDEX ROW
+
+Read `${INDEX}` first; create with header when absent:
+
+```md
+# ${date} Bug Index
+
+| ID | Severity | Module | Summary | Status | Report |
+|---|:---:|---|---|:---:|---|
+```
+
+Row format:
+
+```md
+| ${FILE_STEM} | ${SEVERITY} | ${module} | ${summary_120ch} | ${status} | [${FILE}](${FILE}) |
+```
+
+Same-bug rerun rewrites its row in place. No duplicate rows.
+
+## WORKFLOW
+
+| # | Action | Writes to |
+|---|---|---|
+| 1 | Parse `${ARGS}`; lock `${BUG}` + `${INDEX}` (+`${GOON_PATH}` if legacy). Echo locks. | stdout |
+| 2 | Init `${BUG}` from §3; seed `Observed Bug`. | `${BUG}` |
+| 3 | Invoke `superpowers:systematic-debugging`. Fallback manual only on `skill not found`. | — |
+| 4 | Fill `Observed Bug` / `Trigger Condition` / `Impact Scope` with evidence. | `${BUG}` |
+| 5 | Implement minimal focused fix targeting the root cause. Do not stage TODOs. | source |
+| 6 | Fill `Fix` / `Files Changed` / `Recurrence Prevention` / `Verification` / `Scope` with real commands, diffs, exit codes. | `${BUG}` |
+| 7 | Run verification. Pass → `status: fixed`, `resolved: ${date}`. Fail → keep `open`, retain failure in `Verification`, stop. | `${BUG}` |
+| 8 | Upsert daily index row to same status. | `${INDEX}` |
+| 9 | Legacy only: write classic DEBUG Report to `${GOON_PATH}`. | `${GOON_PATH}` |
+
+Echo `Write-back: ${BUG} | ${INDEX}${LEGACY:+ | ${GOON_PATH}}` before every mutation.
+
+## RULES
+
+1. Never create, match, reserve, or resolve a task; `/mxt:task` owns `.r2mo/task/thread`.
+2. Mutate only locked paths.
+3. Disk is authoritative. Never trust conversational memory.
+4. Never use `bug-HHMMSS-*` or `BUG-HHMMSS-*` filenames.
+5. Never flip `status: fixed` before verification passes.
+6. Never fabricate logs, stack traces, or command outputs.
+7. Nine body sections are mandatory and ordered.
+8. Legacy bridge fires only when user supplied three-digit number; never creates task.
+9. `wontfix` / `duplicate` are user-decided terminators; `Scope` states rationale.
+10. Final report includes: `${BUG}` path, severity, root cause (1 line), changed files, verification commands + exit codes, `status`/`resolved` on disk, index row status, legacy `${GOON_PATH}` state.
+
+Incomplete Rule 10 coverage → report incomplete. No premature success claims.
+
+## NEXT
+
+```text
+Convert to overflow task → /mxt:task <requirement>
+Independent verify → /mxt:end NNN (when task-linked)
+```

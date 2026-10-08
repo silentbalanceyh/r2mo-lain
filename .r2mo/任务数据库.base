@@ -3,9 +3,11 @@ views:
     name: 表格
     filters:
       and:
-        - file.basename.startsWith("task-0")
+        - file.basename.startsWith("task-")
+        - file.ext.endsWith("md")
     order:
       - file.name
+      - runAt
       - author
       - status
       - title

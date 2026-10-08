@@ -134,6 +134,27 @@ const _snapshotTree = async (root) => {
 	return entries;
 };
 
+const _snapshotFiles = async (root) => {
+	const entries = [];
+	const walk = async (dir, prefix = "") => {
+		const children = await fs.readdir(dir, { withFileTypes: true });
+		children.sort((left, right) => left.name.localeCompare(right.name));
+		for (const child of children) {
+			const relativePath = path.join(prefix, child.name);
+			const childPath = path.join(root, relativePath);
+			if (child.isDirectory()) {
+				await walk(childPath, relativePath);
+			} else if (child.isFile()) {
+				entries.push(
+					`${relativePath}:${_hash(await fs.readFile(childPath, "utf8"))}`,
+				);
+			}
+		}
+	};
+	await walk(root);
+	return entries;
+};
+
 const testInitCreatesDeterministicTaskDatabaseArtifacts = async () => {
 	await _withTempDir(async (root) => {
 		const paths = _taskDatabasePaths(root);
@@ -270,6 +291,48 @@ const testInitCreatesSweDirectoriesAndPreservesExistingContent = async () => {
 	});
 };
 
+const testInitPreservesOverflowTasksAboveThreadThreshold = async () => {
+	await _withTempDir(async (root) => {
+		const taskRoot = path.join(root, TASK_DIR);
+		await fs.mkdir(taskRoot, { recursive: true });
+		await fs.writeFile(path.join(taskRoot, "thread"), "25", "utf8");
+		await fs.writeFile(
+			path.join(taskRoot, _slotFilename(26)),
+			_taskContent("Overflow 026"),
+			"utf8",
+		);
+		await fs.writeFile(
+			path.join(taskRoot, _slotFilename(77)),
+			_taskContent("Overflow 077"),
+			"utf8",
+		);
+		await fs.writeFile(path.join(taskRoot, "goon-026.md"), "overflow goon\n", "utf8");
+		const before = await _snapshotTree(taskRoot);
+
+		const result = _runInit(root);
+
+		assert.notStrictEqual(result.status, 1, result.stderr || result.stdout);
+		assert.strictEqual(
+			await _read(root, path.join(TASK_DIR, _slotFilename(26))),
+			_taskContent("Overflow 026"),
+		);
+		assert.strictEqual(
+			await _read(root, path.join(TASK_DIR, _slotFilename(77))),
+			_taskContent("Overflow 077"),
+		);
+		assert.strictEqual(
+			await _read(root, path.join(TASK_DIR, "goon-026.md")),
+			"overflow goon\n",
+		);
+		assert.deepStrictEqual(await _listHistoryFiles(root), []);
+		const after = await _snapshotTree(taskRoot);
+		assert.ok(after.includes("task-026.md:file"));
+		assert.ok(after.includes("task-077.md:file"));
+		assert.ok(after.includes("goon-026.md:file"));
+		assert.deepStrictEqual(after.slice(0, before.length), before);
+	});
+};
+
 const testDefaultThreadFallsBackTo30 = async () => {
 	await _withTempDir(async (root) => {
 		const result = _runTask(root, { ...process.env, PATH: "" });
@@ -305,57 +368,162 @@ const testThreadOverridesDefault = async () => {
 	});
 };
 
-const testShrinkThreadPrunesOverflow = async () => {
+const testShrinkThreadPreservesOverflowUntilSelected = async () => {
 	await _withTempDir(async (root) => {
 		const taskRoot = path.join(root, TASK_DIR);
 		await fs.mkdir(taskRoot, { recursive: true });
 		await fs.writeFile(path.join(taskRoot, "thread"), "3", "utf8");
 		await fs.writeFile(
-			path.join(taskRoot, _slotFilename(1)),
-			_taskContent("任务"),
-			"utf8",
-		);
-		await fs.writeFile(
-			path.join(taskRoot, _slotFilename(2)),
-			_taskContent("任务"),
-			"utf8",
-		);
-		await fs.writeFile(
-			path.join(taskRoot, _slotFilename(3)),
-			_taskContent("任务"),
-			"utf8",
-		);
-		await fs.writeFile(
 			path.join(taskRoot, _slotFilename(4)),
 			_taskContent("业务任务"),
-			"utf8",
+			"utf-8",
 		);
 		await fs.writeFile(
 			path.join(taskRoot, _slotFilename(5)),
 			_taskContent("任务", ""),
-			"utf8",
+			"utf-8",
 		);
 		await fs.writeFile(
 			path.join(taskRoot, "goon-004.md"),
 			"历史整改痕迹\n",
-			"utf8",
+			"utf-8",
 		);
 
 		const result = _runTask(root, { ...process.env, PATH: "" });
+
 		assert.strictEqual(
 			await _exists(root, path.join(TASK_DIR, _slotFilename(4))),
-			false,
+			true,
 		);
 		assert.strictEqual(
 			await _exists(root, path.join(TASK_DIR, _slotFilename(5))),
+			true,
+		);
+		assert.strictEqual(
+			await _read(root, path.join(TASK_DIR, "goon-004.md")),
+			"历史整改痕迹\n",
+		);
+		assert.deepStrictEqual(await _listHistoryFiles(root), []);
+		assert.notStrictEqual(result.status, 1, result.stderr || result.stdout);
+	});
+};
+
+const testTaskSelectedArchiveClearsGoonWithoutBackup = async () => {
+	await _withTempDir(async (root) => {
+		const taskFile = path.resolve(__dirname, "executor", "executeTask.js");
+		const taskRoot = path.join(root, TASK_DIR);
+		await fs.mkdir(taskRoot, { recursive: true });
+		await fs.writeFile(path.join(taskRoot, "thread"), "1", "utf8");
+		await fs.writeFile(
+			path.join(taskRoot, _slotFilename(2)),
+			_taskContent("Selected overflow"),
+			"utf8",
+		);
+		await fs.writeFile(
+			path.join(taskRoot, "goon-002.md"),
+			"pending remediation\n",
+			"utf8",
+		);
+
+		const originalLoad = Module._load;
+		const originalCwd = process.cwd;
+		const originalExit = process.exit;
+		const originalHomedir = os.homedir;
+		const originalInfo = console.info;
+		const originalWarn = console.warn;
+		const originalError = console.error;
+		const selections = [];
+		let exitCode;
+
+		try {
+			Module._load = function (request, parent, isMain) {
+				if (
+					parent &&
+					parent.filename === taskFile &&
+					request === "../utils/mxt-menu"
+				) {
+					return {
+						selectMultiple: async (items, title) => {
+							selections.push(title);
+							if (title.includes("超额任务")) {
+								return {
+									items: items.filter((item) => item.name === "task-002"),
+								};
+							}
+							return { items: [] };
+						},
+					};
+				}
+					if (parent && parent.filename === taskFile && request === "../epic") {
+						return {
+							waiting() {},
+							info() {},
+							warn() {},
+							error() {},
+						};
+					}
+					if (
+						parent &&
+					parent.filename === taskFile &&
+					request === "../utils/mxt-audio"
+				) {
+						return { playAudio() {} };
+				}
+					return originalLoad.call(this, request, parent, isMain);
+			};
+
+			process.cwd = () => root;
+			process.exit = (code) => {
+				exitCode = code;
+			};
+			os.homedir = () => root;
+			console.info = () => {};
+			console.warn = () => {};
+			console.error = () => {};
+
+			delete require.cache[taskFile];
+			const executeTask = require(taskFile);
+			await executeTask();
+			await new Promise((resolve) => {
+				const timer = setInterval(() => {
+					if (exitCode !== undefined) {
+						clearInterval(timer);
+						resolve();
+					}
+				}, 1);
+				setTimeout(() => {
+					clearInterval(timer);
+					resolve();
+				}, 100);
+			});
+		} finally {
+			delete require.cache[taskFile];
+			Module._load = originalLoad;
+			process.cwd = originalCwd;
+			process.exit = originalExit;
+			os.homedir = originalHomedir;
+			console.info = originalInfo;
+			console.warn = originalWarn;
+			console.error = originalError;
+		}
+
+		assert.strictEqual(exitCode, 0);
+		assert.deepStrictEqual(selections, [
+			"选择要归档的超额任务（直接 Enter 跳过）",
+			"选择要归档的任务（空槽位无操作）",
+		]);
+		assert.strictEqual(
+			await _exists(root, path.join(TASK_DIR, _slotFilename(2))),
 			false,
 		);
-		assert.strictEqual(await _read(root, path.join(TASK_DIR, "goon-004.md")), "");
-
+		assert.strictEqual(
+			await _read(root, path.join(TASK_DIR, "goon-002.md")),
+			"",
+		);
 		const historyFiles = await _listHistoryFiles(root);
 		assert.strictEqual(historyFiles.length, 1);
-		assert.match(historyFiles[0], /TASK@业务任务\.md$/);
-		assert.notStrictEqual(result.status, 1, result.stderr || result.stdout);
+		assert.match(historyFiles[0], /TASK@Selected overflow\.md$/);
+		assert.doesNotMatch(historyFiles[0], /goon/i);
 	});
 };
 
@@ -363,21 +531,28 @@ const testTaskArchiveSanitizesSpecialFilenameCharacters = async () => {
 	await _withTempDir(async (root) => {
 		const taskRoot = path.join(root, TASK_DIR);
 		await fs.mkdir(taskRoot, { recursive: true });
-		await fs.writeFile(path.join(taskRoot, "thread"), "1", "utf8");
 		await fs.writeFile(
 			path.join(taskRoot, _slotFilename(2)),
 			_taskContent('API/DB\\Auth:Token*Flow?"<>|\u0001. ', "# Body"),
+			"utf8",
+		);
+		await fs.writeFile(
+			path.join(taskRoot, "goon-002.md"),
+			"历史整改痕迹\n",
 			"utf8",
 		);
 
 		const result = _runTask(root, { ...process.env, PATH: "" });
 		const historyFiles = await _listHistoryFiles(root);
 
-		assert.strictEqual(historyFiles.length, 1);
-		assert.match(historyFiles[0], /TASK@API_DB_Auth_Token_Flow_\.md$/);
-		assert.doesNotMatch(
-			path.basename(historyFiles[0]),
-			/[/\\:*?"<>|\u0000-\u001f]/,
+		assert.deepStrictEqual(historyFiles, []);
+		assert.match(
+			await _read(root, path.join(TASK_DIR, _slotFilename(2))),
+			/title: API\/DB\\Auth:Token\*Flow\?"<>\|\u0001\. /,
+		);
+		assert.strictEqual(
+			await _read(root, path.join(TASK_DIR, "goon-002.md")),
+			"历史整改痕迹\n",
 		);
 		assert.notStrictEqual(result.status, 1, result.stderr || result.stdout);
 	});
@@ -453,7 +628,7 @@ const testRunSkipsFocusModeSelection = async () => {
 			delete require.cache[runFile];
 			const executeRun = require(runFile);
 			await executeRun().catch((error) => {
-				if (!/^EXIT:\d+$/.test(error.message)) {
+					if (!/^EXIT:\d+$/.test(error.message)) {
 					throw error;
 				}
 			});
@@ -554,7 +729,7 @@ const testRunUsesCurrentR2moDirectory = async () => {
 			delete require.cache[runFile];
 			const executeRun = require(runFile);
 			await executeRun().catch((error) => {
-				if (!/^EXIT:\d+$/.test(error.message)) {
+					if (!/^EXIT:\d+$/.test(error.message)) {
 					throw error;
 				}
 			});
@@ -644,7 +819,7 @@ const testPlanUsesCurrentR2moDirectory = async () => {
 			delete require.cache[planFile];
 			const executePlan = require(planFile);
 			await executePlan().catch((error) => {
-				if (!/^EXIT:\d+$/.test(error.message)) {
+					if (!/^EXIT:\d+$/.test(error.message)) {
 					throw error;
 				}
 			});
@@ -734,7 +909,7 @@ const testRunPlaysAudioAfterSelection = async () => {
 			delete require.cache[runFile];
 			const executeRun = require(runFile);
 			await executeRun().catch((error) => {
-				if (!/^EXIT:\d+$/.test(error.message)) {
+					if (!/^EXIT:\d+$/.test(error.message)) {
 					throw error;
 				}
 			});
@@ -1050,6 +1225,7 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 			"./commands/start.md",
 			"./commands/loop.md",
 			"./commands/doctor.md",
+			"./commands/task.md",
 		]);
 		const claudeSettings = await _readJson(
 			homeDir,
@@ -1131,28 +1307,28 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 		assert.strictEqual(
 			await _exists(
 				homeDir,
-				path.join(".codex", "plugins", "mxt", "commands", "plan.md"),
+				path.join(".codex", "plugins", "mxt", "commands", "mplan.md"),
 			),
 			true,
 		);
 		assert.strictEqual(
 			await _exists(
 				homeDir,
-				path.join(".codex", "plugins", "mxt", "commands", "run.md"),
+				path.join(".codex", "plugins", "mxt", "commands", "mrun.md"),
 			),
 			true,
 		);
 		assert.strictEqual(
 			await _exists(
 				homeDir,
-				path.join(".codex", "plugins", "mxt", "commands", "end.md"),
+				path.join(".codex", "plugins", "mxt", "commands", "mend.md"),
 			),
 			true,
 		);
 		assert.strictEqual(
 			await _exists(
 				homeDir,
-				path.join(".codex", "plugins", "mxt", "commands", "goon.md"),
+				path.join(".codex", "plugins", "mxt", "commands", "mgoon.md"),
 			),
 			true,
 		);
@@ -1211,7 +1387,7 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 					"mxt",
 					"1.0.0",
 					"commands",
-					"plan.md",
+					"mplan.md",
 				),
 			),
 			true,
@@ -1227,7 +1403,7 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 					"mxt",
 					"1.0.0",
 					"commands",
-					"run.md",
+					"mrun.md",
 				),
 			),
 			true,
@@ -1305,7 +1481,7 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 					"plugins",
 					"mxt",
 					"commands",
-					"plan.md",
+					"mplan.md",
 				),
 			),
 			true,
@@ -1320,7 +1496,7 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 					"plugins",
 					"mxt",
 					"commands",
-					"run.md",
+					"mrun.md",
 				),
 			),
 			true,
@@ -1372,19 +1548,19 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 		assert.strictEqual(codexMarketplace.plugins[0].name, "mxt");
 		assert.strictEqual(codexMarketplace.plugins[0].source.path, "./plugins/mxt");
 		assert.strictEqual(
-			await _exists(homeDir, path.join(".codex", "prompts", "mxt-plan.md")),
+			await _exists(homeDir, path.join(".codex", "prompts", "mplan.md")),
 			true,
 		);
 		assert.strictEqual(
-			await _exists(homeDir, path.join(".codex", "prompts", "mxt-run.md")),
+			await _exists(homeDir, path.join(".codex", "prompts", "mrun.md")),
 			true,
 		);
 		assert.strictEqual(
-			await _exists(homeDir, path.join(".codex", "prompts", "mxt-end.md")),
+			await _exists(homeDir, path.join(".codex", "prompts", "mend.md")),
 			true,
 		);
 		assert.strictEqual(
-			await _exists(homeDir, path.join(".codex", "prompts", "mxt-goon.md")),
+			await _exists(homeDir, path.join(".codex", "prompts", "mgoon.md")),
 			true,
 		);
 		const mxtPlanSkill = await _read(
@@ -1583,7 +1759,7 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 				"commands",
 				"run.md",
 			),
-			path.join(".codex", "plugins", "mxt", "commands", "run.md"),
+			path.join(".codex", "plugins", "mxt", "commands", "mrun.md"),
 			path.join(".codex", "plugins", "mxt", "skills", "mxt-run", "SKILL.md"),
 			path.join(
 				".codex",
@@ -1606,7 +1782,7 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 				"mxt-run",
 				"SKILL.md",
 			),
-			path.join(".codex", "prompts", "mxt-run.md"),
+			path.join(".codex", "prompts", "mrun.md"),
 		];
 		for (const file of installedHarnessFiles) {
 			const content = await _read(homeDir, file);
@@ -1698,19 +1874,19 @@ const testAiCmdUninstallsSelectedPlatforms = async () => {
 			false,
 		);
 		assert.strictEqual(
-			await _exists(homeDir, path.join(".codex", "prompts", "mxt-plan.md")),
+			await _exists(homeDir, path.join(".codex", "prompts", "mplan.md")),
 			false,
 		);
 		assert.strictEqual(
-			await _exists(homeDir, path.join(".codex", "prompts", "mxt-run.md")),
+			await _exists(homeDir, path.join(".codex", "prompts", "mrun.md")),
 			false,
 		);
 		assert.strictEqual(
-			await _exists(homeDir, path.join(".codex", "prompts", "mxt-end.md")),
+			await _exists(homeDir, path.join(".codex", "prompts", "mend.md")),
 			false,
 		);
 		assert.strictEqual(
-			await _exists(homeDir, path.join(".codex", "prompts", "mxt-goon.md")),
+			await _exists(homeDir, path.join(".codex", "prompts", "mgoon.md")),
 			false,
 		);
 		const codexConfig = await _read(homeDir, path.join(".codex", "config.toml"));
@@ -1780,11 +1956,11 @@ const testAiCmdReinstallRefreshesPlatforms = async () => {
 			false,
 		);
 		assert.strictEqual(
-			await _exists(homeDir, path.join(".codex", "prompts", "mxt-plan.md")),
+			await _exists(homeDir, path.join(".codex", "prompts", "mplan.md")),
 			true,
 		);
 		assert.strictEqual(
-			await _exists(homeDir, path.join(".codex", "prompts", "mxt-run.md")),
+			await _exists(homeDir, path.join(".codex", "prompts", "mrun.md")),
 			true,
 		);
 		assert.strictEqual(
@@ -1813,7 +1989,7 @@ const testAiCmdReinstallRefreshesPlatforms = async () => {
 					"plugins",
 					"mxt",
 					"commands",
-					"run.md",
+					"mrun.md",
 				),
 			),
 			true,
@@ -1977,7 +2153,7 @@ const testAiCmdValidatesCrossPlatformInstallTargets = async () => {
 			assert.strictEqual(
 				await _exists(
 					homeDir,
-					path.join(".codex", "plugins", "mxt", "commands", "loop.md"),
+					path.join(".codex", "plugins", "mxt", "commands", "mloop.md"),
 				),
 				true,
 			);
@@ -1999,7 +2175,7 @@ const testAiCmdValidatesCrossPlatformInstallTargets = async () => {
 						"mxt",
 						"1.0.0",
 						"commands",
-						"loop.md",
+						"mloop.md",
 					),
 				),
 				true,
@@ -2021,7 +2197,7 @@ const testAiCmdValidatesCrossPlatformInstallTargets = async () => {
 				true,
 			);
 			assert.strictEqual(
-				await _exists(homeDir, path.join(".codex", "prompts", "mxt-loop.md")),
+				await _exists(homeDir, path.join(".codex", "prompts", "mloop.md")),
 				true,
 			);
 
@@ -2068,240 +2244,181 @@ const testAiCmdValidatesCrossPlatformInstallTargets = async () => {
 	});
 };
 
-const testAiCmdInstallsPiAgentSkills = async () => {
+const testAiCmdMaintainsConsistentCommandCountsAndInstallsTaskWorkflow =
+	async () => {
+		const aiCmd = require("./utils/mxt-ai-cmd");
+		const workflows = [
+			"plan",
+			"run",
+			"end",
+			"goon",
+			"debug",
+			"sync",
+			"start",
+			"loop",
+			"doctor",
+			"task",
+		];
+		const expectedCodexCommands = workflows
+			.map((name) => `m${name}.md`)
+			.sort();
+		const expectedSkills = workflows.map((name) => `mxt-${name}`).sort();
+
+		for (const platform of ["claude", "opencode"]) {
+			const commands = await fs.readdir(
+				path.resolve(
+					__dirname,
+					"..",
+					"agent/commands",
+					platform,
+					"mxt/commands",
+				),
+			);
+			assert.deepStrictEqual(
+				commands.filter((name) => name.endsWith(".md")).sort(),
+				[...workflows.map((name) => `${name}.md`)].sort(),
+				`${platform} command inventory drifted`,
+			);
+		}
+
+		const codexCommands = await fs.readdir(
+			path.resolve(__dirname, "..", "agent/commands/codex/mxt/commands"),
+		);
+		assert.deepStrictEqual(
+			codexCommands.filter((name) => name.endsWith(".md")).sort(),
+			[...workflows.map((name) => `${name}.md`)].sort(),
+		);
+
+		const codexSkills = await fs.readdir(
+			path.resolve(__dirname, "..", "agent/commands/codex/mxt/skills"),
+		);
+		assert.deepStrictEqual(codexSkills.sort(), expectedSkills);
+
+		await _withTempDir(async (homeDir) => {
+			const installed = await aiCmd.installPlatforms(
+				["claude", "codex", "opencode", "pi"],
+				{ homeDir },
+			);
+			assert.deepStrictEqual(
+				installed.map((item) => item.id),
+				["claude", "codex", "opencode", "pi"],
+			);
+
+			const claudeCommands = await fs.readdir(
+				path.join(
+					homeDir,
+					".claude/plugins/cache/mxt-skills/mxt/1.0.0/commands",
+				),
+			);
+			assert.deepStrictEqual(
+				claudeCommands.filter((name) => name.endsWith(".md")).sort(),
+				[...workflows.map((name) => `${name}.md`)].sort(),
+			);
+			assert.strictEqual(
+				await _exists(homeDir, path.join(".claude/commands/mtask.md")),
+				false,
+			);
+
+			const codexPluginCommands = await fs.readdir(
+				path.join(homeDir, ".codex/plugins/mxt/commands"),
+			);
+			assert.deepStrictEqual(
+				codexPluginCommands.filter((name) => name.endsWith(".md")).sort(),
+				expectedCodexCommands,
+			);
+			assert.strictEqual(
+				await _exists(homeDir, path.join(".codex/prompts/mtask.md")),
+				true,
+			);
+			assert.strictEqual(
+				await _exists(homeDir, path.join(".codex/prompts/mxt-task.md")),
+				false,
+			);
+
+			const codexCacheCommands = await fs.readdir(
+				path.join(
+					homeDir,
+					".codex/plugins/cache/mxt-skills/mxt/1.0.0/commands",
+				),
+			);
+			assert.deepStrictEqual(
+				codexCacheCommands.filter((name) => name.endsWith(".md")).sort(),
+				expectedCodexCommands,
+			);
+
+			const codexMarketCommands = await fs.readdir(
+				path.join(
+					homeDir,
+					".codex/marketplaces/mxt-skills/plugins/mxt/commands",
+				),
+			);
+			assert.deepStrictEqual(
+				codexMarketCommands.filter((name) => name.endsWith(".md")).sort(),
+				expectedCodexCommands,
+			);
+
+			const opencodeConfig = JSON.parse(
+				await fs.readFile(
+					path.join(homeDir, ".config/opencode/opencode.json"),
+					"utf8",
+				),
+			);
+			assert.deepStrictEqual(
+				Object.keys(opencodeConfig.command).sort(),
+				[...workflows.map((name) => `mxt:${name}`)].sort(),
+			);
+
+			const piSkills = await fs.readdir(
+				path.join(homeDir, ".pi/agent/skills"),
+			);
+			assert.deepStrictEqual(piSkills.sort(), expectedSkills);
+			assert.deepStrictEqual(
+				installed.find((item) => item.id === "pi").skills.sort(),
+				expectedSkills,
+			);
+
+			const piPrompts = path.join(homeDir, ".pi/agent/prompts");
+			assert.strictEqual(
+				Object.hasOwn(
+					installed.find((item) => item.id === "pi"),
+					"commands",
+				),
+				false,
+			);
+			assert.deepStrictEqual(
+				(await fs.readdir(piPrompts))
+					.filter((name) => name.endsWith(".md"))
+					.sort(),
+				expectedSkills.map((skill) => `${skill}.md`).sort(),
+			);
+		});
+	};
+
+const testOtherAiCmdWorkflowsDoNotMutateR2moTaskState = async () => {
 	const aiCmd = require("./utils/mxt-ai-cmd");
 
 	await _withTempDir(async (homeDir) => {
-		const installed = await aiCmd.installPlatforms(["pi"], { homeDir });
-		assert.deepStrictEqual(
-			installed.map((item) => item.id),
-			["pi"],
-		);
-		assert.deepStrictEqual(installed[0].skills.slice().sort(), [
-			"mxt-debug",
-			"mxt-doctor",
-			"mxt-end",
-			"mxt-goon",
-			"mxt-loop",
-			"mxt-plan",
-			"mxt-run",
-			"mxt-start",
-			"mxt-sync",
-		]);
-		assert.strictEqual(
-			installed[0].targetDir,
-			path.join(homeDir, ".pi", "agent", "skills"),
-		);
-
-		for (const name of installed[0].skills) {
-			assert.strictEqual(
-				await _exists(
-					homeDir,
-					path.join(".pi", "agent", "skills", name, "SKILL.md"),
-				),
-				true,
-			);
-		}
-
-		// Pi 的技能名取自 frontmatter name，与目录名保持一致
-		const plan = await _read(
-			homeDir,
-			path.join(".pi", "agent", "skills", "mxt-plan", "SKILL.md"),
-		);
-		assert.match(plan, /^---\r?\nname: mxt-plan\r?\ndescription:/m);
-
-		// Pi 短命令别名：~/.pi/agent/prompts/<skill>.md -> ../skills/<skill>/SKILL.md
-		assert.strictEqual(
-			installed[0].prompts.targetDir,
-			path.join(homeDir, ".pi", "agent", "prompts"),
-		);
-		assert.strictEqual(installed[0].prompts.created, 9);
-		assert.deepStrictEqual(installed[0].prompts.skipped, []);
-
-		for (const name of installed[0].skills) {
-			const aliasPath = path.join(
-				homeDir,
-				".pi",
-				"agent",
-				"prompts",
-				`${name}.md`,
-			);
-			const aliasStats = await fs.lstat(aliasPath);
-			const alias = await fs.readFile(aliasPath, "utf8");
-			if (aliasStats.isSymbolicLink()) {
-				assert.strictEqual(
-					await fs.readlink(aliasPath),
-					path.join("..", "skills", name, "SKILL.md"),
-				);
-			} else {
-				// Windows 无软链接权限时退化为复制，内容必须与已安装技能一致
-				assert.strictEqual(
-					alias,
-					await fs.readFile(
-						path.join(homeDir, ".pi", "agent", "skills", name, "SKILL.md"),
-						"utf8",
-					),
-				);
-			}
-			assert.match(alias, /\$ARGUMENTS/);
-			assert.match(
-				alias,
-				new RegExp(`^---\\r?\\nname: ${name}\\r?\\ndescription:`, "m"),
-			);
-		}
-		if (process.platform !== "win32") {
-			assert.strictEqual(
-				await fs.readlink(
-					path.join(homeDir, ".pi", "agent", "prompts", "mxt-run.md"),
-				),
-				path.join("..", "skills", "mxt-run", "SKILL.md"),
-			);
-		}
-
-		// Pi 专属 prompt 模板 /goal：按内容比对判定归属
-		assert.deepStrictEqual(installed[0].commands, {
-			targetDir: path.join(homeDir, ".pi", "agent", "prompts"),
-			created: ["goal"],
-			skipped: [],
-		});
-		const goalPath = path.join(homeDir, ".pi", "agent", "prompts", "goal.md");
-		const goalSource = await fs.readFile(
-			path.join(__dirname, "..", "agent", "commands", "pi", "prompts", "goal.md"),
-			"utf8",
-		);
-		assert.strictEqual(await fs.readFile(goalPath, "utf8"), goalSource);
-		assert.match(goalSource, /argument-hint:.*<objective>/);
-		assert.match(goalSource, /mission\.create/);
-		assert.match(goalSource, /\$ARGUMENTS/);
-		// 命令面与 @narumitw/pi-goal 对齐：--tokens 预算、stop 别名、原生工具与状态名
-		assert.match(goalSource, /--tokens <budget>/);
-		assert.match(goalSource, /`stop`/);
-		assert.match(goalSource, /@narumitw\/pi-goal/);
-		for (const native of ["goal_complete", "goal_blocked", "goal_wait"]) {
-			assert.match(goalSource, new RegExp(native));
-		}
-		assert.match(goalSource, /budget-exhausted/);
-		assert.match(goalSource, /4000/);
-		// 扩展命令优先于 prompt 模板：装了原生 pi-goal 时本文件被遮蔽，必须写明
-		assert.match(
-			goalSource,
-			/extension commands \*\*before\*\* prompt templates/,
-		);
-
-		// /goal 只属于 Pi Agent：只有 Pi 平台带 promptSourceDir，且两个模板函数各只有一个调用点
-		const aiCmdSource = await fs.readFile(
-			path.join(__dirname, "utils", "mxt-ai-cmd.js"),
-			"utf8",
-		);
-		assert.strictEqual((aiCmdSource.match(/promptSourceDir:/g) || []).length, 1);
-		for (const fn of ["installPiPromptTemplates", "uninstallPiPromptTemplates"]) {
-			assert.strictEqual(
-				(aiCmdSource.match(new RegExp(`await ${fn}\\(`, "g")) || []).length,
-				1,
-				`${fn} 应只有一处 Pi 调用点`,
-			);
-		}
-
-		// 自有 goal.md 随卸载回收，重装后恢复
-		await aiCmd.uninstallPlatforms(["pi"], { homeDir });
-		assert.strictEqual(
-			await _exists(homeDir, path.join(".pi", "agent", "prompts", "goal.md")),
-			false,
-		);
-		await aiCmd.installPlatforms(["pi"], { homeDir });
-
-		// 与安装器无关的独立 prompt 模板：既不写入也不回收，必须逐字节保留
-		const customPromptPath = path.join(
-			homeDir,
-			".pi",
-			"agent",
-			"prompts",
-			"custom-standalone.md",
-		);
-		const customPromptContent =
-			"---\ndescription: standalone prompt\n---\nstandalone prompt\n";
-		await fs.writeFile(customPromptPath, customPromptContent, "utf8");
-		assert.strictEqual(
-			await fs.readFile(customPromptPath, "utf8"),
-			customPromptContent,
-		);
-
-		// 用户自建的同名模板不覆盖（先替换软链接再写入，避免写穿到技能源文件）
-		const userPrompt = path.join(
-			homeDir,
-			".pi",
-			"agent",
-			"prompts",
-			"mxt-run.md",
-		);
-		const userPromptContent =
-			"---\ndescription: my own run prompt\n---\nmy own run prompt\n";
-		await fs.unlink(userPrompt);
-		await fs.writeFile(userPrompt, userPromptContent, "utf8");
-
-		const reinstalled = await aiCmd.installPlatforms(["pi"], { homeDir });
-		assert.deepStrictEqual(reinstalled[0].prompts.skipped, ["mxt-run"]);
-		assert.strictEqual(reinstalled[0].prompts.created, 8);
-		assert.strictEqual(await fs.readFile(userPrompt, "utf8"), userPromptContent);
-
-		// 用户改过的 goal.md 同样保留（内容比对判定归属）
-		const userGoalContent = "---\ndescription: my own goal\n---\nmy own goal\n";
-		await fs.writeFile(goalPath, userGoalContent, "utf8");
-		const regoal = await aiCmd.installPlatforms(["pi"], { homeDir });
-		assert.deepStrictEqual(regoal[0].commands.created, []);
-		assert.deepStrictEqual(regoal[0].commands.skipped, ["goal"]);
-		assert.strictEqual(await fs.readFile(goalPath, "utf8"), userGoalContent);
-		assert.strictEqual(
-			await fs.readFile(customPromptPath, "utf8"),
-			customPromptContent,
-		);
-
-		// 卸载只清理 mxt-* 技能，不误删用户自己的技能
-		const userSkill = path.join(homeDir, ".pi", "agent", "skills", "user-skill");
-		await fs.mkdir(userSkill, { recursive: true });
+		const taskRoot = path.join(homeDir, TASK_DIR);
+		await fs.mkdir(taskRoot, { recursive: true });
+		await fs.writeFile(path.join(taskRoot, "thread"), "25", "utf8");
 		await fs.writeFile(
-			path.join(userSkill, "SKILL.md"),
-			"---\nname: user-skill\ndescription: keep me\n---\n",
+			path.join(taskRoot, _slotFilename(26)),
+			_taskContent("Overflow 026"),
 			"utf8",
 		);
+		await fs.writeFile(
+			path.join(taskRoot, _slotFilename(77)),
+			_taskContent("Overflow 077"),
+			"utf8",
+		);
+		await fs.writeFile(path.join(taskRoot, "goon-026.md"), "goon 026\n", "utf8");
+		const before = await _snapshotFiles(taskRoot);
 
-		const uninstalled = await aiCmd.uninstallPlatforms(["pi"], { homeDir });
-		assert.deepStrictEqual(
-			uninstalled.map((item) => item.id),
-			["pi"],
-		);
-		for (const name of installed[0].skills) {
-			assert.strictEqual(
-				await _exists(homeDir, path.join(".pi", "agent", "skills", name)),
-				false,
-			);
-		}
-		assert.strictEqual(
-			await _exists(
-				homeDir,
-				path.join(".pi", "agent", "skills", "user-skill", "SKILL.md"),
-			),
-			true,
-		);
+		await aiCmd.installPlatforms(["claude", "codex", "opencode", "pi"], {
+			homeDir,
+		});
 
-		// 短命令别名随技能一起回收，用户自建模板保留
-		for (const name of installed[0].skills) {
-			if (name === "mxt-run") continue;
-			assert.strictEqual(
-				await _exists(homeDir, path.join(".pi", "agent", "prompts", `${name}.md`)),
-				false,
-			);
-		}
-		assert.strictEqual(
-			await _exists(homeDir, path.join(".pi", "agent", "prompts", "mxt-run.md")),
-			true,
-		);
-		assert.strictEqual(await fs.readFile(userPrompt, "utf8"), userPromptContent);
-		assert.strictEqual(
-			await fs.readFile(customPromptPath, "utf8"),
-			customPromptContent,
-		);
-		assert.strictEqual(await fs.readFile(goalPath, "utf8"), userGoalContent);
+		assert.deepStrictEqual(await _snapshotFiles(taskRoot), before);
 	});
 };
 
@@ -2546,6 +2663,25 @@ const testAiCmdRegistersDoctorAcrossAllPlatforms = async () => {
 	assert.ok(claude.commands.includes("./commands/doctor.md"));
 	assert.match(claude.description, /doctor/);
 
+	const claudeManifestDirs = [
+		"agent/commands/claude/mxt/.claude-plugin/plugin.json",
+		"agent/commands/claude/mxt/plugin.json",
+	];
+	const taskManifests = await Promise.all(
+		claudeManifestDirs.map((file) =>
+			fs
+				.readFile(path.resolve(__dirname, "..", file), "utf8")
+				.then(JSON.parse),
+		),
+	);
+	taskManifests.forEach((manifest, index) => {
+		assert.match(manifest.description, /\/mxt:task/);
+		assert.ok(
+			manifest.commands.includes("./commands/task.md"),
+			`Missing task command in ${claudeManifestDirs[index]}`,
+		);
+	});
+
 	const aiCmd = require("./utils/mxt-ai-cmd");
 	await _withTempDir(async (homeDir) => {
 		const installed = await aiCmd.installPlatforms(
@@ -2576,7 +2712,7 @@ const testAiCmdRegistersDoctorAcrossAllPlatforms = async () => {
 		assert.strictEqual(
 			await _exists(
 				homeDir,
-				path.join(".codex", "plugins", "mxt", "commands", "doctor.md"),
+				path.join(".codex", "plugins", "mxt", "commands", "mdoctor.md"),
 			),
 			true,
 		);
@@ -2591,7 +2727,7 @@ const testAiCmdRegistersDoctorAcrossAllPlatforms = async () => {
 					"mxt",
 					"1.0.0",
 					"commands",
-					"doctor.md",
+					"mdoctor.md",
 				),
 			),
 			true,
@@ -2606,13 +2742,13 @@ const testAiCmdRegistersDoctorAcrossAllPlatforms = async () => {
 					"plugins",
 					"mxt",
 					"commands",
-					"doctor.md",
+					"mdoctor.md",
 				),
 			),
 			true,
 		);
 		assert.strictEqual(
-			await _exists(homeDir, path.join(".codex", "prompts", "mxt-doctor.md")),
+			await _exists(homeDir, path.join(".codex", "prompts", "mdoctor.md")),
 			true,
 		);
 		assert.strictEqual(
@@ -2943,10 +3079,12 @@ const main = async () => {
 	await testInitCreatesDeterministicTaskDatabaseArtifacts();
 	await testTaskCreatesDeterministicTaskDatabaseArtifacts();
 	await testInitCreatesSweDirectoriesAndPreservesExistingContent();
+	await testInitPreservesOverflowTasksAboveThreadThreshold();
 	await testDefaultThreadFallsBackTo30();
 	await testThreadOverridesDefault();
-	await testShrinkThreadPrunesOverflow();
+	await testShrinkThreadPreservesOverflowUntilSelected();
 	await testTaskArchiveSanitizesSpecialFilenameCharacters();
+	await testTaskSelectedArchiveClearsGoonWithoutBackup();
 	await testRunSkipsFocusModeSelection();
 	await testTaskUsesCurrentR2moDirectory();
 	await testPlanUsesCurrentR2moDirectory();
@@ -2958,7 +3096,8 @@ const main = async () => {
 	await testAiCmdOpenCodePreservesJsonStringCommentMarkers();
 	await testAiCmdClaudeInstallWritesHostPluginState();
 	await testAiCmdValidatesCrossPlatformInstallTargets();
-	await testAiCmdInstallsPiAgentSkills();
+	await testAiCmdMaintainsConsistentCommandCountsAndInstallsTaskWorkflow();
+	await testOtherAiCmdWorkflowsDoNotMutateR2moTaskState();
 	await testAiCmdInstallReportsActionablePlatformErrors();
 	await testHelpExecutorHandlesMetadataFailureSafely();
 	await testAiCmdUsesWindowsSafeCommandExecution();

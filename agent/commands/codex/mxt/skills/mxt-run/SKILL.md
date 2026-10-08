@@ -1,83 +1,69 @@
 ---
 name: mxt-run
-description: Use when the user asks Codex to run the run MXT workflow; enforces scoped inputs, evidence-backed execution, and closed-loop handoff.
+description: Use when the user asks Codex to run the run MXT workflow; implements the task body and appends Changes with gate evidence.
 ---
 
 # /mxt:run
 
-## Harness
+## HARNESS
 
-Binding execution contract for all MXT commands across Claude Code, Codex, and OpenCode.
+1. Load before any action; silently skip missing files:
+   AGENTS.md · CLAUDE.md · CODEX.md · .claude/rules/*.mdc · .codex/rules/*.mdc · .cursor/rules/*.mdc · .opencode/*.mdc · ~/.codex/rules/r2mo-task-workflow.md
+2. Output English-first; quote localized repo strings verbatim when needed.
+3. Disk is the only state carrier; re-read before every decision and write-back.
+4. Print `Lock: <paths>` before first read; only locked paths may be mutated.
+5. Run the smallest sufficient verification per change boundary; record skipped gates with reason.
+6. When this skill declares a required superpowers skill, invoke it via the Skill tool; fall back manually only on explicit `skill not found` error.
 
-- **English-first.** Write all output in English. Use Chinese only when quoting existing repo content (task titles, frontmatter values, status fields, localized error messages) or when the user explicitly asks.
-- **Rule loading.** Load `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `.claude/rules/*.mdc`, `.codex/rules/*.mdc`, `.cursor/rules/*.mdc`, `.opencode/*.mdc`, and `~/.codex/rules/r2mo-task-workflow.md` before task action. Missing files do not block.
-- **Argument contract.** Resolve the three-digit task number first. If absent, list `.r2mo/task/` candidates in the current directory only. Never resolve from parent/sibling/historical directories.
-- **Isolation lock.** Print locked path(s) before reading. Only read/write locked `task-*.md` and `goon-*.md` files.
-- **Disk source of truth.** Re-read locked files from disk before decisions and before write-back. Do not trust conversation memory, summaries, or cache.
-- **Prompt echo.** Print the final action prompt in a code block before editing or execution.
-- **Write-back guard.** Verify destination matches isolation lock before any write. Never duplicate `Plan` or `Changes`; update in place.
-- **Fresh evidence.** Run the smallest sufficient verification for the changed boundary before claiming success. Record skipped gates with reason.
-- **Cross-agent portability.** Keep prompts deterministic and safe for Claude Code, Codex skills, and OpenCode JSON templates.
 
-Read `.r2mo/task/task-NNN.md` for the given number and execute the development task.
+## ARGUMENTS
 
-The user invoked this command with: $ARGUMENTS
+| Form | Behaviour |
+|---|---|
+| `NNN` | Operate on `.r2mo/task/task-NNN.md`. |
+| `NNN Team` | Force multi-agent coordination. |
+| `NNN Worktree` / `NNN WT` | Force worktree `.r2mo/worktrees/task-NNN` (branch `task-NNN`). |
+| *(empty)* | Scan `.r2mo/task/task-*.md`; interactive picker. |
+| Other | Abort with `Usage: /mxt:run NNN [Team\|Worktree]` |
 
-## Arguments
+Directives override automatic judgement; absence triggers auto-judge by complexity/risk.
 
-1. `$ARGUMENTS` starts with a three-digit number (regex `^[0-9]{3}`), e.g. `001`.
-2. Additional tokens are **directives** (space-separated, case-insensitive):
-   - `Team` — force Team mode (multi-agent collaboration)
-   - `Worktree` / `WT` — force Worktree isolation
-3. Declare parsed results, e.g. `📌 Task: 005 | Directives: Team`. If no directives, declare task number only.
-4. Directives override automatic judgment:
-   - `Team` → enable Team mode regardless of complexity
-   - `Worktree` → create Worktree regardless of risk assessment
-5. **Worktree spec**: Name prefix `task-NNN` (e.g. `task-005`). Store in `.r2mo/worktrees/` under the current project (not global). Example: `git worktree add .r2mo/worktrees/task-005 -b task-005`.
+## LOCKED PATHS
 
-**Hard rules**: Parse failure → abort. Directives override auto-judgment. Quality gate must pass before writing Done+Changes to `<TASK_PATH>`. Path conflict → abort. No reads/writes outside isolation lock.
+- `.r2mo/task/task-NNN.md` — mutable only for `status` + `## Changes`.
+- `.r2mo/worktrees/task-NNN/` — only when Worktree directive or auto-judged risk demands.
+- Worker scratch files (outside `task-*` namespace).
 
-## Closed-Loop Contract
+Never touch goon files or sibling task files.
 
-`mxt-run` is the Development stage of the task loop and must hand off reviewable evidence.
+## CONTRACT
 
-- **Changed-file inventory.** Record every source, test, config, and task record file touched by this stage. Do not omit generated or fixture files when they affect verification.
-- **Requirement traceability.** Each implementation step must map to an explicit task requirement or current goon item.
-- **Quality gates before Done.** Run the smallest sufficient compile/lint/test/runtime checks for the changed boundary. Record command, expected result, actual result, and exit code. If a gate is unavailable, record `skipped (N/A)` with reason.
-- **No self-acceptance.** RUN may set status Done after gates pass, but acceptance requires the independent END review. Do not claim final closure or review completion.
-- **Write-back integrity.** Update only the locked task file, in place. Changes must describe files, commands, results, and scope rationale sufficiently for a fresh reviewer.
+- Requirement traceability: every change maps to a task requirement or current goon item.
+- Changed-file inventory: capture every touched file; never omit fixtures affecting verification.
+- Gates before `Done`: compile + lint + tests; each gate cites command/expected/actual/exit-code.
+- No self-acceptance: DONE status requires independent END review.
 
-## Workflow
+## WORKFLOW
 
-1. Load repo entry rules and all `.mdc` rule files (see Harness § Rule loading).
-2. Parse `$ARGUMENTS`: extract task number and directives. If empty, scan `.r2mo/task/task-*.md`, list for user selection. If no task files exist, prompt user to create one. If non-empty but does not match `^[0-9]{3}`, stop and print: `Usage: /mxt:run 001 [directives...] where 001 is a 3-digit task number.`
-3. Set task path to `.r2mo/task/task-NNN.md`. If file does not exist, do not guess — ask user for correct number.
-4. **Isolation lock**: Print `📌 Locked: .r2mo/task/task-NNN.md`. All reads/writes target this path only.
-5. Read task body (after frontmatter). If empty, stop and return: `Task body is empty. Cannot execute /mxt:run.`
-6. Print the final execution prompt in a Markdown code block before editing.
-7. Execute the prompt below with `<TASK_PATH>` replaced by the actual relative path:
+| # | Action |
+|---|---|
+| 1 | Parse `NNN` + directives; emit `Lock:`; abort if body empty. |
+| 2 | Read body. `## Plan` present → execute its steps in order; else derive internal plan (do not write one). |
+| 3 | Execute; track changed files as you go. |
+| 4 | Run gates in order: compile → lint → tests. Each gate: command, expected, actual, exit code. Max 3 retries per gate; 3rd failure aborts. |
+| 5 | All gates pass → `status: Done`; append `## Changes` with gate 4-tuples. |
+| 6 | Write-back guard: re-read to confirm. |
+| 7 | Report: changed-file inventory, gate table, status. |
 
-> **Task**: Execute the development task defined in `<TASK_PATH>`.
->
-> - **Input**: Read body after frontmatter of `<TASK_PATH>`.
-> - **Pre-check**: If body is empty, return "Task body is empty, not executed" and do not modify any file.
-> - **Execution basis**: If `## Plan` exists, follow it. If no Plan, derive steps but do not write a Plan.
-> - **Scheduling**: Auto-judge Team mode by complexity; auto-judge Worktree by risk. Directives override auto-judgment.
-> - **Quality gate** (mandatory before Done/Changes, max 3 auto-retry rounds; 3 failures → stop, report, do not write Done):
->   1. **Compile zero-warning**: Run project compile (e.g. `npm run build`, `mvn compile`, `tsc --noEmit`). Must be zero errors, zero warnings. Fix and retry if warnings.
->   2. **Lint zero-warning**: Run project lint (e.g. `npm run lint`, `eslint .`). Must be zero errors, zero warnings.
->   3. **Tests pass**: If test config exists (`jest`, `mocha`, `vitest`, `pytest`), run the test suite. All must pass. Skip if no test config.
->   4. **Record results**: Write each gate's command, pass/fail status into Changes. If a gate is N/A, record as "skipped (N/A)".
-> - **Write-back**: Set task status to Done and append `## Changes` (changed files, quality gate results, verification evidence) to `<TASK_PATH>` only. Never write Changes to a goon file.
-> - **Isolation**: Do not read, edit, or create any `task-*.md` or `goon-*.md` other than `<TASK_PATH>` (except worker files in Team scheduling).
+## RULES
 
-## Next Steps
+- Gate skipped → cite exact reason. No silent skip.
+- Never write `## Changes` into a goon file.
+- Worktree name/branch is `task-NNN`, under `.r2mo/worktrees/`.
 
-- Verify task → `/mxt:end <number>`
-- Remediation items → `/mxt:goon <number>`
-- Re-verify after remediation → `/mxt:end <number>` (loop until clean)
-- New bug → `/mxt:debug <description>`
+## NEXT
 
-## Verification
-
-Report: verification commands executed, results, and the task file path written back.
+```text
+/mxt:end NNN
+/mxt:goon NNN         # if END emits P0/P1 blockers
+```

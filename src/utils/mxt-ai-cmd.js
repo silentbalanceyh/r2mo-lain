@@ -19,6 +19,7 @@ const COMMAND_BASENAMES = [
     "start",
     "loop",
     "doctor",
+    "task",
 ];
 const MXT_COMMANDS = COMMAND_BASENAMES.map((name) => `${COMMAND_NAME}:${name}`);
 const LEGACY_COMMANDS = [
@@ -31,6 +32,12 @@ const LEGACY_COMMANDS = [
     "start",
 ].map((name) => `${LEGACY_COMMAND_NAME}:${name}`);
 const CODEX_COMMANDS = COMMAND_BASENAMES;
+
+// Codex-only short slash commands (/mplan, /mrun, ..., /mtask) use the
+// semantic workflow ID but are published as m<workflow>.md. Skills and the
+// $mxt-task prompt remain semantic so the workflow count stays consistent.
+const codexCommandFilename = (workflow) => `m${workflow}.md`;
+const codexPromptFilename = (workflow) => `m${workflow}.md`;
 
 // OpenCode 配置路径：Windows 使用 %APPDATA%，其他平台使用 ~/.config/
 // 接受 homeDir 参数以支持测试/临时 home 场景
@@ -62,11 +69,6 @@ const piSkillsDir = (homeDir) =>
 // 模板正文中的 $ARGUMENTS 会被 Pi 替换为调用参数，与 /skill:<name> 等价。
 const piPromptsDir = (homeDir) =>
     path.join(homeDir || os.homedir(), ".pi", "agent", "prompts");
-
-// Pi 专属 prompt 模板源目录：agent/commands/pi/prompts/*.md
-// 与技能别名不同，这类模板（如 /goal）是本安装器的自有内容，不来自任何技能；
-// 只有 Pi Agent 平台会读写它，其它平台不会接触 ~/.pi/agent/prompts。
-const piPromptSourceDir = path.join(SOURCE_ROOT, "pi", "prompts");
 
 const PLATFORMS = [
     {
@@ -108,9 +110,8 @@ const PLATFORMS = [
         id: "pi",
         name: "Pi Agent",
         description:
-            "~/.pi/agent/skills/mxt-* (Pi skills, invoked as /skill:mxt-*) plus ~/.pi/agent/prompts (/mxt-* shortcuts and /goal)",
+            "~/.pi/agent/skills/mxt-* (Pi skills, invoked as /skill:mxt-*) plus ~/.pi/agent/prompts/mxt-*",
         sourceDir: path.join(SOURCE_ROOT, "codex", "mxt", "skills"),
-        promptSourceDir: piPromptSourceDir,
         targetDir: (homeDir) => piSkillsDir(homeDir),
         installer: "piSkills",
     },
@@ -208,6 +209,42 @@ const copyDir = async (sourceDir, targetDir) => {
         } else if (entry.isFile() || entry.isSymbolicLink()) {
             await fs.mkdir(path.dirname(targetPath), { recursive: true });
             await retryOnWindows(() => fs.copyFile(sourcePath, targetPath));
+            copied++;
+        }
+    }
+    return copied;
+};
+
+// Codex plugin artifacts keep semantic skills and manifest data, while command
+// files are published under short Codex-only names.
+const copyCodexPluginArtifacts = async (sourceDir, targetDir) => {
+    const entries = await fs.readdir(sourceDir, { withFileTypes: true });
+    await fs.mkdir(targetDir, { recursive: true });
+    let copied = 0;
+
+    for (const entry of entries) {
+        const sourcePath = path.join(sourceDir, entry.name);
+        if (entry.isDirectory() && entry.name !== "commands") {
+            copied += await copyDir(sourcePath, path.join(targetDir, entry.name));
+        } else if (entry.isDirectory() && entry.name === "commands") {
+            const commandTarget = path.join(targetDir, "commands");
+            await fs.mkdir(commandTarget, { recursive: true });
+            const commandEntries = await fs.readdir(sourcePath, {
+                withFileTypes: true,
+            });
+            for (const command of commandEntries) {
+                if (!command.isFile() || !command.name.endsWith(".md")) continue;
+                const workflow = command.name.replace(/\.md$/, "");
+                await fs.copyFile(
+                    path.join(sourcePath, command.name),
+                    path.join(commandTarget, codexCommandFilename(workflow)),
+                );
+                copied++;
+            }
+        } else if (entry.isFile() || entry.isSymbolicLink()) {
+            await retryOnWindows(() =>
+                fs.copyFile(sourcePath, path.join(targetDir, entry.name)),
+            );
             copied++;
         }
     }
@@ -654,8 +691,8 @@ const copyCodexPromptFiles = async (sourceCommandDir, promptsDir) => {
     for (const file of files) {
         if (!file.isFile() || !file.name.endsWith(".md")) continue;
         const sourcePath = path.join(sourceCommandDir, file.name);
-        const commandName = file.name.replace(/\.md$/, "");
-        const targetPath = path.join(promptsDir, `mxt-${commandName}.md`);
+        const workflow = file.name.replace(/\.md$/, "");
+        const targetPath = path.join(promptsDir, codexPromptFilename(workflow));
         await fs.copyFile(sourcePath, targetPath);
         copied++;
     }
@@ -985,7 +1022,10 @@ const installCodexMarketplace = async (platform, homeDir) => {
         ],
     };
 
-    const copied = await copyDir(platform.sourceDir, marketplacePluginsDir);
+    const copied = await copyCodexPluginArtifacts(
+        platform.sourceDir,
+        marketplacePluginsDir,
+    );
     await fs.mkdir(marketplaceMetaDir, { recursive: true });
     await fs.writeFile(
         marketplaceFile,
@@ -1039,9 +1079,12 @@ const installCodexPlugin = async (platform, homeDir) => {
         "mxt",
         "1.0.0",
     );
-    const copied = await copyDir(platform.sourceDir, targetDir);
+    const copied = await copyCodexPluginArtifacts(platform.sourceDir, targetDir);
     const marketplace = await installCodexMarketplace(platform, homeDir);
-    const cacheCopied = await copyDir(platform.sourceDir, cacheDir);
+    const cacheCopied = await copyCodexPluginArtifacts(
+        platform.sourceDir,
+        cacheDir,
+    );
     const sourceCommandDir = path.join(platform.sourceDir, "commands");
     const promptCopied = await copyCodexPromptFiles(
         sourceCommandDir,
@@ -1138,6 +1181,19 @@ const uninstallCodexPlugin = async (platform, homeDir) => {
     removed += await removeExistingPath(path.join(promptsDir, "mxt-debug.md"));
     removed += await removeExistingPath(path.join(promptsDir, "mxt-sync.md"));
     removed += await removeExistingPath(path.join(promptsDir, "mxt-start.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mxt-loop.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mxt-doctor.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mxt-task.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mplan.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mrun.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mend.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mgoon.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mdebug.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "msync.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mstart.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mloop.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mdoctor.md"));
+    removed += await removeExistingPath(path.join(promptsDir, "mtask.md"));
     removed += await removeExistingPath(cacheDir);
     removed += await removeExistingPath(marketplaceDir);
     removed += await removeCodexConfig(homeDir);
@@ -1297,80 +1353,7 @@ const uninstallPiPromptAliases = async (skills, skillsDir, homeDir) => {
     return removed;
 };
 
-// Pi 专属 prompt 模板（如 /goal）：从 agent/commands/pi/prompts/ 逐个安装到
-// ~/.pi/agent/prompts/。它们不是技能镜像而是本安装器的自有内容，因此用内容比对
-// 判定归属：与源内容一致的视为本安装器所有（幂等重装不写盘，避免写穿软链接），
-// 用户自建或改过的同名模板跳过安装并在卸载时保留。其它平台不会调用这两个函数。
-const listPromptTemplates = async (sourceDir) => {
-    let entries = [];
-    try {
-        entries = await fs.readdir(sourceDir, { withFileTypes: true });
-    } catch (error) {
-        if (error.code === "ENOENT") return [];
-        throw error;
-    }
-
-    const templates = [];
-    for (const entry of entries) {
-        if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
-        templates.push({
-            name: entry.name.replace(/\.md$/, ""),
-            sourcePath: path.join(sourceDir, entry.name),
-        });
-    }
-    return templates;
-};
-
-const installPiPromptTemplates = async (sourceDir, homeDir) => {
-    const targetDir = piPromptsDir(homeDir);
-    const templates = await listPromptTemplates(sourceDir);
-    const created = [];
-    const skipped = [];
-
-    if (templates.length > 0) {
-        await fs.mkdir(targetDir, { recursive: true });
-    }
-
-    for (const template of templates) {
-        const targetPath = path.join(targetDir, `${template.name}.md`);
-        const content = await fs.readFile(template.sourcePath, "utf8");
-        if (await pathExists(targetPath)) {
-            const current = await fs.readFile(targetPath, "utf8");
-            if (current !== content) {
-                skipped.push(template.name);
-                continue;
-            }
-            created.push(template.name);
-            continue;
-        }
-        await fs.writeFile(targetPath, content, "utf8");
-        created.push(template.name);
-    }
-
-    return { targetDir, created, skipped };
-};
-
-const uninstallPiPromptTemplates = async (sourceDir, homeDir) => {
-    const targetDir = piPromptsDir(homeDir);
-    const templates = await listPromptTemplates(sourceDir);
-    let removed = 0;
-
-    for (const template of templates) {
-        const targetPath = path.join(targetDir, `${template.name}.md`);
-        let current = null;
-        try {
-            current = await fs.readFile(targetPath, "utf8");
-        } catch (error) {
-            if (error.code === "ENOENT") continue;
-            throw error;
-        }
-        const content = await fs.readFile(template.sourcePath, "utf8");
-        if (current !== content) continue;
-        removed += await removePiPromptFile(targetPath);
-    }
-
-    return removed;
-};
+// Pi 安装只管理本命令拥有的 mxt-* 技能与对应命令别名。
 // 因此这里按技能目录逐个安装，而不是整体覆盖 ~/.pi/agent/skills；
 // 同时生成 ~/.pi/agent/prompts/<skill>.md 短命令（/mxt-<name>）。
 const installPiSkills = async (platform, homeDir) => {
@@ -1387,10 +1370,6 @@ const installPiSkills = async (platform, homeDir) => {
     }
 
     const prompts = await installPiPromptAliases(skills, targetDir, homeDir);
-    const commands = await installPiPromptTemplates(
-        platform.promptSourceDir,
-        homeDir,
-    );
 
     return {
         id: platform.id,
@@ -1400,7 +1379,6 @@ const installPiSkills = async (platform, homeDir) => {
         copied,
         skills: skills.map((skill) => skill.name),
         prompts,
-        commands,
     };
 };
 
@@ -1411,10 +1389,6 @@ const uninstallPiSkills = async (platform, homeDir) => {
 
     // 先回收短命令别名：复制型别名需要比对已安装的 SKILL.md，必须在删除技能前判断归属
     removed += await uninstallPiPromptAliases(skills, targetDir, homeDir);
-    removed += await uninstallPiPromptTemplates(
-        platform.promptSourceDir,
-        homeDir,
-    );
 
     for (const skill of skills) {
         removed += await removeExistingPath(path.join(targetDir, skill.name));
