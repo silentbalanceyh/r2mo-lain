@@ -33,6 +33,7 @@ Windows 上会优先使用属于当前用户主目录的 `APPDATA`；若 `HOME` 
 - 用户自建的同名 prompt 模板（`~/.pi/agent/prompts/mxt-*.md`）不会被覆盖或删除，安装时以“跳过”提示。
 - 详细教程见 [`docs/ai-cmd.md`](../ai-cmd.md)。
 - 平台与 Skills 的拆分文档见 [`docs/skills/README.md`](../skills/README.md)。
+- Codex `/m*` 短命令映射和安装语义见 [`docs/skills/codex-short-commands.md`](../skills/codex-short-commands.md)。
 
 ## 命令执行记录
 

@@ -1,4 +1,14 @@
-# $mxt-debug / /mxt:debug
+# $mxt-debug / /mdebug / /mxt:debug
+
+## Codex /m 用法
+
+Codex 中可以使用 `/mdebug` 作为本工作流的短命令；它与对应的 `$mxt-*` 语义别名共用同一套磁盘状态、锁路径、验收门禁和写回契约。示例：
+
+```bash
+/mdebug 登录按钮点击无响应 P1 Deep
+```
+
+这条短命令只改变 Codex 里的入口拼写，不改变工作流本身的范围。完整输入、写回、锁路径与下一步见本页下文。
 
 ## 基本介绍
 
@@ -78,7 +88,7 @@ task_ref:             # 仅在用户显式引用任务时才填
 ```md
 | ID | Severity | Module | Summary | Status | Report |
 |---|:---:|---|---|:---:|---|
-| 2026-10-08-P1-pagination-null-guard | P1 | src/executor | 分页为 0 时仍请求下一页 | fixed | [2026-10-08-P1-pagination-null-guard.md](2026-10-08-P1-pagination-null-guard.md) |
+| 2026-10-08-P1-pagination-null-guard | P1 | src/executor | 分页为 0 时仍请求下一页 | fixed | `2026-10-08-P1-pagination-null-guard.md` |
 ```
 
 规则：

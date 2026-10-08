@@ -56,6 +56,7 @@
 
 - [mxt ai-cmd](ai-cmd.md) — 安装 mxt AI 命令到 Claude Code / Codex / OpenCode / Pi Agent；Codex 安装为 plugin skills，Pi Agent 安装为全局 skills 与 /mxt-* 短命令
 - [mxt ask](ask.md) — 从模板目录中选择提示词并复制到剪切板
+- [mxt coder](coder.md) — 本地代码知识库：scan / status / update / locate / expand，图谱、全文与向量落到 `.r2mo/repo/self/graph.db`
 - [mxt plan](plan.md) — 从项目根或 .r2mo 目录下的 task/ 中选择任务，生成 Plan 阶段提示词到剪贴板
 - [mxt run](run.md) — 从项目根/.r2mo 下的 task 中选择任务，打印内容并确认后生成提示词到剪贴板
 - [mxt task](task.md) — 按项目根/.r2mo 下的 task/thread 对齐标准 task 槽位；thread 缺失时默认 30，超过阈值的扩展任务默认保留并支持交互选择归档

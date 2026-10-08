@@ -42,22 +42,24 @@
 
 ## 命令与 Skill 对照
 
-| 工作流 | Codex Skill | Pi Agent Skill | Claude Code / OpenCode | 文档 |
-| :--- | :--- | :--- | :--- | :--- |
-| 计划 | `$mxt-plan 001` | `/mxt-plan 001` | `/mxt:plan 001` | [mxt-plan](mxt-plan.md) |
-| 执行 | `$mxt-run 001` | `/mxt-run 001` | `/mxt:run 001` | [mxt-run](mxt-run.md) |
-| 验收 | `$mxt-end 001` | `/mxt-end 001` | `/mxt:end 001` | [mxt-end](mxt-end.md) |
-| 整改 | `$mxt-goon 001` | `/mxt-goon 001` | `/mxt:goon 001` | [mxt-goon](mxt-goon.md) |
-| 自动闭环 | `$mxt-loop 001` | `/mxt-loop 001` | `/mxt:loop 001` | [mxt-loop](mxt-loop.md) |
-| 调试 | `$mxt-debug 001 login fails` | `/mxt-debug 001 login fails` | `/mxt:debug 001 login fails` | [mxt-debug](mxt-debug.md) |
-| 防漂移 | `$mxt-doctor loc` | `/mxt-doctor loc` | `/mxt:doctor loc` | [mxt-doctor](mxt-doctor.md) |
-| 同步 | `$mxt-sync` | `/mxt-sync` | `/mxt:sync` | [mxt-sync](mxt-sync.md) |
-| 启动 | `$mxt-start` | `/mxt-start` | `/mxt:start` | [mxt-start](mxt-start.md) |
-| 扩展任务 | `$mxt-task <requirement>` / `/mtask <requirement>` | `/mxt-task <requirement>` | `/mxt:task <requirement>` | [mxt-task](mxt-task.md) |
+| 工作流 | Codex Skill | Codex 短命令 | Pi Agent Skill | Claude Code / OpenCode | 文档 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 计划 | `$mxt-plan 001` | `/mplan 001` | `/mxt-plan 001` | `/mxt:plan 001` | [mxt-plan](mxt-plan.md) |
+| 执行 | `$mxt-run 001` | `/mrun 001` | `/mxt-run 001` | `/mxt:run 001` | [mxt-run](mxt-run.md) |
+| 验收 | `$mxt-end 001` | `/mend 001` | `/mxt-end 001` | `/mxt:end 001` | [mxt-end](mxt-end.md) |
+| 整改 | `$mxt-goon 001` | `/mgoon 001` | `/mxt-goon 001` | `/mxt:goon 001` | [mxt-goon](mxt-goon.md) |
+| 自动闭环 | `$mxt-loop 001` | `/mloop 001` | `/mxt-loop 001` | `/mxt:loop 001` | [mxt-loop](mxt-loop.md) |
+| 调试 | `$mxt-debug 001 login fails` | `/mdebug 001 login fails` | `/mxt-debug 001 login fails` | `/mxt:debug 001 login fails` | [mxt-debug](mxt-debug.md) |
+| 防漂移 | `$mxt-doctor loc` | `/mdoctor loc` | `/mxt-doctor loc` | `/mxt:doctor loc` | [mxt-doctor](mxt-doctor.md) |
+| 同步 | `$mxt-sync` | `/msync` | `/mxt-sync` | `/mxt:sync` | [mxt-sync](mxt-sync.md) |
+| 启动 | `$mxt-start` | `/mstart` | `/mxt-start` | `/mxt:start` | [mxt-start](mxt-start.md) |
+| 扩展任务 | `$mxt-task <requirement>` | `/mtask <requirement>` | `/mxt-task <requirement>` | `/mxt:task <requirement>` | [mxt-task](mxt-task.md) |
 
 > Pi Agent 的 `/mxt-*` 短命令来自 `~/.pi/agent/prompts/mxt-*.md` 模板别名，与原生长形式 `/skill:mxt-*` 完全等价；两者都可用，短命令更适合日常输入。
 >
 
+> Codex 的 `/m*` 短命令与上表的 `$mxt-*` Skills 一一对应，只在 Codex 安装。映射规则、安装目标和语义边界见 [Codex /m* 短命令](codex-short-commands.md)。
+>
 > Pi Agent 与其他平台一致：`mxt ai-cmd` 只安装和管理 10 个 `mxt-*` skills 与对应的 `/mxt-*` 命令别名；不会干预用户或其他插件在同目录维护的其他命令。
 
 ## mxt-* Skill 子文档索引
@@ -74,6 +76,7 @@
 - [mxt-sync](mxt-sync.md)
 - [mxt-start](mxt-start.md)
 - [mxt-task](mxt-task.md)
+- [Codex /m* 短命令](codex-short-commands.md)
 
 ## 参考源头
 

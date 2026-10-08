@@ -1,4 +1,14 @@
-# $mxt-doctor / /mxt:doctor
+# $mxt-doctor / /mdoctor / /mxt:doctor
+
+## Codex /m 用法
+
+Codex 中可以使用 `/mdoctor` 作为本工作流的短命令；它与对应的 `$mxt-*` 语义别名共用同一套磁盘状态、锁路径、验收门禁和写回契约。示例：
+
+```bash
+/mdoctor loc Dry
+```
+
+这条短命令只改变 Codex 里的入口拼写，不改变工作流本身的范围。完整输入、写回、锁路径与下一步见本页下文。
 
 ## 基本介绍
 

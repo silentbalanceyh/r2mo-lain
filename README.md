@@ -66,10 +66,12 @@ npm uninstall -g r2mo-ai
 
 ### 入口索引
 
-本页只保留两个核心入口，不再展开命令参数、平台差异或 Skill 细节：
+本页保留主入口和本轮新增能力的直达入口，不展开命令参数、平台差异或 Skill 细节：
 
 - [mxt xxx Commands](docs/command/README.md) — `mxt` CLI 命令总览与每个子命令文档索引。
 - [mxt-* Skills](docs/skills/README.md) — AI 闭环 Skills 总览、安装位置、配置信息与每个 Skill 文档索引。
+- [mxt coder](docs/command/coder.md) — 本地代码知识库，负责全量扫描、增量更新和 AI 低成本阅读投影。
+- [Codex /m* 短命令](docs/skills/codex-short-commands.md) — Codex-only 斜杠命令层，与同一套 MXT Skills 一一对应。
 
 ### 闭环流程
 
