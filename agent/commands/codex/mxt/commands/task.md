@@ -18,8 +18,16 @@ argument-hint: "<requirement>"
 
 ## ARGUMENTS
 
-Non-empty natural-language requirement. Do NOT parse a task ID.
+Literal caller requirement:
+
+```text
+$ARGUMENTS
+```
+
+Parse everything between the fences above as the non-empty natural-language requirement. Do NOT parse a task ID.
+Capture and carry that literal argument into every downstream decision, task-body write, and printed execution prompt.
 Empty / ID-only input → abort `Usage: /mxt:task <requirement>`.
+If the invoking harness explicitly says it captured and forwarded a requirement, use that captured requirement; do not infer absence solely from prompt-binding behavior.
 
 ## LOCKED PATHS
 
@@ -42,13 +50,14 @@ No other task/goon file is writable.
 | # | Action |
 |---|---|
 | 1 | Read `thread`; validate positive integer. |
-| 2 | Scan `task-*.md` with slot > thread; match semantically against requirement. |
-| 3 | Match → reuse; else allocate lowest unused slot; emit `Lock:`. |
-| 4 | On create: write frontmatter (`runAt`, `title`, `status: Doing`, `author:`) + full requirement in body. |
-| 5 | Print execution prompt (task path + requirement excerpt) in a fenced block. |
-| 6 | Execute: same gate ladder as RUN (compile → lint → tests, ≤3 retries each). |
-| 7 | Gates pass → append `## Changes` with gate 4-tuples; `status: Done`. |
-| 8 | Re-read task file to confirm. |
+| 2 | Resolve the caller requirement from `$ARGUMENTS` (or the explicitly captured requirement supplied by the invoking harness). |
+| 3 | Scan `task-*.md` with slot > thread; match semantically against requirement. |
+| 4 | Match → reuse; else allocate lowest unused slot; emit `Lock:`. |
+| 5 | On create: write frontmatter (`runAt`, `title`, `status: Doing`, `author:`) + full requirement in body. |
+| 6 | Print execution prompt (task path + requirement excerpt) in a fenced block. |
+| 7 | Execute: same gate ladder as RUN (compile → lint → tests, ≤3 retries each). |
+| 8 | Gates pass → append `## Changes` with gate 4-tuples; `status: Done`. |
+| 9 | Re-read task file to confirm. |
 
 ## RULES
 

@@ -16,10 +16,19 @@ description: Use when the user asks Codex to run the task MXT workflow; binds a 
 6. When this skill declares a required superpowers skill, invoke it via the Skill tool; fall back manually only on explicit `skill not found` error.
 
 
-## ARGUMENTS
+## INPUT RESOLUTION
 
-Non-empty natural-language requirement. Do NOT parse a task ID.
+For `$mxt-task`, the caller text after the skill token is the non-empty natural-language requirement.
+For `/mtask`, the fenced `$ARGUMENTS` block below is that requirement:
+
+```text
+$ARGUMENTS
+```
+
+For `/mtask`, `$ARGUMENTS` is the non-empty natural-language requirement. Do NOT parse a task ID.
+Capture and carry that literal caller text into every downstream decision, task-body write, and printed execution prompt.
 Empty / ID-only input → abort `Usage: /mxt:task <requirement>`.
+If the invoking harness explicitly says it captured and forwarded a requirement, use that captured requirement; do not infer absence solely from prompt-binding behavior.
 
 ## LOCKED PATHS
 

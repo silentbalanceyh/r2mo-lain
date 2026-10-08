@@ -23,6 +23,7 @@ const executeTeam = require('./executeTeam');
 const executeFocus = require('./executeFocus');
 const executeAiCmd = require('./executeAiCmd');
 const executeDoctor = require('./executeDoctor');
+const executeCoder = require('./executeCoder');
 
 const exported = {
     executeHelp,
@@ -49,6 +50,7 @@ const exported = {
     executeTeam,
     executeFocus,
     executeAiCmd,
-    executeDoctor
+    executeDoctor,
+    executeCoder
 };
 module.exports = exported;

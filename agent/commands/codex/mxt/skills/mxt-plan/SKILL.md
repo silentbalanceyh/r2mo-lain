@@ -14,6 +14,10 @@ description: Use when the user asks Codex to run the plan MXT workflow; produces
 4. Print `Lock: <paths>` before first read; only locked paths may be mutated.
 5. Run the smallest sufficient verification per change boundary; record skipped gates with reason.
 6. When this skill declares a required superpowers skill, invoke it via the Skill tool; fall back manually only on explicit `skill not found` error.
+## PROJECT INDEX HINT
+
+If `.r2mo/repo/self/` already contains an `mxt coder` index, consult its `locate`, `expand`, or `status` projections when they help explain repository structure. If the index is absent, continue normally and skip the hint. Never implicitly run `scan` or `update` from a skill; updating remains user-initiated.
+
 
 
 ## ARGUMENTS

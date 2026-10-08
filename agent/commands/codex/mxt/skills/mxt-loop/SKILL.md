@@ -29,7 +29,7 @@ description: Use when the user asks Codex to run the loop MXT workflow; cycles R
 | Platform | Mechanism |
 |---|---|
 | Codex | `create_goal` — completes on 0 goon items after clean END. |
-| Pi Agent | pi-subagents goal mission. |
+| Pi Agent | Two independent sessions; drive from disk. |
 | Claude Code | `/loop` wrapper. |
 | OpenCode | Two independent sessions; drive from disk. |
 

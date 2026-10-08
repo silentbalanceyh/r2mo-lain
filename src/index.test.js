@@ -1578,9 +1578,9 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 		);
 		assert.match(mxtPlanSkill, /name: mxt-plan/);
 		assert.match(mxtPlanSkill, /## Plan/);
-		assert.match(mxtPlanSkill, /Generate an execution plan for `<TASK_PATH>`/);
-		assert.match(mxtPlanSkill, /Pre-check/);
-		assert.match(mxtPlanSkill, /Boundary/);
+		assert.match(mxtPlanSkill, /requirement-traceable execution contract/);
+		assert.match(mxtPlanSkill, /CONTRACT/);
+		assert.match(mxtPlanSkill, /RULES/);
 		const mxtRunSkill = await _read(
 			homeDir,
 			path.join(
@@ -1597,13 +1597,13 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 		assert.match(mxtRunSkill, /name: mxt-run/);
 		assert.match(
 			mxtRunSkill,
-			/Read `\.r2mo\/task\/task-NNN\.md` for the given number/,
+			/Parse `NNN` \+ directives; emit `Lock:`/,
 		);
 		assert.match(
 			mxtRunSkill,
-			/Execute the development task defined in `<TASK_PATH>`/,
+			/Requirement traceability:/,
 		);
-		assert.match(mxtRunSkill, /Scheduling/);
+		assert.match(mxtRunSkill, /WORKFLOW/);
 		const mxtEndSkill = await _read(
 			homeDir,
 			path.join(
@@ -1619,9 +1619,9 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 		);
 		assert.match(
 			mxtEndSkill,
-			/verify task completion, and write current remediation items to/,
+			/3-Layer verify every Changes entry/,
 		);
-		assert.match(mxtEndSkill, /Remediation Item Format/);
+		assert.match(mxtEndSkill, /Remediation Item N/);
 		const mxtGoonSkill = await _read(
 			homeDir,
 			path.join(
@@ -1637,9 +1637,9 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 		);
 		assert.match(
 			mxtGoonSkill,
-			/Complete remediation per `<GOON_PATH>` and write closure to `<TASK_PATH>`/,
+			/Closure evidence appended to task `## Changes`/,
 		);
-		assert.match(mxtGoonSkill, /Changes write-back/);
+		assert.match(mxtGoonSkill, /closure evidence/);
 		const codexConfig = await _read(homeDir, path.join(".codex", "config.toml"));
 		assert.match(codexConfig, /\[plugins\."mxt@mxt-skills"\]/);
 		assert.match(codexConfig, /\[marketplaces\.mxt-skills\]/);
@@ -1688,24 +1688,24 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 		assert.match(opencodeConfig.command["mxt:plan"].template, /## Plan/);
 		assert.match(
 			opencodeConfig.command["mxt:plan"].template,
-			/ask the user for the correct task number/,
+			/Scan `.r2mo\/task\/task-\*.md`/,
 		);
 		assert.match(
 			opencodeConfig.command["mxt:plan"].template,
-			/Generate an execution plan for `<TASK_PATH>`/,
+			/Replace `## Plan` in place; never append duplicates/,
 		);
-		assert.match(opencodeConfig.command["mxt:plan"].template, /Boundary/);
+		assert.match(opencodeConfig.command["mxt:plan"].template, /RULES/);
 		assert.match(
 			opencodeConfig.command["mxt:run"].template,
-			/three-digit task number/,
-		);
-		assert.match(
-			opencodeConfig.command["mxt:run"].template,
-			/Print the final execution prompt/,
+			/Operate on `\.r2mo\/task\/task-NNN\.md`/,
 		);
 		assert.match(
 			opencodeConfig.command["mxt:run"].template,
-			/ask user for correct number/,
+			/Force multi-agent coordination/,
+		);
+		assert.match(
+			opencodeConfig.command["mxt:run"].template,
+			/Force worktree/,
 		);
 		assert.match(
 			opencodeConfig.command["mxt:run"].template,
@@ -1713,40 +1713,36 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 		);
 		assert.match(
 			opencodeConfig.command["mxt:run"].template,
-			/Execute the development task defined in `<TASK_PATH>`/,
+			/Requirement traceability:/,
 		);
-		assert.match(opencodeConfig.command["mxt:run"].template, /Scheduling/);
+		assert.match(opencodeConfig.command["mxt:run"].template, /WORKFLOW/);
 		assert.match(
 			opencodeConfig.command["mxt:end"].template,
-			/\.r2mo\/task\/goon-NNN\.md/,
-		);
-		assert.match(
-			opencodeConfig.command["mxt:end"].template,
-			/Goon: clear-then-write/,
+			/\.r2mo\/task\/(goon-NNN\.md|archive a Bug Report)/,
 		);
 		assert.match(
 			opencodeConfig.command["mxt:end"].template,
-			/verify task completion, and write current remediation items/,
+			/Verify `\.r2mo\/task\/task-NNN\.md`/,
 		);
 		assert.match(
 			opencodeConfig.command["mxt:end"].template,
-			/Remediation Item Format/,
+			/3-Layer verify every Changes entry/
+		);
+		assert.match(
+			opencodeConfig.command["mxt:end"].template,
+			/Remediation Item N/,
 		);
 		assert.match(
 			opencodeConfig.command["mxt:goon"].template,
-			/\.r2mo\/task\/goon-NNN\.md/,
+			/\.r2mo\/task\/(goon-NNN\.md|archive a Bug Report)/,
 		);
 		assert.match(
 			opencodeConfig.command["mxt:goon"].template,
-			/clear `<GOON_PATH>` original content/,
+			/Fix exactly the listed/,
 		);
 		assert.match(
 			opencodeConfig.command["mxt:goon"].template,
-			/Complete remediation per `<GOON_PATH>` and write closure to `<TASK_PATH>`/,
-		);
-		assert.match(
-			opencodeConfig.command["mxt:goon"].template,
-			/Changes write-back/,
+			/Closure evidence appended to task `## Changes`/,
 		);
 		const installedHarnessFiles = [
 			path.join(
@@ -1786,16 +1782,16 @@ const testAiCmdInstallsSelectedPlatformsFromAgentCommands = async () => {
 		];
 		for (const file of installedHarnessFiles) {
 			const content = await _read(homeDir, file);
-			assert.match(content, /## Harness/);
+			assert.match(content, /## Harness/i);
 			assert.match(content, /English-first/);
-			assert.match(content, /Isolation lock/);
-			assert.match(content, /Fresh evidence/);
+			assert.match(content, /Print `Lock: <paths>`/);
+			assert.match(content, /smallest sufficient verification/);
 		}
 		assert.ok(opencodeConfig.command["mxt:doctor"]);
-		assert.match(opencodeConfig.command["mxt:run"].template, /## Harness/);
+		assert.match(opencodeConfig.command["mxt:run"].template, /## Harness/i);
 		assert.match(opencodeConfig.command["mxt:run"].template, /English-first/);
-		assert.match(opencodeConfig.command["mxt:run"].template, /Isolation lock/);
-		assert.match(opencodeConfig.command["mxt:run"].template, /Fresh evidence/);
+		assert.match(opencodeConfig.command["mxt:run"].template, /LOCKED/);
+		assert.match(opencodeConfig.command["mxt:run"].template, /CONTRACT/);
 	});
 };
 
@@ -2215,7 +2211,7 @@ const testAiCmdValidatesCrossPlatformInstallTargets = async () => {
 			assert.ok(config.command["mxt:debug"]);
 			assert.match(
 				config.command["mxt:loop"].template,
-				/## Host Runtime Contract/,
+				/## HOST RUNTIME/,
 			);
 
 			assert.strictEqual(
@@ -2537,8 +2533,8 @@ const testDebugCommandsRequireGoonDebugReport = async () => {
 		);
 		assert.match(content, /DEBUG Report/);
 		assert.match(content, /GOON_PATH/);
-		assert.match(content, /goon-NNN\.md/);
-		assert.match(content, /Remediation Items/);
+		assert.match(content, /(goon-NNN\.md|archive a Bug Report)/);
+		assert.match(content, /Legacy Bridge|legacy bridge|debug report|DEBUG Report/);
 	}
 };
 
@@ -2568,7 +2564,7 @@ const testAiCmdAllSkillsEnforceClosedLoopContracts = async () => {
 			path.resolve(__dirname, "..", file),
 			"utf8",
 		);
-		assert.match(content, /## Closed-Loop Contract/);
+		assert.match(content, /## (CONTRACT|RULES|HOST RUNTIME|SESSION ISOLATION|LOCKED PATHS)/);
 		assert.match(content, /disk state|disk-only|Disk|disk/i);
 		assert.match(content, /evidence|Verification|verification|health/i);
 		assert.match(content, /boundary|scope|Boundary|Profile/i);
@@ -2619,10 +2615,10 @@ const testAiCmdAllSkillsUseSharedPromptBodies = async () => {
 		if (name === "doctor") {
 			assert.match(
 				command,
-				/Follow the full workflow in `skills\/mxt-doctor\/SKILL.md`/,
+				/audits and remediates anti-drift baseline metadata/,
 			);
-			assert.match(skill, /## Purpose/);
-			assert.match(skill, /Configuration file formats/);
+			assert.match(skill, /## CONTRACT/);
+			assert.match(skill, /\.conf` FORMAT/);
 		} else {
 			assert.strictEqual(
 				skill.slice(skill.indexOf("\n---\n", 4) + 5),
@@ -2782,7 +2778,7 @@ const testAiCmdRegistersDoctorAcrossAllPlatforms = async () => {
 		assert.ok(opencodeConfig.command["mxt:doctor"]);
 		assert.match(
 			opencodeConfig.command["mxt:doctor"].template,
-			/## Closed-Loop Contract/,
+			/## (CONTRACT|RULES|HOST RUNTIME|SESSION ISOLATION|LOCKED PATHS)/,
 		);
 	});
 };
@@ -2799,21 +2795,21 @@ const testLoopCommandsUseScopedVerificationAndReuse = async () => {
 			path.resolve(__dirname, "..", file),
 			"utf8",
 		);
-		assert.match(content, /RUN discovers applicable rules once/);
+		assert.match(content, /cycles RUN\/END\/GOON\/END_REVIEW/);
 		assert.match(
 			content,
-			/Real runtime environment, process ownership, listening ports, and business health paths/,
+			/Two independent sessions, same host/,
 		);
-		assert.match(content, /No real P0\/P1 issue.*loop closed immediately/s);
+		assert.match(content, /Counter \(mechanical\).*Remediation Item/s);
 		assert.match(
 			content,
-			/Discover and select relevant rules by task scope in one pass/,
+			/Each phase obeys the corresponding single-phase skill contract verbatim/,
 		);
 		assert.match(
 			content,
-			/Full-workspace, K8S, BUGS, Chat, hot-start stability, and `agent-gate\.sh all` are forbidden by default/,
+			/Cosmetic \/ speculative findings never replace the queue/,
 		);
-		assert.match(content, /Re-run only affected runtime verification/);
+		assert.match(content, /until item count = 0/);
 	}
 };
 
@@ -2830,16 +2826,16 @@ const testLoopCommandsRequireIsolatedDevelopmentAndReviewSessions =
 				path.resolve(__dirname, "..", file),
 				"utf8",
 			);
-			assert.match(content, /必须开启两个独立会话/);
-			assert.match(content, /Development session[\s\S]*Review session/);
-			assert.match(content, /不得共享上下文/);
-			assert.match(content, /禁止在同一会话内自我审查/);
-			assert.match(content, /每次通信只允许白名单工件/);
-			assert.match(content, /Same-host requirement/);
-			assert.match(content, /same AI host\/tool/);
+			assert.match(content, /SESSION ISOLATION \(MANDATORY\)/);
+			assert.match(content, /Dev \| RUN \+ GOON[\s\S]*Review \| END \+ END_REVIEW/);
+			assert.match(content, /No shared context/);
+			assert.match(content, /Self-review prohibited/);
+			assert.match(content, /task-NNN\.md.*goon-NNN\.md/s);
+			assert.match(content, /Two independent sessions, same host/);
+			assert.match(content, /Cross-tool delegation forbidden/);
 			assert.match(
 				content,
-				/must not delegate review to Claude, OpenCode, or another AI tool/,
+				/never collapse into one session/,
 			);
 		}
 	};
@@ -2856,12 +2852,12 @@ const testLoopReviewerUsesAdversarialChangeAnalysis = async () => {
 			path.resolve(__dirname, "..", file),
 			"utf8",
 		);
-		assert.match(content, /adversarial reviewer/i);
-		assert.match(content, /Assume the implementation is incomplete/);
-		assert.match(content, /changed-file inventory[\s\S]*scope leak/);
-		assert.match(content, /spec-to-diff traceability/);
-		assert.match(content, /real remediation items/);
-		assert.match(content, /reject cosmetic findings/);
+		assert.match(content, /adversarially/i);
+		assert.match(content, /Cosmetic \/ speculative findings never replace the queue/);
+		assert.match(content, /END adversarially reviews[\s\S]*Cosmetic \/ speculative findings never replace the queue/s);
+		assert.match(content, /Phase identity is immutable/);
+		assert.match(content, /Remediation Item/);
+		assert.match(content, /Cosmetic \/ speculative findings never replace the queue/);
 	}
 };
 
@@ -2877,12 +2873,12 @@ const testLoopRemediationItemsMustBeActionableAcrossRounds = async () => {
 			path.resolve(__dirname, "..", file),
 			"utf8",
 		);
-		assert.match(content, /Failure evidence/);
-		assert.match(content, /Required correction/);
-		assert.match(content, /Verification command/);
-		assert.match(content, /只保留未解决项/);
-		assert.match(content, /必须由当前 diff 引入或暴露/);
-		assert.match(content, /END_REVIEW 新发现/);
+		assert.match(content, /END adversarially reviews/);
+		assert.match(content, /GOON remediates only listed items/);
+		assert.match(content, /Invoke the named/);
+		assert.match(content, /until item count = 0/);
+		assert.match(content, /END_REVIEW independently verifies removals/);
+		assert.match(content, /END_REVIEW independently verifies/);
 	}
 };
 
@@ -2898,10 +2894,10 @@ const testGoonCommandsForceFreshDiskLoad = async () => {
 			path.resolve(__dirname, "..", file),
 			"utf8",
 		);
-		assert.match(content, /Force reload/);
-		assert.match(content, /Do not use cache, history, or previous summaries/);
-		assert.match(content, /goon-NNN\.md/);
-		assert.match(content, /sole remediation input/);
+		assert.match(content, /Goon is the sole input/);
+		assert.match(content, /renumber survivors from 1/);
+		assert.match(content, /(goon-NNN\.md|archive a Bug Report)/);
+		assert.match(content, /sole input/);
 	}
 };
 
@@ -2917,10 +2913,10 @@ const testEndCommandsConstrainAcceptanceDepth = async () => {
 			path.resolve(__dirname, "..", file),
 			"utf8",
 		);
-		assert.match(content, /Convergence, not divergence/);
-		assert.match(content, /Do not dig into out-of-scope implementation details/);
-		assert.match(content, /do not write it as an item/);
-		assert.match(content, /write the conclusion immediately/);
+		assert.match(content, /3-Layer verify every Changes entry/);
+		assert.match(content, /Style \/ optimisation \/ speculative/);
+		assert.match(content, /Requirements-first/);
+		assert.match(content, /Verdict per entry/);
 	}
 };
 
@@ -2936,31 +2932,31 @@ const testLoopCommandsRequireHostAwareLongRunningContract = async () => {
 			path.resolve(__dirname, "..", file),
 			"utf8",
 		);
-		assert.match(content, /## Host Runtime Contract/);
-		assert.match(content, /Detect the current host first/);
-		assert.match(content, /create_goal\(objective, optional token_budget\)/);
-		assert.match(content, /get_goal\(\)/);
-		assert.match(content, /update_goal\(status\)/);
-		assert.match(content, /Goal lifecycle: active → complete \/ blocked/);
-		assert.match(content, /If `create_goal` fails, stop/);
-		assert.match(content, /Do not silently downgrade/);
-		assert.match(content, /invoke `\/loop`/);
-		assert.match(content, /OpenCode has no native Goal API/);
-		assert.match(content, /Development\/Review independent sessions/);
-		assert.match(content, /task-NNN\.md and goon-NNN\.md remain disk state/);
-		assert.match(content, /No `loop-NNN\.json`/);
-		assert.match(content, /Goal complete condition/);
-		assert.match(content, /goon remediation item count is zero/);
-		assert.match(content, /Goal blocked condition/);
+		assert.match(content, /## HOST RUNTIME/);
+		assert.match(content, /Platform \| Mechanism/);
+		assert.match(content, /Codex.*create_goal/s);
+		assert.match(content, /completes on 0 goon items/);
+		assert.match(content, /external blocker/);
+		assert.match(content, /Blocked = 2 consecutive rounds/);
+		assert.match(content, /Session isolation unavailable/);
+		assert.match(content, /OpenCode.*drive from disk/s);
+		assert.match(content, /`\/loop` wrapper/);
+		assert.match(content, /Two independent sessions; drive from disk/);
+		assert.match(content, /Dev \| RUN \+ GOON/);
+		assert.match(content, /Sessions communicate \*\*only\*\* via `task-NNN\.md` \+ `goon-NNN\.md`/);
+		assert.match(content, /END_REVIEW/);
+		assert.match(content, /status: Done.*goon = 0/s);
+		assert.match(content, /item count = 0/);
+		assert.match(content, /Blocked.*2 consecutive rounds/s);
 		assert.match(
 			content,
-			/two consecutive rounds without an item-count decrease/,
+			/Two consecutive rounds with no item-count decrease/,
 		);
-		assert.match(content, /external dependency blocker/);
-		assert.match(content, /Re-read task\/goon from disk before every phase/);
+		assert.match(content, /stop, preserve state/);
+		assert.match(content, /until item count = 0/s);
 		assert.match(
 			content,
-			/Do not use previous END, GOON, loop summaries, or cached decisions/,
+			/Preserve task\/goon as audit trail/,
 		);
 	}
 };
@@ -2977,20 +2973,23 @@ const testEndCommandsRequireFreshContext = async () => {
 			path.resolve(__dirname, "..", file),
 			"utf8",
 		);
-		assert.match(content, /## Fresh Context Contract/);
-		assert.match(content, /re-read `task-NNN\.md` from disk/);
-		assert.match(content, /read `goon-NNN\.md` from disk if it exists/);
+		assert.match(content, /## CONTRACT/);
+		assert.match(content, /every `## Changes` entry/);
 		assert.match(
 			content,
-			/Build the changed-file inventory directly from `git diff` and `git status`/,
+			/^## Remediation Item N — <title-lowercase-hyphenated-max-50-chars>$/m,
 		);
-		assert.match(content, /previous END, GOON, or loop summaries/);
 		assert.match(
 			content,
-			/cached analysis, cached diff, or cached verification results/,
+			/changed-file inventory/,
 		);
-		assert.match(content, /Print fresh-read evidence before review/);
-		assert.match(content, /3-Layer Verification Protocol/);
+		assert.match(content, /assume `## Changes` are untrusted/);
+		assert.match(
+			content,
+			/diff \+ disk \+ requirements agree/,
+		);
+		assert.match(content, /git diff/);
+		assert.match(content, /3-Layer Verification/);
 	}
 };
 
@@ -3006,19 +3005,15 @@ const testGoonCommandsRequireFreshSoleInput = async () => {
 			path.resolve(__dirname, "..", file),
 			"utf8",
 		);
-		assert.match(content, /## Fresh Input Contract/);
+		assert.match(content, /## CONTRACT/);
+		assert.match(content, /Goon is the sole input/);
+		assert.match(content, /Fix exactly the listed `## Remediation Item N/);
 		assert.match(
 			content,
-			/Re-read `goon-NNN\.md` from disk before every remediation round/,
+			/Disk is the only state carrier; re-read before every decision/,
 		);
-		assert.match(content, /freshly read goon is the sole remediation input/);
-		assert.match(
-			content,
-			/Previous goon content, conversation summaries, and cached decisions are forbidden/,
-		);
-		assert.match(content, /Only current unresolved items may remain/);
-		assert.match(content, /Verification command/);
-		assert.match(content, /Actual result \/ exit code/);
+		assert.match(content, /run its stated verification command/);
+		assert.match(content, /capture exit code/);
 	}
 };
 
@@ -3034,18 +3029,16 @@ const testDebugCommandsRequireIssueInventory = async () => {
 			path.resolve(__dirname, "..", file),
 			"utf8",
 		);
-		assert.match(content, /\.r2mo\/bugs\/<yyyy-MM-dd>\/index\.md/);
-		assert.match(content, /Issue Inventory Contract/);
-		assert.match(content, /Every diagnosis must append or update one bug entry/);
-		assert.match(content, /A diagnosis without an inventory entry is incomplete/);
-		assert.match(
-			content,
-			/- \[status\] BUG-<HHmmss>-<slug> \| severity \| title \| related-task \| report/,
-		);
-		assert.match(content, /status may be `Open` or `Investigating`/);
-		assert.match(content, /Duplicate bugs must update the existing entry/);
-		assert.match(content, /read `index\.md` from disk and append/);
-		assert.match(content, /Inventory is an issue list, not a cache/);
+		assert.match(content, /## BUG FILE TEMPLATE/);
+		assert.match(content, /Read `\$\{INDEX\}` first/);
+		assert.match(content, /Leave no `\$\{…\}` or `_pending_`/);
+		assert.match(content, /Upsert daily index row/);
+		assert.match(content, /Same-bug rerun rewrites its row in place\. No duplicate rows\./);
+		assert.match(content, /Never fabricate logs, stack traces, or command outputs\./);
+		assert.match(content, /Never flip `status: fixed` before verification passes\./);
+		assert.match(content, /Nine body sections are mandatory and ordered\./);
+		assert.match(content, /Final report includes:/);
+		assert.match(content, /No premature success claims\./);
 	}
 };
 
@@ -3066,12 +3059,12 @@ const testAiCmdPromptsUseEnglishFirstHarness = async () => {
 			path.resolve(__dirname, "..", file),
 			"utf8",
 		);
-		assert.match(content, /## Harness/);
+		assert.match(content, /## Harness/i);
 		assert.match(content, /English-first/);
-		assert.match(content, /Use Chinese only when quoting existing repo content/);
-		assert.match(content, /Isolation lock/);
-		assert.match(content, /Fresh evidence/);
-		assert.match(content, /Do not trust conversation memory/);
+		assert.match(content, /quote localized repo strings verbatim/);
+		assert.match(content, /Print `Lock: <paths>`/);
+		assert.match(content, /smallest sufficient verification/);
+		assert.match(content, /Disk is the (?:only state carrier|authoritative)/);
 	}
 };
 
@@ -3116,6 +3109,17 @@ const main = async () => {
 	await testGoonCommandsRequireFreshSoleInput();
 	await testDebugCommandsRequireIssueInventory();
 	await testAiCmdPromptsUseEnglishFirstHarness();
+	await testCoderScanCreatesMultiStoreIndexAndIgnoresDerivedArtifact();
+	await testCoderScanIsIdempotentWithMatchingSchema();
+	await testCoderPhase2UsesSqliteBackedVectorIndex();
+	await testCoderExtractsStructuralSymbolGraph();
+	await testCoderStatusReportsDetectedFrameworks();
+	await testCoderStatusTracksRealFileDriftCorrectly();
+	await testCoderLocateSurfacesChineseDocAnchor();
+	await testCoderRecallHydratesVectorAndCjkCandidates();
+	await testCoderExpandReturnsFileNeighborhood();
+	await testCoderDetectsGitBranch();
+	await testCoderScanRebuildsOnBranchSwitch();
 	console.log("task tests passed");
 };
 
@@ -3123,3 +3127,314 @@ main().catch((error) => {
 	console.error(error);
 	process.exit(1);
 });
+
+// ---------------------------------------------------------------------------
+// mxt coder regression tests (Phase 0)
+// ---------------------------------------------------------------------------
+
+const CODER_EXEC = path.resolve(__dirname, "executor/executeCoder.js");
+const CODER_FIXTURE_FILES = {
+    "package.json": JSON.stringify({
+        name: "coder-fix",
+        scripts: { build: "noop" }
+    }),
+    "auth.ts": [
+        "// 登录验证码长度校验， 最短六位",
+        "export const MIN_CAPTCHA_LEN = 6;",
+        "export function validateCaptcha(input: string): boolean {",
+        "  return /^[0-9]+$/.test(input) && input.length >= MIN_CAPTCHA_LEN;",
+        "}",
+        "export class LoginController {",
+        "  route = '/auth/login';",
+        "  submit(p: unknown) { return validateCaptcha(String(p)); }",
+        "}",
+    ].join("\n"),
+    "order.js": [
+        "// 订单取消后触发库存回滚",
+        "const express = require('express');",
+        "const router = express.Router();",
+        "router.post('/orders/:id/cancel', async (req, res) => { res.json({ ok: true }); });",
+        "module.exports = router;",
+    ].join("\n"),
+};
+
+const _runCoderCli = (cwd, subcommand, ...rest) =>
+	spawnSync(process.execPath, [MXT_JS, "coder", subcommand, ...rest], {
+		cwd,
+		encoding: "utf8",
+	});
+
+const _runCoderModule = async (fixtureFn) => {
+	await _withTempDir(async (root) => {
+		for (const [name, body] of Object.entries(CODER_FIXTURE_FILES)) {
+			await fs.writeFile(path.join(root, name), body, "utf8");
+		}
+		await fixtureFn(root);
+	});
+};
+
+const testCoderScanCreatesMultiStoreIndexAndIgnoresDerivedArtifact = async () => {
+	await _runCoderModule(async (root) => {
+		const result = _runCoderCli(root, "scan");
+		assert.notStrictEqual(result.status, 1, result.stderr || result.stdout);
+
+		const indexPath = path.join(root, ".r2mo", "repo", "self");
+		for (const name of ["meta.json", "graph.db"]) {
+			assert.ok(
+				fsSync.existsSync(path.join(indexPath, name)),
+				`expected ${name} inside ${indexPath}`,
+			);
+		}
+		const gitignore = await _read(root, ".gitignore");
+		assert.ok(
+			gitignore.split("\n").map((line) => line.trim()).includes(".r2mo/repo/"),
+			"first scan must ignore the derived repo namespace",
+		);
+		// No backup should linger after an originally-absent .gitignore.
+		assert.strictEqual(
+			fsSync.readdirSync(root).filter((name) => name.includes(".mcode-backup")).length,
+			0,
+		);
+		const meta = JSON.parse(await _read(root, ".r2mo/repo/self/meta.json"));
+		assert.strictEqual(meta.schemaVersion, "2.2.3");
+		assert.ok(meta.stats.files >= 3, "scanner should discover all seeded files");
+		assert.ok(meta.stats.nodes > 0, "scanner must produce nodes");
+	});
+};
+
+const testCoderPhase2UsesSqliteBackedVectorIndex = async () => {
+	const { CoderIndexStore } = require("./utils/mxt-coder-index");
+	const root = await fs.mkdtemp(path.join(os.tmpdir(), "coder-p2-"));
+	const dbPath = path.join(root, "graph.db");
+	try {
+		const store = new CoderIndexStore(dbPath);
+		const mk = (i) => {
+			const fid = "f:mod" + i + ".js";
+			const cid = "ch:mod" + i + ":0";
+			const words = "alpha beta gamma delta epsilon cluster subject topic area " + i;
+			return {
+				nodes: [{ id: fid, kind: "FILE", name: "mod" + i + ".js", uri: "mod" + i + ".js" }],
+				edges: [],
+				chunks: [{ chunk_id: cid, node_id: fid, uri: "mod" + i + ".js", title: "mod", text: words, vector: CoderIndexStore.embedText(words) }],
+				fileStates: [{ uri: "mod" + i + ".js", content_hash: "h" + i, byte_size: 128 }]
+			};
+		};
+		for (let i = 0; i < 48; i++) store.persist(mk(i), ["mod" + i + ".js"], []);
+		store.flushVectors();
+		const vc = store.db.prepare("SELECT COUNT(*) n FROM vectors").get().n;
+		assert.ok(vc >= 48, "vectors must persist inside sqlite");
+		store.close();
+		const reopen = new CoderIndexStore(dbPath);
+		const cc = reopen.db.prepare("SELECT COUNT(*) n FROM ivf_centroids").get().n;
+		reopen.close();
+		assert.ok(cc >= 8, "ivf centroids must train at scale");
+		const q = CoderIndexStore.embedText("alpha beta gamma cluster");
+		const third = new CoderIndexStore(dbPath);
+		const hits = third.searchVectors(q, 5);
+		third.close();
+		assert.ok(hits.length > 0, "recall must return matches");
+	} finally {
+		await fs.rm(root, { recursive: true, force: true });
+	}
+};
+
+const testCoderExtractsStructuralSymbolGraph = async () => {
+	const Scanner = require("./utils/mxt-coder-scanner");
+	const osMod = require("os");
+	const root = await fs.mkdtemp(path.join(osMod.tmpdir(), "coder-structural-"));
+	const file = path.join(root, "service.ts");
+	const body = [
+		"export class LoginService {",
+		"  private minLength = 6;",
+		"  validate(input: string) { return input.length >= this.minLength; }",
+		"}",
+		"export function submitLogin(v: string) { return new LoginService().validate(v); }",
+	].join("\n");
+	await fs.writeFile(file, body, "utf8");
+	try {
+		const fact = await Scanner.scanFile({ absolute: file, relative: "service.ts", ext: ".ts", bytes: body.length });
+		assert.ok(fact.nodes.some(n => n.kind === "METHOD" && n.name === "validate"), "class methods must become METHOD nodes");
+		assert.ok(fact.nodes.some(n => n.kind === "FIELD" && n.name === "minLength"), "class fields must become FIELD nodes");
+		assert.ok(fact.chunks.filter(c => c.node_id !== "f:service.ts").length >= 2, "symbol-owned chunks must be attached to declarations");
+		assert.ok(fact.edges.some(e => e.kind === "CALLS" && e.to_id === "ref:LoginService"), "constructor/identifier calls must be retained");
+		assert.ok(!fact.nodes.some(n => n.id === "ref:LoginService"), "unresolved call targets must remain edges, not synthetic nodes");
+	} finally {
+		await fs.rm(root, { recursive: true, force: true });
+	}
+};
+
+const testCoderStatusReportsDetectedFrameworks = async () => {
+	await _runCoderModule(async (root) => {
+		// Seed a recognized dependency so status exercises the framework branch.
+		await fs.writeFile(
+			path.join(root, "package.json"),
+			JSON.stringify({
+				name: "coder-framework-fix",
+				dependencies: { express: "4.0.0" },
+				devDependencies: { vite: "5.0.0" },
+			}),
+			"utf8",
+		);
+		_runCoderCli(root, "scan");
+
+		const { CoderIndexStore } = require("./utils/mxt-coder-index");
+		const store = new CoderIndexStore(path.join(root, ".r2mo/repo/self/graph.db"));
+		const rows = store.getFrameworks();
+		store.close();
+		assert.deepStrictEqual(
+			rows.map((row) => row.name).sort(),
+			["Express", "Vite"],
+			"recognized package dependencies must persist as framework facts",
+		);
+
+		const status = _runCoderCli(root, "status");
+		assert.match(status.stdout, /Frameworks:/);
+		assert.match(status.stdout, /Express/);
+		assert.match(status.stdout, /Vite/);
+	});
+};
+
+const testCoderScanIsIdempotentWithMatchingSchema = async () => {
+	await _runCoderModule(async (root) => {
+		_runCoderCli(root, "scan");
+		const graphPath = path.join(root, ".r2mo/repo/self/graph.db");
+		const statBefore = fsSync.statSync(graphPath);
+		await new Promise((r) => setTimeout(r, 1200));
+		const second = _runCoderCli(root, "scan");
+		assert.notStrictEqual(second.status, 1, second.stderr || second.stdout);
+		assert.ok(
+			second.stdout.includes("already exists"),
+			"idempotent scan should announce skip; got:" + second.stdout,
+		);
+		const statAfter = fsSync.statSync(graphPath);
+		assert.strictEqual(statAfter.mtimeMs, statBefore.mtimeMs);
+	});
+};
+
+const testCoderStatusTracksRealFileDriftCorrectly = async () => {
+	await _runCoderModule(async (root) => {
+		_runCoderCli(root, "scan");
+		const preStatus = _runCoderCli(root, "status");
+		assert.match(preStatus.stdout, /Drift: 0 files \(clean\)/);
+
+		await fs.writeFile(
+			path.join(root, "auth.ts"),
+			CODER_FIXTURE_FILES["auth.ts"] + "\n// drift marker xyz\n",
+			"utf8",
+		);
+		const mid = _runCoderCli(root, "status");
+		assert.match(mid.stdout, /Drift: 1 files \(low\)/);
+
+		const updated = _runCoderCli(root, "update");
+		assert.notStrictEqual(updated.status, 1, updated.stderr || updated.stdout);
+		const post = _runCoderCli(root, "status");
+		assert.match(post.stdout, /Drift: 0 files \(clean\)/);
+	});
+};
+
+const testCoderLocateSurfacesChineseDocAnchor = async () => {
+	await _runCoderModule(async (root) => {
+		_runCoderCli(root, "scan");
+		const result = _runCoderCli(root, "locate", "登录验证码 长度校验");
+		assert.notStrictEqual(result.status, 1, result.stderr || result.stdout);
+		assert.match(result.stdout, /Entry Points/);
+		assert.match(result.stdout, /auth\.ts/);
+	});
+};
+
+const testCoderRecallHydratesVectorAndCjkCandidates = async () => {
+	await _runCoderModule(async (root) => {
+		_runCoderCli(root, "scan");
+		const { CoderIndexStore, cjkBigramTerms, tokenize } = require("./utils/mxt-coder-index");
+		const store = new CoderIndexStore(path.join(root, ".r2mo/repo/self/graph.db"));
+
+		const vectorRows = store.searchVectors(
+			CoderIndexStore.embedText("登录验证码 长度校验"), 10,
+		);
+		assert.ok(vectorRows.length > 0, "vector recall must return candidates");
+		assert.equal(vectorRows[0].chunkId, "ch:auth.ts:0");
+		assert.equal(vectorRows[0].nodeId, "f:auth.ts");
+
+		const cngExpr = cjkBigramTerms(tokenize("登录验证码 长度校验")).join(" OR ");
+		const cjkRows = store.lexicalCjkSearch(cngExpr, 10);
+		assert.ok(
+			cjkRows.some((row) => row.chunk_id === "ch:auth.ts:0"),
+			"CJK-bigram FTS must recall partial Chinese phrases",
+		);
+		store.close();
+
+		const result = _runCoderCli(root, "locate", "登录验证码 长度校验");
+		assert.notStrictEqual(result.status, 1, result.stderr || result.stdout);
+		assert.match(result.stdout, /DOC_ANCHOR/);
+		assert.match(result.stdout, /登录验证码长度校验/);
+	});
+};
+
+const testCoderExpandReturnsFileNeighborhood = async () => {
+	await _runCoderModule(async (root) => {
+		_runCoderCli(root, "scan");
+		const lookup = new (require("./utils/mxt-coder-index").CoderIndexStore)(
+			path.join(root, ".r2mo/repo/self/graph.db"),
+		);
+		const row = lookup.db
+			.prepare("SELECT id FROM nodes WHERE uri='auth.ts' AND kind='FILE' LIMIT 1")
+			.get();
+		lookup.close();
+		assert.ok(row, "expected FILE node for auth.ts");
+		const result = _runCoderCli(root, "expand", row.id);
+		assert.notStrictEqual(result.status, 1, result.stderr || result.stdout);
+		assert.match(result.stdout, /Direct Relations/);
+		assert.match(result.stdout, /LoginController/);
+	});
+};
+
+const testCoderDetectsGitBranch = async () => {
+	const {execFileSync} = require("child_process");
+	const os = require("os");
+	const tmpRoot = fsSync.mkdtempSync(path.join(os.tmpdir(), "coder-branch-det-"));
+	try {
+		execFileSync("git", ["init", "-q"], { cwd: tmpRoot });
+		execFileSync("git", ["checkout", "-q", "-b", "main"], { cwd: tmpRoot });
+		fsSync.writeFileSync(path.join(tmpRoot, "placeholder.txt"), "x");
+		execFileSync("git", ["add", "-A"], { cwd: tmpRoot });
+		execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "init"], { cwd: tmpRoot });
+		execFileSync("git", ["checkout", "-q", "-b", "feature/detect"], { cwd: tmpRoot });
+		const Core = require("./utils/mxt-coder-core");
+		const branch = Core.getGitBranch(tmpRoot);
+		assert.strictEqual(branch, "feature/detect", "expected feature/detect got "+branch);
+	} finally {
+		fsSync.rmSync(tmpRoot, { recursive: true, force: true });
+	}
+};
+
+const testCoderScanRebuildsOnBranchSwitch = async () => {
+	const {execFileSync} = require("child_process");
+	const os = require("os");
+	const tmpRoot = fsSync.mkdtempSync(path.join(os.tmpdir(), "coder-branch-swit-"));
+	try {
+		execFileSync("git", ["init", "-q"], { cwd: tmpRoot });
+		execFileSync("git", ["checkout", "-q", "-b", "main"], { cwd: tmpRoot });
+		fsSync.writeFileSync(path.join(tmpRoot, "a.ts"), "export const a = 1\n");
+		execFileSync("git", ["add", "-A"], { cwd: tmpRoot });
+		execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "v1"], { cwd: tmpRoot });
+
+		const Core = require("./utils/mxt-coder-core");
+		const { resolveIndexPath } = require("./utils/mxt-coder-index");
+
+		await Core.runFullScan(tmpRoot);
+		let store = new (require("./utils/mxt-coder-index").CoderIndexStore)(resolveIndexPath(tmpRoot).graphPath);
+		let metaRow = store.db.prepare("SELECT value FROM meta_store WHERE key='gitBranch'").get();
+		store.close();
+		assert.strictEqual(metaRow?.value, "main", "expected main got "+metaRow?.value);
+
+		// Switch to develop; runFullScan sees branch change → rebuild.
+		execFileSync("git", ["checkout", "-q", "-b", "develop"], { cwd: tmpRoot });
+		await Core.runFullScan(tmpRoot);
+		store = new (require("./utils/mxt-coder-index").CoderIndexStore)(resolveIndexPath(tmpRoot).graphPath);
+		metaRow = store.db.prepare("SELECT value FROM meta_store WHERE key='gitBranch'").get();
+		store.close();
+		assert.strictEqual(metaRow?.value, "develop", "expected develop got "+metaRow?.value);
+	} finally {
+		fsSync.rmSync(tmpRoot, { recursive: true, force: true });
+	}
+};

@@ -74,3 +74,4 @@ apps/
 __pycache__/
 *.pyc
 *.bak
+.r2mo/repo/

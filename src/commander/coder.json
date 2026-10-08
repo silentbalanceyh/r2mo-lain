@@ -1,0 +1,6 @@
+{
+    "executor": "executeCoder",
+    "description": "Local project cognition subsystem: scan, status, update, locate, expand source code as a multi-store index under .r2mo/repo/self",
+    "command": "coder",
+    "options": []
+}
