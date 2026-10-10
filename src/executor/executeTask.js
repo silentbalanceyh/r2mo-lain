@@ -217,6 +217,9 @@ const _archiveOverflowTasks = async (taskDir, slots, cwd) => {
 			if (error.code === "ENOENT") continue;
 			throw error;
 		}
+		if (!_hasTaskBody(content)) {
+			continue;
+		}
 		if (_isDefaultPlaceholder(content)) {
 			await fs.unlink(srcPath);
 			deleted++;
@@ -330,7 +333,7 @@ const _selectTaskSlots = async (slots) => {
 	const { selectMultiple } = require("../utils/mxt-menu");
 	const menuItems = slots.map((item) => ({
 		name: item.name.replace(/\.md$/, ""),
-		description: item.isPlaceholder ? "空" : item.title || "任务",
+		description: item.hasBody ? item.title || "任务" : "空",
 		slot: item.slot,
 	}));
 	return selectMultiple(menuItems, `选择要归档的任务（空槽位无操作）`);
@@ -378,20 +381,20 @@ module.exports = (options) => {
 
 			// 展示所有槽位：有内容→归档到历史，空位→跳过
 			const result = await _selectTaskSlots(slots);
-			if (!result || result.items.length === 0) {
+			const selectedItems = result ? result.items || [] : [];
+			const selectedContent = selectedItems
+				.map((chosen) => slots.find((item) => item.slot === chosen.slot))
+				.filter((target) => target && target.hasBody);
+			if (selectedItems.length === 0) {
 				Ec.warn("已取消");
 				process.exit(0);
 			}
+			if (selectedContent.length === 0) {
+				Ec.info("选中的任务均为空，未写入历史");
+				process.exit(0);
+			}
 			let audioPlayed = false;
-			for (const chosen of result.items) {
-				const target = slots.find((item) => item.slot === chosen.slot);
-				if (!target) continue;
-
-				if (target.isPlaceholder) {
-					// 空槽位：不做任何操作
-					Ec.info(`${target.name} 为空，已跳过`);
-					continue;
-				}
+			for (const target of selectedContent) {
 				// 有内容：归档到历史，回写空占位保持槽位
 				await _archiveTask(taskDir, target.name, target.content, cwd, !audioPlayed);
 				audioPlayed = true;

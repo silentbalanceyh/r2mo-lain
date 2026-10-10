@@ -527,6 +527,121 @@ const testTaskSelectedArchiveClearsGoonWithoutBackup = async () => {
 	});
 };
 
+const testTaskSelectAllWritesOnlyNonEmptyTasksToHistory = async () => {
+	await _withTempDir(async (root) => {
+		const taskFile = path.resolve(__dirname, "executor", "executeTask.js");
+		const taskRoot = path.join(root, TASK_DIR);
+		await fs.mkdir(taskRoot, { recursive: true });
+		await fs.writeFile(path.join(taskRoot, "thread"), "2", "utf8");
+		await fs.writeFile(
+			path.join(taskRoot, _slotFilename(1)),
+			_taskContent("空任务", ""),
+			"utf8",
+		);
+		await fs.writeFile(
+			path.join(taskRoot, _slotFilename(2)),
+			_taskContent("有正文任务", "# 正文"),
+			"utf8",
+		);
+
+		const originalLoad = Module._load;
+		const originalCwd = process.cwd;
+		const originalExit = process.exit;
+		const originalHomedir = os.homedir;
+		const originalInfo = console.info;
+		const originalWarn = console.warn;
+		const originalError = console.error;
+		const selections = [];
+		let exitCode;
+
+		try {
+			Module._load = function (request, parent, isMain) {
+				if (
+					parent &&
+					parent.filename === taskFile &&
+					request === "../utils/mxt-menu"
+				) {
+					return {
+						selectMultiple: async (items, title) => {
+							selections.push({ title, count: items.length });
+							return { items };
+						},
+					};
+				}
+				if (parent && parent.filename === taskFile && request === "../epic") {
+					return {
+						waiting() {},
+						info() {},
+						warn() {},
+						error() {},
+					};
+				}
+				if (
+					parent &&
+					parent.filename === taskFile &&
+					request === "../utils/mxt-audio"
+				) {
+					return { playAudio() {} };
+				}
+				return originalLoad.call(this, request, parent, isMain);
+			};
+
+			process.cwd = () => root;
+			process.exit = (code) => {
+				exitCode = code;
+			};
+			os.homedir = () => root;
+			console.info = () => {};
+			console.warn = () => {};
+			console.error = () => {};
+
+			delete require.cache[taskFile];
+			const executeTask = require(taskFile);
+			await executeTask();
+			await new Promise((resolve) => {
+				const timer = setInterval(() => {
+					if (exitCode !== undefined) {
+						clearInterval(timer);
+						resolve();
+					}
+				}, 1);
+				setTimeout(() => {
+					clearInterval(timer);
+					resolve();
+				}, 100);
+			});
+		} finally {
+			delete require.cache[taskFile];
+			Module._load = originalLoad;
+			process.cwd = originalCwd;
+			process.exit = originalExit;
+			os.homedir = originalHomedir;
+			console.info = originalInfo;
+			console.warn = originalWarn;
+			console.error = originalError;
+		}
+
+		assert.strictEqual(exitCode, 0);
+		assert.deepStrictEqual(selections, [
+			{
+				title: "选择要归档的任务（空槽位无操作）",
+				count: 2,
+			},
+		]);
+		const historyFiles = await _listHistoryFiles(root);
+		assert.strictEqual(historyFiles.length, 1);
+		assert.match(historyFiles[0], /TASK@有正文任务\.md$/);
+		assert.match(
+			await _read(root, path.join(TASK_DIR, _slotFilename(1))),
+			/title: 空任务/,
+		);
+		assert.strictEqual(
+			await _exists(root, path.join(TASK_DIR, _slotFilename(2))),
+			true,
+		);
+	});
+};
+
 const testTaskArchiveSanitizesSpecialFilenameCharacters = async () => {
 	await _withTempDir(async (root) => {
 		const taskRoot = path.join(root, TASK_DIR);
@@ -3078,6 +3193,7 @@ const main = async () => {
 	await testShrinkThreadPreservesOverflowUntilSelected();
 	await testTaskArchiveSanitizesSpecialFilenameCharacters();
 	await testTaskSelectedArchiveClearsGoonWithoutBackup();
+	await testTaskSelectAllWritesOnlyNonEmptyTasksToHistory();
 	await testRunSkipsFocusModeSelection();
 	await testTaskUsesCurrentR2moDirectory();
 	await testPlanUsesCurrentR2moDirectory();
