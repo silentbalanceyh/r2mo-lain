@@ -39,7 +39,7 @@ $mxt-debug <bug 描述> [P0-P3] [Deep] [WT]
 ## 写回 / 输出
 
 - `.r2mo/bugs/<yyyy-MM-dd>/<yyyy-MM-dd>-<severity>-<slug>.md`：单个 Bug 档案（frontmatter + 九段正文）。
-- `.r2mo/bugs/<yyyy-MM-dd>/index.md`：当日问题清单，每次诊断必须新增或更新一行。
+- `.r2mo/bugs/<yyyy-MM-dd>/<yyyy-MM-dd>-<topic>-bugs.md`：按提示词主题命名的当日问题清单，每次诊断必须新增或更新一行。
 - （仅 legacy 模式）`.r2mo/task/goon-NNN.md`：向后兼容的整改交接。
 
 ## Bug 档案格式
@@ -83,7 +83,7 @@ task_ref:             # 仅在用户显式引用任务时才填
 
 ## 日度索引格式
 
-`index.md` 采用标准表格：
+索引文件使用 `<yyyy-MM-dd>-<topic>-bugs.md`。`<topic>` 是提示词的小写 kebab-case 主题摘要；不要使用固定标签。索引标题同样描述该主题：
 
 ```md
 | ID | Severity | Module | Summary | Status | Report |

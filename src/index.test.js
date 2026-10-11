@@ -2211,6 +2211,122 @@ const testAiCmdClaudeInstallWritesHostPluginState = async () => {
 	});
 };
 
+const testAiCmdInstallsGeminiSkillsAndCommands = async () => {
+	const aiCmd = require("./utils/mxt-ai-cmd");
+
+	await _withTempDir(async (homeDir) => {
+		const installed = await aiCmd.installPlatforms(["gemini-cli"], {
+			homeDir,
+		});
+
+		assert.deepStrictEqual(
+			installed.map((item) => item.id),
+			["gemini-cli"],
+		);
+		assert.deepStrictEqual(
+			installed[0].skills.sort(),
+			[
+				"mxt-debug",
+				"mxt-doctor",
+				"mxt-end",
+				"mxt-goon",
+				"mxt-loop",
+				"mxt-plan",
+				"mxt-run",
+				"mxt-start",
+				"mxt-sync",
+				"mxt-task",
+			],
+		);
+		assert.strictEqual(
+			await _exists(
+				homeDir,
+				path.join(".gemini", "skills", "mxt-run", "SKILL.md"),
+			),
+			true,
+		);
+
+		const commandNames = [
+			"debug",
+			"doctor",
+			"end",
+			"goon",
+			"loop",
+			"plan",
+			"run",
+			"start",
+			"sync",
+			"task",
+		];
+		for (const name of commandNames) {
+			const commandPath = path.join(
+				homeDir,
+				".gemini",
+				"commands",
+				"mxt",
+				`${name}.toml`,
+			);
+			const content = await fs.readFile(commandPath, "utf8");
+			assert.match(content, /^description = "/);
+			assert.match(content, /^prompt = \[$/m);
+			assert.match(content, /\$\{ARGUMENTS\}/);
+			assert.doesNotMatch(content, /[\r\n]+"""/);
+		}
+	});
+};
+
+const testAiCmdUninstallsOnlyOwnedGeminiArtifacts = async () => {
+	const aiCmd = require("./utils/mxt-ai-cmd");
+
+	await _withTempDir(async (homeDir) => {
+		const userSkillDir = path.join(homeDir, ".gemini", "skills", "custom");
+		const userCommandPath = path.join(
+			homeDir,
+			".gemini",
+			"commands",
+			"custom.toml",
+		);
+		await fs.mkdir(userSkillDir, { recursive: true });
+		await fs.mkdir(path.dirname(userCommandPath), { recursive: true });
+		await fs.writeFile(
+			path.join(userSkillDir, "SKILL.md"),
+			"user skill",
+			"utf8",
+		);
+		await fs.writeFile(userCommandPath, "prompt = 'user command'", "utf8");
+
+		await aiCmd.installPlatforms(["gemini-cli"], { homeDir });
+		const uninstalled = await aiCmd.uninstallPlatforms(["gemini-cli"], {
+			homeDir,
+		});
+
+		assert.strictEqual(uninstalled[0].id, "gemini-cli");
+		assert.ok(uninstalled[0].removed > 0);
+		assert.strictEqual(
+			await _exists(homeDir, path.join(".gemini", "skills", "mxt-run")),
+			false,
+		);
+		assert.strictEqual(
+			await _exists(
+				homeDir,
+				path.join(".gemini", "commands", "mxt", "run.toml"),
+			),
+			false,
+		);
+		assert.strictEqual(
+			await _exists(
+				homeDir,
+				path.join(".gemini", "skills", "custom", "SKILL.md"),
+			),
+			true,
+		);
+		assert.strictEqual(
+			await _exists(homeDir, path.join(".gemini", "commands", "custom.toml")),
+			true,
+		);
+	});
+};
+
 const testAiCmdValidatesCrossPlatformInstallTargets = async () => {
 	const aiCmd = require("./utils/mxt-ai-cmd");
 
@@ -2229,7 +2345,7 @@ const testAiCmdValidatesCrossPlatformInstallTargets = async () => {
 
 			assert.deepStrictEqual(
 				installed.map((item) => item.id),
-				["claude", "codex", "opencode", "pi"],
+				["claude", "codex", "opencode", "pi", "gemini-cli"],
 			);
 			assert.strictEqual(
 				await _exists(
@@ -2407,12 +2523,12 @@ const testAiCmdMaintainsConsistentCommandCountsAndInstallsTaskWorkflow =
 
 		await _withTempDir(async (homeDir) => {
 			const installed = await aiCmd.installPlatforms(
-				["claude", "codex", "opencode", "pi"],
+				["claude", "codex", "opencode", "pi", "gemini-cli"],
 				{ homeDir },
 			);
 			assert.deepStrictEqual(
 				installed.map((item) => item.id),
-				["claude", "codex", "opencode", "pi"],
+				["claude", "codex", "opencode", "pi", "gemini-cli"],
 			);
 
 			const claudeCommands = await fs.readdir(
@@ -2525,7 +2641,7 @@ const testOtherAiCmdWorkflowsDoNotMutateR2moTaskState = async () => {
 		await fs.writeFile(path.join(taskRoot, "goon-026.md"), "goon 026\n", "utf8");
 		const before = await _snapshotFiles(taskRoot);
 
-		await aiCmd.installPlatforms(["claude", "codex", "opencode", "pi"], {
+		await aiCmd.installPlatforms(["claude", "codex", "opencode", "pi", "gemini-cli"], {
 			homeDir,
 		});
 
@@ -2758,6 +2874,32 @@ const testAiCmdAllSkillsUseSharedPromptBodies = async () => {
 			);
 		}
 	}
+
+	const codexTaskSkill = await fs.readFile(
+		path.resolve(
+			__dirname,
+			"..",
+			"agent/commands/codex/mxt/skills/mxt-task/SKILL.md",
+		),
+		"utf8",
+	);
+	const codexTaskCommand = await fs.readFile(
+		path.resolve(__dirname, "..", "agent/commands/codex/mxt/commands/task.md"),
+		"utf8",
+	);
+	assert.match(
+		codexTaskSkill,
+		/Resolve the caller requirement from `\$ARGUMENTS`/,
+	);
+	assert.match(
+		codexTaskCommand,
+		/Resolve the caller requirement from `\$ARGUMENTS`/,
+	);
+	assert.match(
+		codexTaskSkill,
+		/## INPUT RESOLUTION/,
+		"Task skill must retain its dual-input resolution contract",
+	);
 };
 
 const testAiCmdRegistersDoctorAcrossAllPlatforms = async () => {
@@ -3145,6 +3287,18 @@ const testDebugCommandsRequireIssueInventory = async () => {
 			"utf8",
 		);
 		assert.match(content, /## BUG FILE TEMPLATE/);
+		assert.match(
+			content,
+			/INDEX    = \$\{DIR\}\/\$\{date\}-\$\{TOPIC\}-bugs\.md/,
+		);
+		assert.match(
+			content,
+			/TOPIC    = lowercase kebab summary of the bug prompt/,
+		);
+		assert.match(
+			content,
+			/Never use \$\{DIR\}\/index\.md; derive INDEX from the prompt, not a fixed label/,
+		);
 		assert.match(content, /Read `\$\{INDEX\}` first/);
 		assert.match(content, /Leave no `\$\{…\}` or `_pending_`/);
 		assert.match(content, /Upsert daily index row/);
@@ -3204,6 +3358,8 @@ const main = async () => {
 	await testAiCmdReinstallRefreshesPlatforms();
 	await testAiCmdOpenCodePreservesJsonStringCommentMarkers();
 	await testAiCmdClaudeInstallWritesHostPluginState();
+	await testAiCmdInstallsGeminiSkillsAndCommands();
+	await testAiCmdUninstallsOnlyOwnedGeminiArtifacts();
 	await testAiCmdValidatesCrossPlatformInstallTargets();
 	await testAiCmdMaintainsConsistentCommandCountsAndInstallsTaskWorkflow();
 	await testOtherAiCmdWorkflowsDoNotMutateR2moTaskState();

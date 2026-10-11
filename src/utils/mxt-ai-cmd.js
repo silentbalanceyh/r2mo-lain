@@ -115,6 +115,16 @@ const PLATFORMS = [
         targetDir: (homeDir) => piSkillsDir(homeDir),
         installer: "piSkills",
     },
+    {
+        id: "gemini-cli",
+        name: "Gemini CLI",
+        description:
+            "~/.gemini/skills/mxt-* plus ~/.gemini/commands/mxt/*.toml",
+        sourceDir: path.join(SOURCE_ROOT, "codex", "mxt", "skills"),
+        targetDir: (homeDir) =>
+            path.join(homeDir || os.homedir(), ".gemini", "skills"),
+        installer: "geminiCli",
+    },
 ];
 
 const listPlatforms = () => PLATFORMS.map((platform) => ({ ...platform }));
@@ -1306,6 +1316,119 @@ const createPiPromptAlias = async (aliasPath, skillName, skillsDir) => {
     return "copy";
 };
 
+const parseMarkdownDescription = (content) => {
+    const match = String(content || "").match(
+        /^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/,
+    );
+    if (!match) return "";
+    const descriptionLine = match[1]
+        .split(/\r?\n/)
+        .find((line) => /^\s*description\s*:/.test(line));
+    if (!descriptionLine) return "";
+    return descriptionLine
+        .replace(/^\s*description\s*:\s*/, "")
+        .trim()
+        .replace(/^['"]|['"]$/g, "");
+};
+
+const tomlBasicString = (value) =>
+    `"${String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r/g, "\\r").replace(/\n/g, "\\n")}"`;
+
+// TOML multi-line strings do not support escapes; each source line becomes a
+// single-line basic string, which keeps TOML v1 parsing deterministic.
+const buildGeminiToml = (description, template) => {
+    const lines = [];
+    if (description) lines.push(`description = ${tomlBasicString(description)}`);
+    lines.push("prompt = [");
+    const body = String(template || "").trim();
+    lines.push(
+        ...body.split(/\r?\n/).map((line) => `  ${tomlBasicString(line)},`),
+    );
+    lines.push("]");
+    return `${lines.join("\n")}\n`;
+};
+
+const geminiCommandsDir = (homeDir) =>
+    path.join(homeDir || os.homedir(), ".gemini", "commands", "mxt");
+
+const installGeminiCli = async (platform, homeDir) => {
+    await uninstallGeminiCli(platform, homeDir);
+    const targetDir = platform.targetDir(homeDir);
+    const skills = await listSkillDirs(platform.sourceDir);
+    let copied = 0;
+
+    for (const skill of skills) {
+        copied += await copyDir(
+            skill.sourceDir,
+            path.join(targetDir, skill.name),
+        );
+    }
+
+    const commandsDir = geminiCommandsDir(homeDir);
+    const commands = [];
+    for (const workflow of COMMAND_BASENAMES) {
+        const sourceFile = path.join(
+            SOURCE_ROOT,
+            "codex",
+            "mxt",
+            "commands",
+            `${workflow}.md`,
+        );
+        const content = await fs.readFile(sourceFile, "utf8");
+        const description = parseMarkdownDescription(content);
+        let template = parseCommandFile(content).template;
+        if (!template.includes("${ARGUMENTS}")) {
+            template = `${template}\n\nCaller arguments: ${"${ARGUMENTS}"}`;
+        }
+        const commandFile = path.join(commandsDir, `${workflow}.toml`);
+        await fs.mkdir(path.dirname(commandFile), { recursive: true });
+        await fs.writeFile(
+            commandFile,
+            buildGeminiToml(description, template),
+            "utf8",
+        );
+        copied++;
+        commands.push(workflow);
+    }
+
+    return {
+        id: platform.id,
+        name: platform.name,
+        sourceDir: platform.sourceDir,
+        targetDir,
+        copied,
+        skills: skills.map((skill) => skill.name),
+        commands,
+    };
+};
+
+const uninstallGeminiCli = async (platform, homeDir) => {
+    const targetDir = platform.targetDir(homeDir);
+    const skills = await listSkillDirs(platform.sourceDir);
+    let removed = 0;
+
+    for (const skill of skills) {
+        removed += await removeExistingPath(path.join(targetDir, skill.name));
+    }
+
+    for (const workflow of COMMAND_BASENAMES) {
+        removed += await removeExistingPath(
+            path.join(geminiCommandsDir(homeDir), `${workflow}.toml`),
+        );
+    }
+    await fs.rm(geminiCommandsDir(homeDir), {
+        recursive: true,
+        force: true,
+    });
+
+    return {
+        id: platform.id,
+        name: platform.name,
+        targetDir,
+        removed,
+    };
+};
+
 const installPiPromptAliases = async (skills, skillsDir, homeDir) => {
     const targetDir = piPromptsDir(homeDir);
     const skipped = [];
@@ -1459,6 +1582,18 @@ const installPlatforms = async (ids, options = {}) => {
             );
             continue;
         }
+        if (platform.installer === "geminiCli") {
+            results.push(
+                await withPlatformError(
+                    "安装",
+                    platform,
+                    homeDir,
+                    platform.targetDir,
+                    () => installGeminiCli(platform, homeDir),
+                ),
+            );
+            continue;
+        }
         const targetDir = platform.targetDir(homeDir);
         const copied = await copyDir(platform.sourceDir, targetDir);
         results.push({
@@ -1525,6 +1660,18 @@ const uninstallPlatforms = async (ids, options = {}) => {
                     homeDir,
                     platform.targetDir,
                     () => uninstallPiSkills(platform, homeDir),
+                ),
+            );
+            continue;
+        }
+        if (platform.installer === "geminiCli") {
+            results.push(
+                await withPlatformError(
+                    "卸载",
+                    platform,
+                    homeDir,
+                    platform.targetDir,
+                    () => uninstallGeminiCli(platform, homeDir),
                 ),
             );
             continue;

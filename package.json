@@ -1,6 +1,6 @@
 {
   "name": "r2mo-ai",
-  "version": "1.0.125",
+  "version": "1.0.126",
   "description": "Rachel MXT ( OpenSpec )",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",

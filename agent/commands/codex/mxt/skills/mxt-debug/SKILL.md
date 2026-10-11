@@ -43,7 +43,9 @@ slug     = lowercase kebab, [a-z0-9-], max 60
 FILE     = ${date}-${SEVERITY}-${slug}.md
 DIR      = .r2mo/bugs/${date}
 BUG      = ${DIR}/${FILE}
-INDEX    = ${DIR}/index.md
+TOPIC    = lowercase kebab summary of the bug prompt, [a-z0-9-], max 60
+INDEX    = ${DIR}/${date}-${TOPIC}-bugs.md
+NOTE     = Never use ${DIR}/index.md; derive INDEX from the prompt, not a fixed label
 ```
 
 Create `DIR` when missing. Never write to other dates, sibling tasks, or unrelated goon.
@@ -109,11 +111,13 @@ Nine body sections are mandatory and ordered. Do not rename, merge, or drop any.
 Read `${INDEX}` first; create with header when absent:
 
 ```md
-# ${date} Bug Index
+# ${date} ${TOPIC_TITLE} Bug Index
 
 | ID | Severity | Module | Summary | Status | Report |
 |---|:---:|---|---|:---:|---|
 ```
+
+`${TOPIC_TITLE}` is a concise title-case summary of the bug prompt. The index filename and heading must describe that topic.
 
 Row format:
 

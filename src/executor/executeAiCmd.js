@@ -43,6 +43,18 @@ const USAGE_PI = [
     "/mxt-doctor loc 防漂移基线校验",
     "/mxt-task <requirement> 扩展任务",
 ];
+const USAGE_GEMINI = [
+    "/mxt:plan 001  生成执行计划",
+    "/mxt:run 001   执行任务开发",
+    "/mxt:end 001   验证并写整改项",
+    "/mxt:goon 001  整改后闭环验证",
+    "/mxt:debug     BUG 排查",
+    "/mxt:sync      Git 全量同步",
+    "/mxt:loop 001  双会话任务闭环",
+    "/mxt:start     拉起开发环境",
+    "/mxt:doctor loc 防漂移基线校验",
+    "/mxt:task <requirement> 扩展任务",
+];
 
 const _buildUsageHeader = () => {
     const lines = [];
@@ -59,6 +71,8 @@ const _buildUsageHeader = () => {
         "    /mxt-* 为短命令别名，始终等价于 /skill:mxt-*"
             .gray,
     );
+    lines.push("  Gemini CLI:".bold);
+    USAGE_GEMINI.forEach((cmd) => lines.push("    " + cmd.gray));
     lines.push("");
     return lines.join("\n");
 };
