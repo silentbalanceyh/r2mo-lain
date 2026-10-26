@@ -170,35 +170,46 @@ const _loadOverflowTasks = async (taskDir, taskSlots) => {
 	const entries = await fs
 		.readdir(taskDir, { withFileTypes: true })
 		.catch(() => []);
-	return entries
-		.filter(
-			(entry) =>
-				entry.isFile() &&
-				TASK_FILE_RE.test(entry.name) &&
-				parseInt(entry.name.match(TASK_FILE_RE)[1], 10) > taskSlots,
-		)
-		.map((entry) => {
-			const slot = parseInt(entry.name.match(TASK_FILE_RE)[1], 10);
-			return {
-				slot,
-				name: entry.name,
-				fullPath: path.join(taskDir, entry.name),
-			};
-		})
-		.sort((left, right) => left.slot - right.slot);
+	const overflowEntries = entries.filter(
+		(entry) =>
+			entry.isFile() &&
+			TASK_FILE_RE.test(entry.name) &&
+			parseInt(entry.name.match(TASK_FILE_RE)[1], 10) > taskSlots,
+	);
+	const tasks = [];
+	for (const entry of overflowEntries) {
+		const slot = parseInt(entry.name.match(TASK_FILE_RE)[1], 10);
+		const fullPath = path.join(taskDir, entry.name);
+		let content = "";
+		try {
+			content = await fs.readFile(fullPath, "utf8");
+		} catch (error) {
+			if (error.code !== "ENOENT") throw error;
+		}
+		tasks.push({
+			slot,
+			name: entry.name,
+			fullPath,
+			content,
+			title: _parseTitleFromContent(content) || "任务",
+		});
+	}
+	return tasks.sort((left, right) => left.slot - right.slot);
 };
 
 const _selectOverflowTaskSlots = async (slots) => {
 	const { selectMultiple } = require("../utils/mxt-menu");
 	if (slots.length === 0) return { items: [] };
+	require("colors");
 	const menuItems = slots.map((item) => ({
 		name: item.name.replace(/\.md$/, ""),
-		description: "超出 thread 阈值，可选择归档",
+		description: item.title,
 		slot: item.slot,
 	}));
 	return selectMultiple(
 		menuItems,
 		"选择要归档的超额任务（直接 Enter 跳过）",
+		"  超出 thread 阈值的任务".gray,
 	);
 };
 
@@ -210,12 +221,14 @@ const _archiveOverflowTasks = async (taskDir, slots, cwd) => {
 	for (const item of slots) {
 		const name = item.name;
 		const srcPath = item.fullPath;
-		let content;
-		try {
-			content = await fs.readFile(srcPath, "utf8");
-		} catch (error) {
-			if (error.code === "ENOENT") continue;
-			throw error;
+		let content = item.content;
+		if (content === undefined) {
+			try {
+				content = await fs.readFile(srcPath, "utf8");
+			} catch (error) {
+				if (error.code === "ENOENT") continue;
+				throw error;
+			}
 		}
 		if (!_hasTaskBody(content)) {
 			continue;
